@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<AnchorPane fx:id="teacherPane" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.atg.controller.TeacherController"
+            stylesheets="@teacher.css">
+
+    <VBox spacing="15" AnchorPane.topAnchor="10" AnchorPane.leftAnchor="10" AnchorPane.rightAnchor="10" AnchorPane.bottomAnchor="10">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <!-- Header -->
+        <Label text="Teacher Data" styleClass="section-header"/>
+
+        <!-- Table -->
+        <TableView fx:id="teacherTable" prefHeight="350">
+            <columns>
+                <TableColumn fx:id="colSrNo" text="Sr No" prefWidth="100"/>
+                <TableColumn fx:id="colName" text="Teacher Name" prefWidth="250"/>
+            </columns>
+        </TableView>
+
+        <!-- Input Form -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="txtName" promptText="Enter Teacher Name" prefWidth="250"/>
+            <Button text="Add" fx:id="btnAdd" onAction="#addTeacher" styleClass="primary-btn"/>
+            <Button text="Delete" fx:id="btnDelete" onAction="#deleteTeacher" styleClass="danger-btn"/>
+        </HBox>
+    </VBox>
+</AnchorPane>

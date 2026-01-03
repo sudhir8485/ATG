@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.shape.Rectangle?>
+
+<BorderPane xmlns="http://javafx.com/javafx/25"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.atg.controller.DashboardController"
+            prefWidth="1200" prefHeight="700"
+            stylesheets="@dashboard.css"
+            style="-fx-background-color: linear-gradient(to bottom right, #1E1E2E, #2D2F3A);">
+
+    <!-- Background Overlay (Same as Login Page) -->
+    <Rectangle width="1200" height="700" arcWidth="40" arcHeight="40"
+               fill="linear-gradient(to bottom right, rgba(30,30,46,0.85), rgba(45,47,58,0.85))"
+               stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
+
+    <!-- ==================== HEADER ==================== -->
+    <top>
+        <HBox styleClass="header" spacing="10">
+            <padding><Insets top="12" right="20" bottom="12" left="20"/></padding>
+
+            <Label text="Automatic Timetable Generator" styleClass="header-title"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="Logout" onAction="#handleLogout" styleClass="logout-btn"/>
+        </HBox>
+    </top>
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <left>
+        <VBox styleClass="sidebar" spacing="8">
+            <Label text="Menu" styleClass="sidebar-title"/>
+
+            <Button text="🏫 Institute Configuration" onAction="#openInstitute" styleClass="sidebar-btn"/>
+            <Button text="👨‍🏫 Teachers" onAction="#openTeachers" styleClass="sidebar-btn"/>
+            <Button text="📘 Standard" onAction="#openStandard" styleClass="sidebar-btn"/>
+            <Button text="🚂 Generation Engine" onAction="#openGeneration" styleClass="sidebar-btn"/>
+            <Button text="📊 View Timetable" onAction="#openView" styleClass="sidebar-btn"/>
+            <Button text="😊 About" onAction="#openAbout" styleClass="sidebar-btn"/>
+        </VBox>
+    </left>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <center>
+        <AnchorPane fx:id="mainPane" styleClass="main-content">
+            <Label text="Welcome to Automatic Timetable Generator!"
+                   layoutX="300" layoutY="250"
+                   styleClass="welcome-text"/>
+
+            <Label text="Select a module from the left menu to get started."
+                   layoutX="330" layoutY="290"
+                   styleClass="sub-text"/>
+        </AnchorPane>
+    </center>
+
+</BorderPane>

@@ -1,0 +1,20 @@
+.input-field {
+    -fx-background-color: rgba(255,255,255,0.15);
+    -fx-text-fill: white;
+    -fx-background-radius: 10;
+    -fx-prompt-text-fill: #AAAAAA;
+    -fx-border-color: transparent;
+}
+
+.login-button {
+    -fx-background-color: linear-gradient(to right, #6A5ACD, #00BFFF);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 25;
+    -fx-cursor: hand;
+    -fx-font-size: 13px;
+}
+
+.login-button:hover {
+    -fx-background-color: linear-gradient(to right, #00BFFF, #6A5ACD);
+}

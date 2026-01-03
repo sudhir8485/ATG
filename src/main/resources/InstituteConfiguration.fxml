@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<AnchorPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.atg.controller.InstituteConfigurationController"
+            stylesheets="@institute.css"
+            prefWidth="1100" prefHeight="700">
+
+    <!-- Full Page Scroll -->
+    <ScrollPane fitToWidth="true"
+                style="-fx-background-color: transparent;"
+                AnchorPane.topAnchor="0"
+                AnchorPane.leftAnchor="0"
+                AnchorPane.rightAnchor="0"
+                AnchorPane.bottomAnchor="0">
+
+        <!-- Center Content -->
+        <VBox alignment="TOP_CENTER" spacing="30">
+            <padding>
+                <Insets top="40" right="40" bottom="40" left="40"/>
+            </padding>
+
+            <Label text="Institute Configuration"
+                   style="-fx-font-size:28px; -fx-font-weight:bold; -fx-text-fill:white;"/>
+
+            <!-- Max-width form container -->
+            <VBox spacing="25" maxWidth="650" prefWidth="650">
+
+                <!-- ============================
+                     EDIT FORM
+                ============================= -->
+                <VBox fx:id="editForm" spacing="20" managed="true" visible="true">
+
+                    <VBox spacing="6">
+                        <Label text="Institute Name:" styleClass="lbl"/>
+                        <TextField fx:id="instituteNameField" styleClass="input"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Department Name:" styleClass="lbl"/>
+                        <TextField fx:id="departmentNameField" styleClass="input" promptText="Optional"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Start Time:" styleClass="lbl"/>
+                        <TextField fx:id="startTimeField" styleClass="input" promptText="HH:MM AM/PM"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="End Time:" styleClass="lbl"/>
+                        <TextField fx:id="endTimeField" styleClass="input" promptText="HH:MM AM/PM"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Working Days:" styleClass="lbl"/>
+                        <TextField fx:id="workingDaysField" styleClass="input" promptText="5 or 6"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Practical Duration (min):" styleClass="lbl"/>
+                        <TextField fx:id="practicalDurationField" styleClass="input"/>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Lecture Duration (min):" styleClass="lbl"/>
+                        <TextField fx:id="lectureDurationField" styleClass="input"/>
+                    </VBox>
+
+                    <Label text="Breaks"
+                           style="-fx-font-size:20px; -fx-font-weight:bold; -fx-text-fill:white;"/>
+
+                    <HBox spacing="15">
+                        <Button text="Add Break" styleClass="btnPrimary" onAction="#handleAddBreak"/>
+                        <Button text="Delete Break" styleClass="btnDanger" onAction="#handleDeleteBreak"/>
+                    </HBox>
+
+ <TableView fx:id="breakTable"
+           styleClass="transparent-table"
+           prefHeight="200"
+           maxHeight="300">
+
+    <columns>
+        <TableColumn fx:id="colNo" text="No." prefWidth="100"/>
+        <TableColumn fx:id="colStart" text="Start" prefWidth="200"/>
+        <TableColumn fx:id="colEnd" text="End" prefWidth="200"/>
+    </columns>
+
+</TableView>
+
+
+                    <HBox alignment="CENTER">
+                        <Button text="Confirm" styleClass="btnSuccess"
+                                onAction="#handleConfirm"
+                                prefWidth="200"/>
+                    </HBox>
+
+                </VBox>
+
+                <!-- ============================
+                     SAVED VIEW
+                ============================= -->
+                <VBox fx:id="savedView" spacing="12" visible="false" managed="false">
+
+                    <Label text="Saved Configuration"
+                           style="-fx-font-size:22px; -fx-font-weight:bold; -fx-text-fill:white;"/>
+
+                    <Label fx:id="lblSavedName" styleClass="savedLabel"/>
+                    <Label fx:id="lblSavedDept" styleClass="savedLabel"/>
+                    <Label fx:id="lblSavedTime" styleClass="savedLabel"/>
+                    <Label fx:id="lblSavedDays" styleClass="savedLabel"/>
+                    <Label fx:id="lblSavedDurations" styleClass="savedLabel"/>
+                    <Label fx:id="lblSavedWorkingSlots" styleClass="savedLabel"/>
+
+                    <HBox alignment="CENTER">
+                        <Button text="Edit"
+                                styleClass="btnPrimary"
+                                onAction="#handleEdit"
+                                prefWidth="200"/>
+                    </HBox>
+
+                </VBox>
+
+            </VBox>
+
+        </VBox>
+    </ScrollPane>
+
+</AnchorPane>

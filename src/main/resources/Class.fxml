@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/8"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.atg.controller.ClassController"
+            stylesheets="@standard.css"
+            prefWidth="900" prefHeight="650">
+
+    <StackPane AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0"
+               AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
+
+        <!-- ================= MAIN CONTENT ================= -->
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
+            <VBox spacing="20">
+                <padding>
+                    <Insets top="25" right="25" bottom="25" left="25"/>
+                </padding>
+
+                <Label text="Class &amp; Subject Management" styleClass="header"/>
+
+                <!-- CLASS SELECTION -->
+                <VBox spacing="15" styleClass="card">
+                    <Label text="Class Selection" styleClass="section-title"/>
+
+                    <HBox spacing="10">
+                        <ComboBox fx:id="classCombo"
+                                  promptText="Select Class"
+                                  onAction="#selectClass"
+                                  styleClass="input"/>
+
+                        <!-- SINGLE BUTTON -->
+                        <Button text="Add / Delete Class"
+                                onAction="#showPopup"
+                                styleClass="primary-btn"/>
+
+                        <ComboBox fx:id="semesterCombo"
+                                  promptText="Select Semester"
+                                  onAction="#selectSemester"
+                                  styleClass="input"/>
+                    </HBox>
+
+                    <HBox spacing="8">
+                        <Label text="Selected Class:"/>
+                        <Label fx:id="selectedClassLabel" text="None" styleClass="tag"/>
+                        <Label text="Semester:"/>
+                        <Label fx:id="selectedSemesterLabel" text="None" styleClass="tag"/>
+                    </HBox>
+                </VBox>
+
+                <!-- ADD SUBJECT -->
+                <VBox spacing="15" styleClass="card">
+                    <Label text="Add Subject" styleClass="section-title"/>
+
+                    <HBox spacing="10">
+                        <TextField fx:id="subjectNameField"
+                                   promptText="Subject Name"
+                                   styleClass="input"/>
+
+                        <ComboBox fx:id="typeCombo"
+                                  promptText="Type"
+                                  styleClass="input"/>
+
+                        <TextField fx:id="hoursField"
+                                   promptText="Hours/Week"
+                                   styleClass="input"/>
+
+                        <ComboBox fx:id="teachersCombo"
+                                  promptText="Search Teacher"
+                                  styleClass="input"/>
+
+                        <Button text="Add"
+                                onAction="#addSubject"
+                                styleClass="primary-btn"/>
+                    </HBox>
+                </VBox>
+
+                <!-- SUBJECT TABLE -->
+                <VBox spacing="15" styleClass="card">
+                    <Label text="Subjects List" styleClass="section-title"/>
+
+                    <TableView fx:id="subjectTable" prefHeight="350">
+                        <columns>
+                            <TableColumn fx:id="colName" text="Subject" prefWidth="180"/>
+                            <TableColumn fx:id="colType" text="Type" prefWidth="120"/>
+                            <TableColumn fx:id="colHours" text="Hours" prefWidth="100"/>
+                            <TableColumn fx:id="colTeacher" text="Teacher" prefWidth="180"/>
+                            <TableColumn fx:id="colDelete" text="Action" prefWidth="120"/>
+                        </columns>
+                    </TableView>
+                </VBox>
+
+            </VBox>
+        </ScrollPane>
+
+        <!-- ================= POPUP (ADD / DELETE CLASS) ================= -->
+        <StackPane fx:id="popupContainer"
+                   visible="false"
+                   managed="false"
+                   style="-fx-background-color: rgba(0,0,0,0.40);">
+
+            <VBox spacing="12"
+                  alignment="CENTER"
+                  maxWidth="280"
+                  style="-fx-background-color: white;
+                         -fx-padding: 20;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 2);">
+
+                <Label text="Add / Delete Class" styleClass="section-title"/>
+
+                <!-- ADD CLASS -->
+                <Label text="Add Class" style="-fx-font-weight: bold;"/>
+                <TextField fx:id="classField"
+                           promptText="Enter Class Name"
+                           styleClass="input"
+                           maxWidth="Infinity"/>
+
+                <Button text="Add Class"
+                        onAction="#popupAddClass"
+                        styleClass="primary-btn"
+                        maxWidth="Infinity"/>
+
+                <!-- DELETE CLASS -->
+                <Label text="Delete Class" style="-fx-font-weight: bold;"/>
+                <ComboBox fx:id="deleteClassCombo"
+                          promptText="Choose Class"
+                          styleClass="input"
+                          maxWidth="Infinity"/>
+
+                <Button text="Delete Class"
+                        onAction="#popupDeleteClass"
+                        styleClass="danger-btn"
+                        maxWidth="Infinity"/>
+
+                <Button text="Close"
+                        onAction="#closePopup"
+                        styleClass="secondary-btn"
+                        maxWidth="Infinity"/>
+            </VBox>
+        </StackPane>
+
+    </StackPane>
+</AnchorPane>

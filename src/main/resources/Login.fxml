@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.atg.controller.LoginController"
+            prefWidth="520" prefHeight="380"
+            stylesheets="@login.css"
+            style="-fx-background-color: linear-gradient(to bottom right, #1E1E2E, #2D2F3A);">
+
+    <!-- Background overlay -->
+    <Rectangle width="520" height="380" arcWidth="30" arcHeight="30"
+               fill="linear-gradient(to bottom right, rgba(30,30,46,0.9), rgba(45,47,58,0.9))"
+               stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
+
+    <!-- Login Card -->
+    <VBox alignment="CENTER" spacing="18" layoutX="120" layoutY="60"
+          prefWidth="280" prefHeight="260"
+          style="-fx-background-color: rgba(255,255,255,0.08);
+                 -fx-background-radius: 20;
+                 -fx-border-color: rgba(255,255,255,0.2);
+                 -fx-border-radius: 20;
+                 -fx-padding: 20;">
+        
+        <Label text="Welcome Back 👋"
+               style="-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;"/>
+        
+        <Text text="Login to your ATG account"
+              style="-fx-fill: #BBBBBB; -fx-font-size: 13px;"/>
+
+        <TextField fx:id="usernameField" promptText="Username" prefWidth="220"
+                   styleClass="input-field"/>
+
+        <PasswordField fx:id="passwordField" promptText="Password" prefWidth="220"
+                       styleClass="input-field"/>
+
+        <Button text="Login" onAction="#login" prefWidth="150" prefHeight="38"
+                styleClass="login-button"/>
+
+        <Hyperlink text="Forgot Password?" style="-fx-text-fill: #9DCFFF; -fx-font-size: 11px;"/>
+    </VBox>
+
+    <Label text="Automatic Timetable Generator"
+           layoutX="60" layoutY="20"
+           style="-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;"/>
+</AnchorPane>

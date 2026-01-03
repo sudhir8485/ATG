@@ -1,0 +1,102 @@
+/* ======================================
+   MODERN GLASS TABLE THEME (PREMIUM)
+   ====================================== */
+
+/* Entire TableView */
+.table-view {
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-control-inner-background: transparent;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(0, 200, 255, 0.5);
+    -fx-border-width: 1.5;
+    -fx-padding: 0;
+}
+
+/* Table Header (Gradient + Glow) */
+.table-view .column-header-background {
+    -fx-background-color: linear-gradient(to right, #00b4d8, #0077b6);
+    -fx-background-radius: 14 14 0 0;
+    -fx-padding: 6;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,255,255,0.35), 10, 0, 0, 2);
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: black;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+/* Glass Row Background */
+.table-row-cell {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-text-fill: #e8f1ff;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 6 10;
+    -fx-font-size: 14px;
+}
+
+/* Alternating Row Colors (Glass Effect) */
+.table-row-cell:odd {
+    -fx-background-color: rgba(255,255,255,0.04);
+}
+
+.table-row-cell:even {
+    -fx-background-color: rgba(255,255,255,0.08);
+}
+
+/* Hover Effect */
+.table-row-cell:hover {
+    -fx-background-color: rgba(0, 183, 255, 0.25);
+    -fx-scale-x: 1.005;
+    -fx-scale-y: 1.005;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+/* Selected Row */
+.table-row-cell:filled:selected {
+    -fx-background-color: rgba(0,255,200,0.40);
+    -fx-text-fill: #000;
+    -fx-font-weight: bold;
+    -fx-background-radius: 6;
+}
+
+/* ======================================
+   INPUTS & BUTTONS
+   ====================================== */
+
+.text-field {
+    -fx-background-radius: 10;
+    -fx-padding: 8 12;
+    -fx-background-color: rgba(255,255,255,0.15);
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #ced4da;
+    -fx-border-color: rgba(255,255,255,0.2);
+    -fx-border-radius: 10;
+}
+
+/* Add Button */
+.primary-btn {
+    -fx-background-color: linear-gradient(to right, #0096c7, #00b4d8);
+    -fx-text-fill: white;
+    -fx-background-radius: 10;
+    -fx-padding: 6 16;
+}
+
+.primary-btn:hover {
+    -fx-background-color: linear-gradient(to right, #00b4d8, #48cae4);
+}
+
+/* Delete Button */
+.danger-btn {
+    -fx-background-color: linear-gradient(to right, #d00000, #f94144);
+    -fx-text-fill: white;
+    -fx-background-radius: 10;
+    -fx-padding: 6 16;
+}
+
+.danger-btn:hover {
+    -fx-background-color: linear-gradient(to right, #f94144, #ff6b6b);
+}
