@@ -170,7 +170,7 @@ public class ClassController {
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colHours.setCellValueFactory(new PropertyValueFactory<>("hours"));
-        colTeacher.setCellValueFactory(new PropertyValueFactory<>("teacher"));
+        colTeacher.setCellValueFactory(new PropertyValueFactory<>("teacherName"));
         addDeleteButton();
     }
 
@@ -269,24 +269,30 @@ public class ClassController {
             int classId = getId("classes", classCombo.getValue());
 
             PreparedStatement ps = conn.prepareStatement("""
-                SELECT s.id, s.name, s.type, s.hours, t.name AS teacher_name
-                FROM subject s
-                JOIN teachers t ON t.id = s.teacher_id
-                WHERE s.class_id=? AND s.semester=?
-            """);
+            	    SELECT s.id, s.name, s.type, s.hours,
+            	           t.id AS teacher_id, t.name AS teacher_name
+            	    FROM subject s
+            	    JOIN teachers t ON t.id = s.teacher_id
+            	    WHERE s.class_id=? AND s.semester=?
+            	""");
+
 
             ps.setInt(1, classId);
             ps.setString(2, semesterCombo.getValue());
 
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                list.add(new Subject(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("type"),
-                        rs.getInt("hours"),
-                        rs.getString("teacher_name")
-                ));
+            	list.add(new Subject(
+            		    rs.getInt("id"),
+            		    rs.getString("name"),
+            		    rs.getString("type"),
+            		    rs.getInt("hours"),
+            		    new com.atg.model.Teacher(
+            		        rs.getInt("teacher_id"),
+            		        rs.getString("teacher_name")
+            		    )
+            		));
+
             }
 
             subjectTable.setItems(list);

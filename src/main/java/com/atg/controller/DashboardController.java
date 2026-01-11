@@ -24,7 +24,7 @@ public class DashboardController {
     @FXML private void openInstitute() throws IOException { loadView("/InstituteConfiguration.fxml"); }
     @FXML private void openTeachers() throws IOException { loadView("/Teacher.fxml"); }
     @FXML private void openStandard() throws IOException { loadView("/Class.fxml"); }
-    @FXML private void openGeneration() throws IOException { loadView("/com/atg/view/Generation.fxml"); }
+    @FXML private void openGeneration() throws IOException { loadView("/Generation.fxml"); }
     @FXML private void openView() throws IOException { loadView("/com/atg/view/View.fxml"); }
     @FXML private void openAbout() throws IOException { loadView("/com/atg/view/About.fxml"); }
 

@@ -5,9 +5,9 @@ public class Subject {
     private String name;
     private String type;
     private int hours;
-    private String teacher;
+    private Teacher teacher;
 
-    public Subject(int id, String name, String type, int hours, String teacher) {
+    public Subject(int id, String name, String type, int hours, Teacher teacher) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -19,5 +19,10 @@ public class Subject {
     public String getName() { return name; }
     public String getType() { return type; }
     public int getHours() { return hours; }
-    public String getTeacher() { return teacher; }
+    public Teacher getTeacher() { return teacher; }
+
+    // 👇 ADD THIS FOR TABLEVIEW (VERY IMPORTANT)
+    public String getTeacherName() {
+        return teacher != null ? teacher.getName() : "";
+    }
 }

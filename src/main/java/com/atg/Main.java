@@ -11,7 +11,7 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) {
         try {
-            System.out.println("FXML path: " + getClass().getResource("/Login.fxml"));
+            System.out.println("FXML path: " + getClass().getResource("/Dashboard.fxml"));
 
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Dashboard.fxml"));
             Parent root = loader.load();
