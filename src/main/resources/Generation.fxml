@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.atg.controller.GenerationEngineController">
+
+    <!-- ================= TOP ================= -->
+    <top>
+        <Label text="Timetable Generation Engine"
+               style="-fx-font-size: 20px; -fx-font-weight: bold;"
+               BorderPane.alignment="CENTER">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+        </Label>
+    </top>
+
+    <!-- ================= LEFT ================= -->
+    <left>
+        <VBox spacing="15" prefWidth="280">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <Label text="Select Parameters"
+                   style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+            <Label text="Class"/>
+            <ComboBox fx:id="classCombo"/>
+
+            <Label text="Semester"/>
+            <ComboBox fx:id="semesterCombo"/>
+
+            <Button text="Load Subjects &amp; Teachers"
+                    onAction="#handleLoadData"
+                    prefWidth="250"/>
+
+            <Separator/>
+
+            <Button text="Generate Timetable"
+                    onAction="#handleGenerate"
+                    prefWidth="250"/>
+
+            <Button text="Save Timetable"
+                    onAction="#handleSave"
+                    prefWidth="250"
+                    disable="true"/>
+
+        </VBox>
+    </left>
+
+    <!-- ================= CENTER ================= -->
+    <center>
+        <VBox spacing="10">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <Label text="Subject – Teacher Availability"
+                   style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+            <ScrollPane fitToWidth="true" fitToHeight="true">
+                <content>
+                    <TableView fx:id="availabilityTable" prefHeight="300">
+
+                        <columns>
+                            <TableColumn text="Subject" fx:id="colSubject" prefWidth="150"/>
+                            <TableColumn text="Teacher" fx:id="colTeacher" prefWidth="150"/>
+
+                            <TableColumn text="Slot 1" fx:id="colSlot1"/>
+                            <TableColumn text="Slot 2" fx:id="colSlot2"/>
+                            <TableColumn text="Slot 3" fx:id="colSlot3"/>
+                            <TableColumn text="Slot 4" fx:id="colSlot4"/>
+                            <TableColumn text="Slot 5" fx:id="colSlot5"/>
+                            <TableColumn text="Slot 6" fx:id="colSlot6"/>
+                            <TableColumn text="Slot 7" fx:id="colSlot7"/>
+                        </columns>
+
+                    </TableView>
+                </content>
+            </ScrollPane>
+
+        </VBox>
+    </center>
+
+    <!-- ================= BOTTOM ================= -->
+    <bottom>
+        <VBox spacing="8">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+
+            <Label text="Generated Timetable Preview"
+                   style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+            <TableView fx:id="timetablePreview" prefHeight="220">
+                <columns>
+                    <TableColumn text="Day" fx:id="prevDay"/>
+                    <TableColumn text="Slot" fx:id="prevSlot"/>
+                    <TableColumn text="Class" fx:id="prevClass"/>
+                    <TableColumn text="Subject" fx:id="prevSubject"/>
+                    <TableColumn text="Teacher" fx:id="prevTeacher"/>
+                </columns>
+            </TableView>
+
+        </VBox>
+    </bottom>
+
+</BorderPane>
