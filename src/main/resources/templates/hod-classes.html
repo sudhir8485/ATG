@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="hod-layout :: head('Classes / Semesters · HOD', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell{display:flex;flex-direction:column;gap:16px;}
+            .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;box-shadow:0 8px 22px -16px rgba(0,0,0,0.18);}
+            .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+            table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 8px 22px -16px rgba(0,0,0,0.18);}
+            th,td{padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:left;}
+            th{background:#f8fafc;text-transform:uppercase;font-size:12px;letter-spacing:0.3px;color:#475569;}
+            .btn{padding:10px 14px;border-radius:10px;border:none;background:#4f46e5;color:#fff;font-weight:700;cursor:pointer;}
+            .btn.secondary{background:#e5e7eb;color:#111827;text-decoration:none;text-align:center;display:inline-block;}
+            .icon-btn{margin-right:10px;color:#2563eb;text-decoration:none;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="hod-layout :: shell('classes', 'Classes / Semesters', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div>
+        <h2 style="font-size:22px;margin-bottom:6px;">Classes / Semesters</h2>
+        <p style="color:#64748b;">Create and manage class divisions.</p>
+    </div>
+
+    <div class="card">
+        <form th:action="${isEdit} ? @{/hod-classes/update/{id}(id=${division.id})} : @{/hod-classes/save}" method="post" class="form-grid">
+            <input type="text" name="division" placeholder="Division (e.g., A)" required th:value="${division != null} ? division.name : ''">
+            <input type="text" name="semester" placeholder="Semester label (e.g., TE or Sem 5)" required th:value="${division != null} ? division.year : ''">
+            <input type="number" name="semesterNumber" min="1" max="8" placeholder="5" required th:value="${division != null} ? division.semesterNumber : ''">
+            <div style="display:flex;gap:10px;align-items:center;">
+                <button class="btn" type="submit" th:text="${isEdit} ? 'Save' : 'Add Class'"></button>
+                <a th:if="${isEdit}" href="/hod-classes" class="btn secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+        <tr><th>Division</th><th>Semester</th><th>#</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="d : ${divisions}">
+            <td th:text="${d.name}"></td>
+            <td th:text="${d.year}"></td>
+            <td th:text="${d.semesterNumber != null ? d.semesterNumber : ''}"></td>
+            <td>
+                <a class="icon-btn" th:href="@{'/hod-classes/edit/' + ${d.id}}">Edit</a>
+                <a class="icon-btn" th:href="@{'/hod-classes/delete/' + ${d.id}}" onclick="return confirm('Delete this class?');">Delete</a>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(divisions)}">
+            <td colspan="4" style="text-align:center;padding:12px;color:#6b7280;">No classes added yet.</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

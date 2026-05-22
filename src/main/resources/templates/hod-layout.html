@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(pageTitle, extraHead)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">HOD Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root { --sidebar-start:#0c2d5c; --sidebar-end:#1e3a8a; --bg:#f1f5f9; --card:#fff; --border:#e2e8f0; }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{display:flex;min-height:100vh;font-family:'Inter','Segoe UI',sans-serif;background:var(--bg);color:#0f172a;}
+        .hod-shell{display:flex;width:100%;}
+        .hod-sidebar{width:260px;background:linear-gradient(195deg,var(--sidebar-start) 0%,#1e3a8a 65%,#2563eb 110%);color:#e2e8f0;padding:26px 18px;box-shadow:8px 0 24px -12px #0c2d5c90;display:flex;flex-direction:column;gap:8px;}
+        .hod-brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;margin-bottom:10px;letter-spacing:-0.02em;}
+        .hod-nav{display:flex;flex-direction:column;gap:4px;margin-top:10px;}
+        .hod-nav a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;color:#e2e8f0;text-decoration:none;transition:all .18s;border:1px solid transparent;}
+        .hod-nav a:hover{background:rgba(255,255,255,0.08);border-color:rgba(129,140,248,0.35);}
+        .hod-nav a.active{background:rgba(99,102,241,0.22);border-left:4px solid #facc15;color:#fff;font-weight:700;}
+        .hod-main{flex:1;display:flex;flex-direction:column;padding:22px 24px;gap:18px;}
+        .hod-topbar{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.95);padding:12px 16px;border-radius:18px;box-shadow:0 10px 25px -14px rgba(0,0,0,0.25);border:1px solid var(--border);}
+        .hod-content{flex:1;overflow:auto;}
+
+        /* Prevent floating labels from overlapping inputs on HOD screens */
+        .form-group label,
+        label.floating-label{
+            position: static;
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            transform: none;
+            transition: none;
+        }
+    </style>
+    <th:block th:if="${extraHead}" th:insert="${extraHead}"></th:block>
+</head>
+<body th:fragment="shell(activePage, pageTitle, content)">
+<div class="hod-shell">
+    <aside class="hod-sidebar">
+        <div class="hod-brand"><i class="fas fa-school"></i> <span>HOD Panel</span></div>
+        <nav class="hod-nav">
+            <a href="/hod" th:classappend="${activePage}=='dashboard' ? 'active'"><i class="fas fa-chart-line"></i>Dashboard</a>
+            <a href="/hod-faculty" th:classappend="${activePage}=='faculty' ? 'active'"><i class="fas fa-users"></i>Faculty</a>
+            <a href="/hod-subjects" th:classappend="${activePage}=='subjects' ? 'active'"><i class="fas fa-book"></i>Subjects</a>
+            <a href="/hod-classes" th:classappend="${activePage}=='classes' ? 'active'"><i class="fas fa-layer-group"></i>Classes / Semesters</a>
+            <a href="/hod-timetable" th:classappend="${activePage}=='timetable' ? 'active'"><i class="fas fa-calendar-week"></i>Dept Timetable</a>
+            <a href="/hod-generate" th:classappend="${activePage}=='generate' ? 'active'"><i class="fas fa-magic"></i>Generate Timetable</a>
+            <a href="/approve-timetable" th:classappend="${activePage}=='approve' ? 'active'"><i class="fas fa-check-circle"></i>Approve Timetable</a>
+            <a href="/" style="margin-top:8px;"><i class="fas fa-sign-out-alt"></i>Logout</a>
+        </nav>
+    </aside>
+    <main class="hod-main">
+        <header class="hod-topbar">
+            <h1 th:text="${pageTitle}">HOD Panel</h1>
+            <span style="color:#475569;font-weight:600;" th:text="${session.currentUserName}">User</span>
+        </header>
+        <section class="hod-content" th:insert="${content}"></section>
+    </main>
+</div>
+</body>
+</html>

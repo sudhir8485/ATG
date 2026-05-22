@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="hod-layout :: head('Assign Faculty · HOD', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell{display:flex;flex-direction:column;gap:16px;}
+            table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 8px 22px -16px rgba(0,0,0,0.18);}
+            th,td{padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:left;}
+            th{background:#f8fafc;text-transform:uppercase;font-size:12px;letter-spacing:0.3px;color:#475569;}
+            select{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;}
+            .btn{padding:8px 12px;border:none;border-radius:8px;background:#4f46e5;color:#fff;font-weight:700;cursor:pointer;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="hod-layout :: shell('subjects', 'Assign Faculty', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div>
+        <h2 style="font-size:22px;margin-bottom:6px;">Assign Faculty</h2>
+        <p style="color:#64748b;">Assign a faculty member to each subject.</p>
+    </div>
+
+    <table>
+        <thead>
+        <tr><th>Subject</th><th>Semester</th><th>Faculty</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${subjectList}">
+            <td th:text="${s.name}"></td>
+            <td th:text="${s.semester}"></td>
+            <td>
+                <form th:action="@{/hod-subjects/assign/{id}(id=${s.id})}" method="post" style="display:flex;gap:8px;align-items:center;">
+                    <select name="faculty" required>
+                        <option value="">Select</option>
+                        <option th:each="f : ${facultyList}" th:value="${f.name}" th:text="${f.name}" th:selected="${s.faculty != null} ? (s.faculty == f.name) : false"></option>
+                    </select>
+                    <button class="btn" type="submit">Save</button>
+                </form>
+            </td>
+            <td th:text="${s.faculty}"></td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(subjectList)}">
+            <td colspan="4" style="text-align:center;padding:12px;color:#6b7280;">No subjects found.</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

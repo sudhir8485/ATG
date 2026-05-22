@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="hod-layout :: head('Approve Timetable · HOD', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell{display:flex;flex-direction:column;gap:16px;}
+            table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 8px 22px -16px rgba(0,0,0,0.18);}
+            th,td{padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:left;}
+            th{background:#f8fafc;text-transform:uppercase;font-size:12px;letter-spacing:0.3px;color:#475569;}
+            .btn{padding:8px 12px;border-radius:8px;border:none;color:#fff;font-weight:700;cursor:pointer;text-decoration:none;}
+            .approve{background:#16a34a;}
+            .reject{background:#ef4444;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="hod-layout :: shell('approve', 'Approve Timetable', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div>
+        <h2 style="font-size:22px;margin-bottom:6px;">Approve Timetable</h2>
+        <p style="color:#64748b;">Review and approve department timetable entries.</p>
+    </div>
+
+    <table>
+        <thead>
+        <tr><th>Day</th><th>Class</th><th>Division</th><th>Subject</th><th>Faculty</th><th>Time</th><th>Room</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="t : ${timetableList}">
+            <td th:text="${t.day}"></td>
+            <td th:text="${t.className}"></td>
+            <td th:text="${t.division}"></td>
+            <td th:text="${t.subject}"></td>
+            <td th:text="${t.faculty}"></td>
+            <td th:text="${t.timeSlot}"></td>
+            <td th:text="${t.room}"></td>
+            <td th:text="${t.status}"></td>
+            <td>
+                <a class="btn approve" th:href="@{/approve/{id}(id=${t.id})}">Approve</a>
+                <a class="btn reject" th:href="@{/reject/{id}(id=${t.id})}">Reject</a>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(timetableList)}">
+            <td colspan="9" style="text-align:center;padding:12px;color:#6b7280;">No timetable entries.</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

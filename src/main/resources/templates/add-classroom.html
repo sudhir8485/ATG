@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin-layout :: head('Classroom Management · Admin', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .page-header h2 {
+                font-size: 26px;
+                color: #1a2639;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .card {
+                background: white;
+                padding: 24px;
+                max-width: 560px;
+                border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+                border: 1px solid #e2e8f0;
+            }
+
+            .card-header {
+                margin-bottom: 18px;
+            }
+
+            .card-header h3 {
+                color: #1a2639;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 0;
+            }
+
+            .form-group {
+                margin-bottom: 16px;
+            }
+
+            .form-group label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: 600;
+            }
+
+            .input-wrapper {
+                position: relative;
+            }
+
+            .input-wrapper i {
+                position: absolute;
+                left: 15px;
+                top: 12px;
+                color: #9aa1b5;
+            }
+
+            .page-shell input,
+            .page-shell select {
+                padding-left: 42px;
+            }
+
+            .form-actions {
+                display: flex;
+                gap: 14px;
+                margin-top: 10px;
+                flex-wrap: wrap;
+            }
+
+            .btn-secondary {
+                background: #7f8c8d;
+                color: white;
+            }
+
+            .recent-list {
+                margin-top: 8px;
+                background: white;
+                border-radius: 16px;
+                padding: 18px;
+                border: 1px solid #e2e8f0;
+            }
+
+            .recent-list table th,
+            .recent-list table td {
+                padding: 10px 8px;
+            }
+
+            .action-edit {
+                color: #3498db;
+                margin-right: 10px;
+                text-decoration: none;
+                font-weight: 600;
+            }
+
+            .action-delete {
+                color: #e74c3c;
+                text-decoration: none;
+                font-weight: 600;
+            }
+        </style>
+    </th:block>
+</head>
+<body th:replace="admin-layout :: shell('classrooms', 'Classroom Management', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div class="page-header">
+        <h2><i class="fas fa-door-open"></i> Classroom Management</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>
+                <i class="fas fa-plus-circle"></i>
+                <span th:text="${isEdit} ? 'Update Classroom' : 'Add Classroom'"></span>
+            </h3>
+            <p th:text="${isEdit} ? 'Edit classroom details' : 'Enter the classroom information below to add it to the system'"></p>
+        </div>
+
+        <form th:attr="action=${isEdit} ? '/update-classroom/' + classroom.id : '/save-classroom'" method="post">
+            <div class="form-group">
+                <label><i class="fas fa-door-open"></i> Room Number</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-hashtag"></i>
+                    <input type="text" name="room" placeholder="e.g., 101, A-201, Lab-3" required
+                           th:value="${classroom != null} ? classroom.room : ''">
+                </div>
+            </div>
+
+            <div class="form-group">
+            <div class="form-group">
+                <label><i class="fas fa-users"></i> Capacity</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-users"></i>
+                    <input type="number" name="capacity" min="1" placeholder="e.g., 60"
+                           th:value="${classroom != null} ? classroom.capacity : ''">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-chalkboard"></i> Room Type</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <select name="type">
+                        <option value="" disabled th:selected="${classroom == null}">Select type</option>
+                        <option value="Classroom" th:selected="${classroom != null} ? (classroom.type == 'Classroom') : false">Classroom</option>
+                        <option value="Lab" th:selected="${classroom != null} ? (classroom.type == 'Lab') : false">Lab</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">
+                    <i class="fas fa-save"></i>
+                    <span th:text="${isEdit} ? 'Save Changes' : 'Save Classroom'"></span>
+                </button>
+
+                <button type="reset" class="btn btn-secondary">Reset</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="recent-list">
+        <h4><i class="fas fa-history"></i> Classrooms</h4>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Room</th>
+                <th>Capacity</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${rooms}">
+                <td th:text="${r.room}"></td>
+                <td th:text="${r.capacity}"></td>
+                <td th:text="${r.type}"></td>
+                <td>
+                    <a class="action-edit" th:href="@{/edit-classroom/{id}(id=${r.id})}">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <a class="action-delete" th:href="@{/delete-classroom/{id}(id=${r.id})}"
+                       onclick="return confirm('Delete this classroom?')">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(rooms)}">
+                <td colspan="4" style="text-align:center;color:#6b7280;padding:12px;">No classrooms added yet.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

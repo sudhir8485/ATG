@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{admin-layout :: head('Faculty Management · Admin', ~{::extraHead})}">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .page-header h2 {
+                font-size: 26px;
+                color: #2c3e50;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .content-grid {
+                display: grid;
+                grid-template-columns: 1fr 1.3fr;
+                gap: 22px;
+            }
+
+            .card {
+                background: white;
+                padding: 24px;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+                border: 1px solid #e2e8f0;
+            }
+
+            .form-group {
+                margin-bottom: 16px;
+            }
+
+            .input-wrapper {
+                position: relative;
+            }
+
+            .input-wrapper i {
+                position: absolute;
+                left: 15px;
+                top: 14px;
+                color: #95a5a6;
+            }
+
+            .page-shell input,
+            .page-shell select {
+                padding-left: 45px;
+            }
+
+            .form-actions {
+                display: flex;
+                gap: 14px;
+                margin-top: 18px;
+                flex-wrap: wrap;
+            }
+
+            .btn-secondary {
+                background: #95a5a6;
+                color: #fff;
+            }
+
+            .faculty-list {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+                border: 1px solid #e2e8f0;
+                overflow: visible; /* allow inner scroll container to show its scrollbar */
+            }
+
+            .faculty-list table th,
+            .faculty-list table td {
+                padding: 14px 12px;
+                white-space: nowrap;
+            }
+
+            .actions {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            .table-scroll {
+                width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                display: block;
+                padding-bottom: 6px; /* space for scrollbar */
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .faculty-list table {
+                width: max-content !important; /* override global table width */
+                min-width: 1600px;
+                table-layout: auto;
+            }
+        </style>
+    </th:block>
+</head>
+<body th:replace="~{admin-layout :: shell('faculty', 'Faculty Management', ~{::content})}">
+<section th:fragment="content" class="page-shell">
+    <div class="page-header">
+        <h2><i class="fas fa-chalkboard-teacher"></i> Faculty Management</h2>
+    </div>
+
+    <div class="content-grid">
+        <div class="card">
+            <h3 th:text="${isEdit} ? 'Update Faculty' : 'Add New Faculty'"></h3>
+
+            <form th:if="${isEdit}" th:action="@{/update-faculty/{id}(id=${faculty.id})}" method="post">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" name="name" required th:value="${faculty != null} ? faculty.name : ''">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Username (login)</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" name="username" placeholder="Unique login ID"
+                               th:value="${faculty != null} ? faculty.username : ''">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-key"></i>
+                        <input type="text" name="password" placeholder="Set / reset password">
+                    </div>
+                    <small style="color:#6b7280;">If left blank, password defaults to the username.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" name="email" th:value="${faculty != null} ? faculty.email : ''">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Department</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-building"></i>
+                        <select name="department" id="departmentSelect" onchange="toggleDepartmentInput()">
+                            <option value="">Select Department</option>
+                            <option th:each="d : ${departments}"
+                                    th:value="${d.name}"
+                                    th:text="${d.name}"
+                                    th:selected="${faculty != null} ? (d.name == faculty.department) : false"></option>
+                            <option value="other" th:selected="${faculty != null} ? (faculty.department == null) : false">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" id="customDept" style="display:none;">
+                    <label>Enter Department</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-building"></i>
+                        <input type="text" name="custom_department" th:value="${faculty != null} ? faculty.department : ''">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Subjects Handled</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-book"></i>
+                        <input type="text" name="subjectsHandled" placeholder="e.g., Java, DBMS"
+                               th:value="${faculty != null} ? faculty.subjectsHandled : ''">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Max Lectures per Day</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-clock"></i>
+                            <input type="number" name="maxLecturesPerDay" min="0"
+                                   th:value="${faculty != null} ? faculty.maxLecturesPerDay : ''">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Max Lectures per Week</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-calendar-week"></i>
+                            <input type="number" name="maxLecturesPerWeek" min="0"
+                                   th:value="${faculty != null} ? faculty.maxLecturesPerWeek : ''">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn">
+                        <i class="fas fa-save"></i>
+                        <span th:text="${isEdit} ? 'Save Changes' : 'Create Faculty'"></span>
+                    </button>
+                    <a href="/add-faculty" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+
+            <form th:if="${!isEdit}" th:action="@{/save-faculty}" method="post" id="multiFacultyForm">
+                <div id="facultyRows">
+                    <div class="faculty-row card" style="padding:16px;border:1px dashed #cbd5e1;margin-bottom:12px;">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-user"></i>
+                                <input type="text" name="name[]" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Username (login)</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-id-card"></i>
+                                <input type="text" name="username[]" placeholder="Unique login ID">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-key"></i>
+                                <input type="text" name="password[]" placeholder="Leave blank to default to username">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" name="email[]" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Department</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-building"></i>
+                                <select name="department[]" class="departmentSelect">
+                                    <option value="">Select Department</option>
+                                    <option th:each="d : ${departments}"
+                                            th:value="${d.name}"
+                                            th:text="${d.name}"></option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group customDept" style="display:none;">
+                            <label>Enter Department</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-building"></i>
+                                <input type="text" name="custom_department[]" placeholder="Custom department">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Subjects Handled</label>
+                            <div class="input-wrapper">
+                                <i class="fas fa-book"></i>
+                                <input type="text" name="subjectsHandled[]" placeholder="e.g., Java, DBMS">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Max Lectures per Day</label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-clock"></i>
+                                    <input type="number" name="maxLecturesPerDay[]" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Max Lectures per Week</label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-calendar-week"></i>
+                                    <input type="number" name="maxLecturesPerWeek[]" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-secondary remove-row" style="margin-top:6px; display:none;">Remove</button>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="addRowBtn"><i class="fas fa-plus"></i> Add Another Row</button>
+                    <button type="submit" class="btn"><i class="fas fa-save"></i> Save All</button>
+                </div>
+
+                <div style="margin-top:12px;padding:12px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;">
+                    <strong>Login reminder:</strong>
+                    Each row creates one faculty. Username/email + password will be used to sign in with role <strong>FACULTY</strong>.
+                </div>
+            </form>
+        </div>
+
+        <div class="faculty-list">
+            <h3 style="padding:20px;">Faculty Members</h3>
+
+            <div class="table-scroll" style="overflow-x:auto;">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Faculty</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Subjects</th>
+                        <th>Max/Day</th>
+                        <th>Max/Week</th>
+                        <th style="width:150px;">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="f : ${facultyList}">
+                        <td th:text="${f.name}"></td>
+                        <td th:text="${f.username}"></td>
+                        <td th:text="${f.email}"></td>
+                        <td th:text="${f.department}"></td>
+                        <td th:text="${f.subjectsHandled}"></td>
+                        <td th:text="${f.maxLecturesPerDay}"></td>
+                        <td th:text="${f.maxLecturesPerWeek}"></td>
+                        <td class="actions">
+                            <a class="btn secondary" th:href="@{/edit-faculty/{id}(id=${f.id})}" style="padding:8px 10px;">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a class="btn" th:href="@{/delete-faculty/{id}(id=${f.id})}"
+                               onclick="return confirm('Delete this faculty?')"
+                               style="background:#fee2e2;color:#b91c1c;padding:8px 10px;box-shadow:none;">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(facultyList)}">
+                        <td colspan="8" style="text-align:center;color:#6b7280;padding:12px;">No faculty added yet.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Single-edit form toggle
+        function toggleDepartmentInput() {
+            const deptSelect = document.getElementById('departmentSelect');
+            if(!deptSelect) return;
+            const custom = document.getElementById('customDept');
+            if (deptSelect.value === 'other') {
+                custom.style.display = 'block';
+                custom.querySelector('input').focus();
+            } else {
+                custom.style.display = 'none';
+            }
+        }
+        window.onload = toggleDepartmentInput;
+
+        // Multi-add rows
+        const rowsContainer = document.getElementById('facultyRows');
+        const addRowBtn = document.getElementById('addRowBtn');
+
+        function wireDeptToggle(row){
+            const select = row.querySelector('.departmentSelect');
+            const custom = row.querySelector('.customDept');
+            if(!select || !custom) return;
+            select.addEventListener('change', () => {
+                if(select.value === 'other'){
+                    custom.style.display = 'block';
+                    custom.querySelector('input').focus();
+                }else{
+                    custom.style.display = 'none';
+                    custom.querySelector('input').value = '';
+                }
+            });
+        }
+
+        function wireRemove(row){
+            const btn = row.querySelector('.remove-row');
+            if(!btn) return;
+            btn.addEventListener('click', () => {
+                if(rowsContainer.children.length > 1){
+                    row.remove();
+                    updateRemoveButtons();
+                }
+            });
+        }
+
+        function updateRemoveButtons(){
+            const rows = rowsContainer.querySelectorAll('.faculty-row');
+            rows.forEach((r, idx) => {
+                const btn = r.querySelector('.remove-row');
+                if(btn){
+                    btn.style.display = rows.length > 1 ? 'inline-flex' : 'none';
+                }
+            });
+        }
+
+        function cloneRow(){
+            const first = rowsContainer.querySelector('.faculty-row');
+            const clone = first.cloneNode(true);
+            // clear inputs
+            clone.querySelectorAll('input').forEach(inp => inp.value = '');
+            clone.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+            rowsContainer.appendChild(clone);
+            wireDeptToggle(clone);
+            wireRemove(clone);
+            updateRemoveButtons();
+        }
+
+        if(addRowBtn && rowsContainer){
+            wireDeptToggle(rowsContainer.querySelector('.faculty-row'));
+            wireRemove(rowsContainer.querySelector('.faculty-row'));
+            updateRemoveButtons();
+            addRowBtn.addEventListener('click', cloneRow);
+        }
+    </script>
+</section>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin-layout :: head('Weekly Timetable · Admin', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell { display:flex; flex-direction:column; gap:16px; }
+            .card { background:#fff;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,0.08);padding:18px;border:1px solid #e2e8f0; }
+            .grid-table{width:100%;border-collapse:collapse;}
+            .grid-table th,.grid-table td{border:1px solid #e2e8f0;padding:10px;vertical-align:top;}
+            .grid-table th{background:#f8fafc;font-weight:700;color:#0f172a;text-align:center;}
+            .time-col{background:#f1f5f9;font-weight:700;width:140px;}
+            .cell-entry{background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:8px;margin-bottom:6px;box-shadow:0 4px 10px -6px rgba(0,0,0,0.12);}
+            .cell-entry .subject{font-weight:700;color:#4338ca;}
+            .cell-entry .meta{color:#4b5563;font-size:13px;margin-top:2px;}
+            .empty{color:#cbd5e1;text-align:center;}
+            .legend{display:flex;gap:12px;flex-wrap:wrap;color:#475569;font-size:13px;}
+            .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="admin-layout :: shell('grid', 'Weekly Timetable', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:10px;">
+            <div>
+                <h2 style="margin:0;">Weekly Timetable</h2>
+                <p style="color:#64748b;margin:4px 0 0;">All slots across the week. Sort by day and time for a quick glance.</p>
+                <form method="get" action="/timetable-grid" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+                    <select name="department" style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;">
+                        <option value="">All Departments</option>
+                        <option th:each="d : ${deptList}" th:value="${d}" th:text="${d}" th:selected="${selectedDept != null} ? (d == selectedDept) : false"></option>
+                    </select>
+                    <select name="className" style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;">
+                        <option value="">All Classes</option>
+                        <option th:each="c : ${classList}" th:value="${c}" th:text="${c}" th:selected="${selectedClass != null} ? (c == selectedClass) : false"></option>
+                    </select>
+                    <button class="btn secondary" type="submit">Apply</button>
+                </form>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <a class="btn" href="#" onclick="exportWithFilters('/export-pdf');return false;" style="text-decoration:none;"><i class="fas fa-file-pdf"></i> Export PDF</a>
+                <a class="btn secondary" href="#" onclick="exportWithFilters('/export-load-distribution');return false;" style="text-decoration:none;"><i class="fas fa-file-alt"></i> Load Distribution PDF</a>
+                <a class="btn" href="/add-timetable" style="text-decoration:none;"><i class="fas fa-plus"></i> Add Entry</a>
+                <a class="btn secondary" href="/view-timetable" style="text-decoration:none;"><i class="fas fa-list"></i> Table View</a>
+            </div>
+        </div>
+
+        <div class="legend">
+            <span class="pill"><i class="fas fa-clock"></i> Timeslot rows</span>
+            <span class="pill"><i class="fas fa-calendar-day"></i> Days as columns</span>
+            <span class="pill"><i class="fas fa-book"></i> Subject · Faculty · Room</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="grid-table">
+                <thead>
+                <tr>
+                    <th class="time-col">Time</th>
+                    <th th:each="d : ${days}" th:text="${d}"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="slot : ${slotLabels}">
+                    <td class="time-col" th:text="${slot}"></td>
+                    <td th:each="d : ${days}">
+                        <div th:if="${grid[slot] != null and !#lists.isEmpty(grid[slot][d])}" >
+                            <div class="cell-entry" th:each="t : ${grid[slot][d]}">
+                                <div class="subject" th:text="${t.subject}">Subject</div>
+                                <div class="meta" th:text="${t.className} + ' ' + ${t.division}"></div>
+                                <div class="meta">
+                                    <span th:text="${t.faculty}">Faculty</span>
+                                    <span th:text="${' · ' + t.room}"> · Room</span>
+                                    <span th:text="${' · ' + t.lectureType}"> · Type</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="empty" th:if="${grid[slot] == null || #lists.isEmpty(grid[slot][d])}">—</div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(slotLabels)}">
+                    <td colspan="8" style="text-align:center;color:#6b7280;padding:12px;">No timetable available.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+    function exportWithFilters(baseUrl){
+        const deptSelect = document.querySelector('select[name=\"department\"]');
+        const classSelect = document.querySelector('select[name=\"className\"]');
+        const dept = deptSelect ? deptSelect.value : '';
+        const cls = classSelect ? classSelect.value : '';
+        const params = new URLSearchParams();
+        if(dept) params.append('department', dept);
+        if(cls) params.append('className', cls);
+        const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
+        window.open(url, '_blank');
+    }
+    </script>
+</section>
+</body>
+</html>

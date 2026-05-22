@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Timetable | Faculty</title>
+    <style>
+        body{font-family:Arial,sans-serif;background:#f5f7fb;padding:20px;}
+        h1{color:#1f2937;margin-bottom:12px;}
+        .filter{margin-bottom:12px;}
+        table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,0.05);}
+        th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px;}
+        th{background:#f0f2f7;color:#475569;text-transform:uppercase;font-size:12px;}
+        .badge{padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px;display:inline-block;}
+        .approved{background:#dcfce7;color:#166534;}
+        .draft{background:#eef2ff;color:#4338ca;}
+    </style>
+</head>
+<body>
+    <h1>My Timetable</h1>
+    <div class="filter">
+        <form action="/faculty-timetable" method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label>Faculty / Class:</label>
+            <input type="text" name="faculty" th:value="${selectedFaculty}" placeholder="e.g., Patil or SEM 3" style="padding:8px;border:1px solid #d1d5db;border-radius:8px;">
+            <label style="display:flex;align-items:center;gap:4px;">
+                <input type="checkbox" name="today" value="true" th:checked="${showTodayOnly}" />
+                Today only
+            </label>
+            <button type="submit" style="padding:8px 12px;border:none;border-radius:8px;background:#4f46e5;color:#fff;font-weight:700;">Filter</button>
+        </form>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Day</th><th>Class</th><th>Subject</th><th>Room</th><th>Time</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="t : ${timetableList}">
+                <td th:text="${t.day}">Monday</td>
+                <td th:text="${t.className}">SEM 3</td>
+                <td th:text="${t.subject}">DBMS</td>
+                <td th:text="${t.room}">101</td>
+                <td th:text="${t.timeSlot}">09:00 - 10:00</td>
+                <td><span class="badge" th:classappend="${t.status}=='Approved' ? ' approved' : ' draft'" th:text="${t.status}">Draft</span></td>
+                <td>
+                    <form action="/faculty-lecture/status" method="post" style="display:flex;gap:6px;align-items:center;">
+                        <input type="hidden" name="id" th:value="${t.id}">
+                        <select name="status" style="padding:4px;border:1px solid #d1d5db;border-radius:6px;">
+                            <option value="Approved" th:selected="${t.status}=='Approved'">Completed</option>
+                            <option value="Cancelled" th:selected="${t.status}=='Cancelled'">Cancelled</option>
+                            <option value="Rescheduled" th:selected="${t.status}=='Rescheduled'">Rescheduled</option>
+                        </select>
+                        <button type="submit" style="padding:6px 8px;border:none;border-radius:6px;background:#4f46e5;color:#fff;font-weight:700;">Save</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(timetableList)}">
+                <td colspan="7" style="text-align:center;padding:18px;color:#6b7280;">No lectures found for this faculty.</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

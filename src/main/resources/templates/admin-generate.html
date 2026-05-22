@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin-layout :: head('Auto Generate · Admin', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell {
+                display: flex;
+                flex-direction: column;
+                gap: 18px;
+            }
+
+            .card {
+                background: #fff;
+                border-radius: 14px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+                padding: 20px;
+                border: 1px solid #e2e8f0;
+            }
+
+            .card h3 {
+                font-size: 18px;
+                color: #111827;
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .pill {
+                background: #eef2ff;
+                color: #4338ca;
+                padding: 8px 14px;
+                border-radius: 999px;
+                font-weight: 700;
+                font-size: 12px;
+            }
+
+            .alert {
+                padding: 12px 14px;
+                border-radius: 12px;
+                margin-bottom: 12px;
+                font-weight: 600;
+            }
+
+            .alert.info { background:#eef2ff; color:#4338ca; }
+            .alert.success { background:#ecfdf3; color:#15803d; }
+            .alert.error { background:#fef2f2; color:#b91c1c; }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+
+            th, td {
+                padding: 10px 12px;
+                text-align: left;
+            }
+
+            th {
+                background: #f0f2f7;
+                color: #475569;
+                font-size: 13px;
+                text-transform: uppercase;
+            }
+
+            tr {
+                background: #fff;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            tr:hover {
+                background: #f9fafb;
+            }
+
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-weight: 600;
+                font-size: 12px;
+            }
+
+            .badge.day { background:#ecfdf3; color:#15803d; }
+            .badge.slot { background:#eef2ff; color:#4338ca; }
+            .badge.room { background:#eff6ff; color:#1d4ed8; }
+        </style>
+    </th:block>
+</head>
+<body th:replace="admin-layout :: shell('generate', 'Automatic Timetable', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div>
+            <h2 style="margin:0;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-wand-magic-sparkles" style="color:#6366f1;"></i> Automatic Timetable
+            </h2>
+            <p class="helper">Clash free · one click</p>
+        </div>
+        <span class="pill">Generator</span>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-play-circle"></i> Run Generator</h3>
+        <p style="color:#4b5563;margin-bottom:12px;">Assigns every subject to a free teacher, room and timeslot while preventing teacher, room, and subject clashes.</p>
+        <form action="/auto-generate/run" method="post" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" type="submit"><i class="fas fa-wand-magic-sparkles"></i> Generate Now</button>
+            <a class="btn secondary" href="/view-timetable" style="text-decoration:none;"><i class="fas fa-table"></i> View Timetable</a>
+        </form>
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+            <div class="alert info" th:if="${lastCount != null}" th:text="'Existing entries before run: ' + ${lastCount}"></div>
+            <div class="alert success" th:if="${placedCount != null}" th:text="'Placed ' + ${placedCount} + ' of ' + ${requestedCount} + ' sessions'"></div>
+        </div>
+    </div>
+
+    <div th:if="${errors != null && !errors.isEmpty()}" class="card" style="border:1px solid #fecaca;background:#fff1f2;">
+        <h3 style="color:#b91c1c;"><i class="fas fa-triangle-exclamation"></i> Issues / Warnings</h3>
+        <ul style="margin-left:18px;color:#7f1d1d;font-weight:600;">
+            <li th:each="e : ${errors}" th:text="${e}">Issue</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-list"></i> Latest Generated Entries</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Subject</th>
+                <th>Faculty</th>
+                <th>Room</th>
+                <th>Class</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="t : ${timetableList}">
+                <td><span class="badge day" th:text="${t.day}">Monday</span></td>
+                <td><span class="badge slot" th:text="${t.timeSlot}">09:00 - 10:00</span></td>
+                <td th:text="${t.subject}">Java</td>
+                <td th:text="${t.faculty}">Prof Patil</td>
+                <td><span class="badge room" th:text="${t.room}">R101</span></td>
+                <td th:text="${t.className}">SEM 3</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(timetableList)}">
+                <td colspan="6" style="text-align:center;padding:20px;color:#6b7280;">No timetable generated yet.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

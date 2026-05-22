@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin-layout :: head('Admin Dashboard · Timetable Pro', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 1.4rem;
+            }
+
+            .card {
+                background: #ffffff;
+                padding: 1.6rem 1.2rem;
+                border-radius: 24px;
+                box-shadow: 0 16px 28px -12px rgba(0, 0, 0, 0.18);
+                text-align: center;
+                transition: 0.2s ease;
+                border: 1px solid #e2e8f0;
+                cursor: pointer;
+            }
+
+            .card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 22px 32px -14px rgba(0, 0, 0, 0.22);
+            }
+
+            .card i {
+                font-size: 2.1rem;
+                color: #4f46e5;
+                margin-bottom: 0.35rem;
+            }
+
+            .card h3 {
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #0f172a;
+                margin-bottom: 0.25rem;
+            }
+
+            .card p {
+                color: #475569;
+                font-weight: 600;
+                font-size: 0.9rem;
+                background: #eef2ff;
+                border-radius: 30px;
+                padding: 0.3rem 0.9rem;
+                display: inline-block;
+            }
+
+            .charts {
+                margin-top: 2rem;
+                display: grid;
+                grid-template-columns: 1.1fr 0.9fr;
+                gap: 20px;
+            }
+
+            .chart-card {
+                background: white;
+                padding: 1.2rem 1rem;
+                border-radius: 22px;
+                box-shadow: 0 16px 28px -12px rgba(0, 0, 0, 0.15);
+                border: 1px solid #e2e8f0;
+            }
+
+            .chart-card h3 {
+                margin-bottom: 10px;
+                color: #0f172a;
+            }
+
+            .foot-note {
+                margin-top: 1.8rem;
+                text-align: right;
+                color: #5b6e8a;
+                font-size: 0.9rem;
+            }
+
+            @media (max-width: 900px) {
+                .charts {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </th:block>
+</head>
+<body th:replace="admin-layout :: shell('dashboard', 'Dashboard', ~{::content})">
+<section th:fragment="content">
+    <div class="cards">
+        <div class="card">
+            <i class="fas fa-user-tie"></i>
+            <h3>HODs</h3>
+            <p th:text="${hodCount} + ' total'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-chalkboard-teacher"></i>
+            <h3>Faculty</h3>
+            <p th:text="${facultyCount} + ' total'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-building"></i>
+            <h3>Departments</h3>
+            <p th:text="${deptCount} + ' active'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-layer-group"></i>
+            <h3>Divisions</h3>
+            <p th:text="${divisionCount} + ' classes'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-book-open"></i>
+            <h3>Subjects</h3>
+            <p th:text="${subjectCount} + ' subjects'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-school"></i>
+            <h3>Classrooms</h3>
+            <p th:text="${roomCount} + ' rooms'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-hourglass-half"></i>
+            <h3>Time Slots</h3>
+            <p th:text="${timeslotCount} + ' slots'">--</p>
+        </div>
+        <div class="card">
+            <i class="fas fa-table"></i>
+            <h3>Timetables</h3>
+            <p th:text="${timetableCount} + ' entries'">--</p>
+        </div>
+    </div>
+
+    <div class="cards" style="margin-top:1.2rem;">
+        <div class="card" onclick="location.href='/add-department'">
+            <i class="fas fa-sitemap"></i>
+            <h3>Departments</h3>
+            <p>Add &amp; Manage</p>
+        </div>
+        <div class="card" onclick="location.href='/add-division'">
+            <i class="fas fa-diagram-project"></i>
+            <h3>Divisions</h3>
+            <p>Classes / sections</p>
+        </div>
+        <div class="card" onclick="location.href='/add-subject'">
+            <i class="fas fa-book"></i>
+            <h3>Subjects</h3>
+            <p>Add subjects</p>
+        </div>
+        <div class="card" onclick="location.href='/add-classroom'">
+            <i class="fas fa-school"></i>
+            <h3>Classrooms</h3>
+            <p>Manage rooms</p>
+        </div>
+        <div class="card" onclick="location.href='/add-timeslot'">
+            <i class="fas fa-hourglass-half"></i>
+            <h3>Time Slots</h3>
+            <p>Set lecture timing</p>
+        </div>
+        <div class="card" onclick="location.href='/add-hod'">
+            <i class="fas fa-user-graduate"></i>
+            <h3>Add HOD</h3>
+            <p>Create HOD account</p>
+        </div>
+        <div class="card" onclick="location.href='/add-faculty'">
+            <i class="fas fa-users-between-lines"></i>
+            <h3>Add Faculty</h3>
+            <p>Create faculty</p>
+        </div>
+        <div class="card" onclick="location.href='/auto-generate'">
+            <i class="fas fa-robot"></i>
+            <h3>Generate</h3>
+            <p>Auto schedule</p>
+        </div>
+        <div class="card" onclick="location.href='/view-timetable'">
+            <i class="fas fa-eye"></i>
+            <h3>View Timetable</h3>
+            <p>Generated view</p>
+        </div>
+        <div class="card" onclick="location.href='/timetable-grid'">
+            <i class="fas fa-table-cells-large"></i>
+            <h3>Weekly Timetable</h3>
+            <p>Full week grid</p>
+        </div>
+    </div>
+
+    <div class="charts">
+        <div class="chart-card">
+            <h3>Faculty by Department</h3>
+            <canvas id="deptChart" height="220"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Resource Snapshot</h3>
+            <canvas id="radarChart" height="220"></canvas>
+        </div>
+    </div>
+
+    <div class="foot-note">
+        <i class="fas fa-bolt" style="color:#fbbf24;"></i>
+        Intelligent scheduling · <span id="year"></span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:inline="javascript">
+        (function () {
+            const date = new Date();
+            document.getElementById('year').innerText = date.getFullYear();
+
+            const deptLabels = /*[[${deptLabels}]]*/ [];
+            const facultyCounts = /*[[${facultyCounts}]]*/ [];
+
+            const deptCtx = document.getElementById('deptChart');
+            if (deptCtx) {
+                new Chart(deptCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: deptLabels,
+                        datasets: [{
+                            data: facultyCounts,
+                            backgroundColor: '#667eea',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+            }
+
+            const radarCtx = document.getElementById('radarChart');
+            if (radarCtx) {
+                new Chart(radarCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['Departments', 'Divisions', 'Subjects', 'Classrooms', 'Time Slots', 'Timetables'],
+                        datasets: [{
+                            label: 'Totals',
+                            data: [
+                                /*[[${deptCount}]]*/0,
+                                /*[[${divisionCount}]]*/0,
+                                /*[[${subjectCount}]]*/0,
+                                /*[[${roomCount}]]*/0,
+                                /*[[${timeslotCount}]]*/0,
+                                /*[[${timetableCount}]]*/0
+                            ],
+                            backgroundColor: 'rgba(102,126,234,0.2)',
+                            borderColor: '#667eea',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#4f46e5'
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                grid: { color: '#e2e8f0' },
+                                angleLines: { color: '#e2e8f0' }
+                            }
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
+</section>
+</body>
+</html>

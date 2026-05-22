@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Faculty Dashboard</title>
+    <style>
+        body{font-family:Arial,sans-serif;background:#f5f7fb;padding:24px;}
+        .card{max-width:1100px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,0.08);padding:20px;}
+        h1{margin:0 0 12px;color:#1f2937;}
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px;}
+        .tile{background:#f0f2f7;border-radius:10px;padding:14px;}
+        .tile strong{display:block;font-size:24px;color:#111;}
+        a.button{display:inline-block;margin-top:14px;padding:10px 14px;border-radius:8px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:700;}
+        table{width:100%;margin-top:18px;border-collapse:collapse;}
+        th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left;font-size:14px;}
+        th{background:#f0f2f7;color:#475569;}
+        .badge{padding:5px 10px;border-radius:999px;font-weight:700;font-size:12px;display:inline-block;}
+        .approved{background:#dcfce7;color:#166534;}
+        .draft{background:#eef2ff;color:#4338ca;}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Faculty Dashboard</h1>
+        <div class="grid">
+            <div class="tile">
+                <span>Lectures scheduled</span>
+                <strong th:text="${personalTimetable.size()}">0</strong>
+            </div>
+            <div class="tile">
+                <span>Today's lectures</span>
+                <strong th:text="${todayLectures.size()}">0</strong>
+            </div>
+        </div>
+        <div th:if="${usingFallbackAll}" style="margin-top:10px;color:#92400e;background:#fef3c7;padding:8px 12px;border-radius:8px;">
+            No lectures matched your account; showing all lectures.
+        </div>
+        <a class="button" href="/faculty-timetable">View My Timetable</a>
+    </div>
+    <div class="card">
+        <h3>Today's Lectures</h3>
+        <table>
+            <thead><tr><th>Time</th><th>Subject</th><th>Room</th><th>Status</th></tr></thead>
+            <tbody>
+                <tr th:each="t : ${todayLectures}">
+                    <td th:text="${t.timeSlot}">09:00 - 10:00</td>
+                    <td th:text="${t.subject}">Java</td>
+                    <td th:text="${t.room}">A101</td>
+                    <td><span class="badge" th:classappend="${t.status}=='Approved' ? ' approved' : ' draft'" th:text="${t.status}">Draft</span></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(todayLectures)}"><td colspan="4" style="text-align:center;color:#6b7280;">No lectures today.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="hod-layout :: head('Subjects · HOD', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell{display:flex;flex-direction:column;gap:16px;}
+            .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;box-shadow:0 10px 24px -16px rgba(0,0,0,0.18);}
+            .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+            table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 8px 22px -16px rgba(0,0,0,0.18);}
+            th,td{padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:left;}
+            th{background:#f8fafc;text-transform:uppercase;font-size:12px;letter-spacing:0.3px;color:#475569;}
+            .btn{padding:10px 14px;border-radius:10px;border:none;background:#4f46e5;color:#fff;font-weight:700;cursor:pointer;}
+            .btn.secondary{background:#e5e7eb;color:#111827;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="hod-layout :: shell('subjects', 'Subjects', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div>
+        <h2 style="font-size:22px;margin-bottom:6px;">Subjects</h2>
+        <p style="color:#64748b;">Manage department subjects.</p>
+    </div>
+
+    <div class="card">
+        <form th:action="${isEdit} ? @{/hod-subjects/update/{id}(id=${subject.id})} : @{/hod-subjects/save}" method="post" class="form-grid">
+            <input type="text" name="name" placeholder="Subject Name" required th:value="${subject != null} ? subject.name : ''">
+            <input type="text" name="semester" placeholder="Semester (e.g., 5)" required th:value="${subject != null} ? subject.semester : ''">
+            <input type="text" name="type" placeholder="Type (Theory/Lab)" required th:value="${subject != null} ? subject.type : ''">
+            <input type="number" name="lectureHoursPerWeek" placeholder="Lecture hrs/wk" th:value="${subject != null} ? subject.lectureHoursPerWeek : ''">
+            <input type="number" name="practicalHoursPerWeek" placeholder="Practical hrs/wk" th:value="${subject != null} ? subject.practicalHoursPerWeek : ''">
+            <input type="number" name="practicalSlotDuration" placeholder="Practical slot size" th:value="${subject != null} ? subject.practicalSlotDuration : ''">
+            <input type="number" name="hours" placeholder="Legacy total hrs (optional)" th:value="${subject != null} ? subject.hours : ''">
+            <div style="display:flex;gap:10px;align-items:center;">
+                <button class="btn" type="submit" th:text="${isEdit} ? 'Save' : 'Add Subject'"></button>
+                <a th:if="${isEdit}" href="/hod-subjects" class="btn secondary" style="text-decoration:none;">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Name</th><th>Semester</th><th>Type</th><th>Lecture / Practical hrs</th><th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${subjectList}">
+            <td th:text="${s.name}"></td>
+            <td th:text="${s.semester}"></td>
+            <td th:text="${s.type}"></td>
+            <td th:text="${(s.lectureHoursPerWeek != null ? s.lectureHoursPerWeek : 0) + ' / ' + (s.practicalHoursPerWeek != null ? s.practicalHoursPerWeek : 0)}"></td>
+            <td>
+                <a th:href="@{/hod-subjects/edit/{id}(id=${s.id})}">Edit</a>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(subjectList)}">
+            <td colspan="5" style="text-align:center;padding:12px;color:#6b7280;">No subjects found.</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>

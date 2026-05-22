@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Timetable | Admin Dashboard</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            background: #f4f6f9;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #2c3e50 0%, #1a2639 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            padding: 0 20px 20px 20px;
+            font-size: 24px;
+            border-bottom: 1px solid #34495e;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar h2 i {
+            color: #667eea;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            padding: 12px 20px;
+            margin: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar a i {
+            width: 20px;
+            font-size: 16px;
+        }
+
+        .sidebar a:hover {
+            background: #34495e;
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .sidebar a.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            height: 100vh;
+            background: #f4f6f9;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header h2 {
+            font-size: 28px;
+            color: #2c3e50;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-header h2 i {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .btn-back {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-back:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(-5px);
+        }
+
+        /* Card */
+        .card {
+            background: white;
+            padding: 35px;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .card-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h3 {
+            color: #2c3e50;
+            font-size: 22px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-header h3 i {
+            color: #667eea;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-approved {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 5px;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group label i {
+            color: #667eea;
+            margin-right: 8px;
+            width: 16px;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 15px;
+            color: #95a5a6;
+            font-size: 16px;
+            pointer-events: none;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 2px solid #e1e5ee;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 15px;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.1);
+        }
+
+        input[type="time"] {
+            padding: 12px 15px 12px 45px;
+        }
+
+        /* Time Range Display */
+        .time-range {
+            background: #f0f2f5;
+            border-radius: 8px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        .time-range span {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .time-range small {
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+
+        /* Info Banner */
+        .info-banner {
+            background: #e8f4fd;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .info-banner i {
+            font-size: 24px;
+            color: #667eea;
+        }
+
+        .info-banner p {
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        /* Action Buttons */
+        .form-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button, .btn-cancel {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        button[type="submit"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-cancel {
+            background: #f0f2f5;
+            color: #2c3e50;
+            border: 2px solid #e1e5ee;
+        }
+
+        .btn-cancel:hover {
+            background: #e1e5ee;
+            transform: translateY(-2px);
+        }
+
+        /* Validation */
+        .error-message {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .error-message i {
+            font-size: 12px;
+        }
+
+        input:invalid, select:invalid {
+            border-color: #e74c3c;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .main {
+                padding: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group.full-width {
+                grid-column: span 1;
+            }
+
+            .form-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <h2>
+        <i class="fas fa-school"></i>
+        Admin Panel
+    </h2>
+    <a href="/admin">
+        <i class="fas fa-tachometer-alt"></i>
+        Dashboard
+    </a>
+    <a href="/add-timetable">
+        <i class="fas fa-plus-circle"></i>
+        Add Timetable
+    </a>
+    <a href="/view-timetable">
+        <i class="fas fa-calendar-alt"></i>
+        View Timetable
+    </a>
+    <a href="/approve-timetable">
+        <i class="fas fa-check-circle"></i>
+        Approve Timetable
+    </a>
+    <a href="/edit-timetable" class="active">
+        <i class="fas fa-edit"></i>
+        Edit Timetable
+    </a>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+    
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2>
+            <i class="fas fa-edit"></i>
+            Edit Timetable Entry
+        </h2>
+        <a href="/view-timetable" class="btn-back">
+            <i class="fas fa-arrow-left"></i>
+            Back to Timetable
+        </a>
+    </div>
+
+    <!-- Edit Form Card -->
+    <div class="card">
+        <div class="card-header">
+            <h3>
+                <i class="fas fa-clock"></i>
+                Timestamp: <span th:text="${#dates.format(t.createdAt, 'dd MMM yyyy HH:mm')}">15 Jan 2024 10:30</span>
+            </h3>
+            <span class="status-badge" th:classappend="'status-' + ${#strings.toLowerCase(t.status)}" 
+                  th:text="${t.status}">Pending</span>
+        </div>
+
+        <!-- Hidden ID -->
+        <input type="hidden" name="id" th:value="${t.id}" />
+
+        <form action="/update-timetable" method="post" id="editForm">
+            <!-- CSRF Token (if using Spring Security) -->
+            <input type="hidden" name="_csrf" th:value="${_csrf.token}" />
+
+            <div class="form-grid">
+                <!-- Day Selection -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-calendar-day"></i>
+                        Day of Week
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-calendar"></i>
+                        <select name="day" required>
+                            <option value="">Select Day</option>
+                            <option value="Monday" th:selected="${t.day == 'Monday'}">Monday</option>
+                            <option value="Tuesday" th:selected="${t.day == 'Tuesday'}">Tuesday</option>
+                            <option value="Wednesday" th:selected="${t.day == 'Wednesday'}">Wednesday</option>
+                            <option value="Thursday" th:selected="${t.day == 'Thursday'}">Thursday</option>
+                            <option value="Friday" th:selected="${t.day == 'Friday'}">Friday</option>
+                            <option value="Saturday" th:selected="${t.day == 'Saturday'}">Saturday</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Time Slot -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-clock"></i>
+                        Time Slot
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-hourglass-start"></i>
+                        <input type="time" name="startTime" th:value="${t.startTime}" required />
+                    </div>
+                </div>
+
+                <!-- End Time (calculated) -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-hourglass-end"></i>
+                        End Time
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-clock"></i>
+                        <input type="time" name="endTime" th:value="${t.endTime}" required />
+                    </div>
+                </div>
+
+                <!-- Department -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-building"></i>
+                        Department
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-university"></i>
+                        <select name="department" required>
+                            <option value="">Select Department</option>
+                            <option value="Computer Science" th:selected="${t.department == 'Computer Science'}">Computer Science</option>
+                            <option value="Information Technology" th:selected="${t.department == 'Information Technology'}">Information Technology</option>
+                            <option value="ENTC" th:selected="${t.department == 'ENTC'}">ENTC</option>
+                            <option value="Mechanical" th:selected="${t.department == 'Mechanical'}">Mechanical</option>
+                            <option value="Civil" th:selected="${t.department == 'Civil'}">Civil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Class -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-graduation-cap"></i>
+                        Class
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-users"></i>
+                        <select name="className" required>
+                            <option value="">Select Class</option>
+                            <option value="FE" th:selected="${t.className == 'FE'}">First Year (FE)</option>
+                            <option value="SE" th:selected="${t.className == 'SE'}">Second Year (SE)</option>
+                            <option value="TE" th:selected="${t.className == 'TE'}">Third Year (TE)</option>
+                            <option value="BE" th:selected="${t.className == 'BE'}">Fourth Year (BE)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Division -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-layer-group"></i>
+                        Division
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-code-branch"></i>
+                        <select name="division" required>
+                            <option value="">Select Division</option>
+                            <option value="A" th:selected="${t.division == 'A'}">Division A</option>
+                            <option value="B" th:selected="${t.division == 'B'}">Division B</option>
+                            <option value="C" th:selected="${t.division == 'C'}">Division C</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Subject -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-book"></i>
+                        Subject
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-book-open"></i>
+                        <select name="subject" required>
+                            <option value="">Select Subject</option>
+                            <option value="Data Structures" th:selected="${t.subject == 'Data Structures'}">Data Structures</option>
+                            <option value="Algorithms" th:selected="${t.subject == 'Algorithms'}">Algorithms</option>
+                            <option value="Database Systems" th:selected="${t.subject == 'Database Systems'}">Database Systems</option>
+                            <option value="Computer Networks" th:selected="${t.subject == 'Computer Networks'}">Computer Networks</option>
+                            <option value="Operating Systems" th:selected="${t.subject == 'Operating Systems'}">Operating Systems</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Faculty -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        Faculty
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user-tie"></i>
+                        <select name="faculty" required>
+                            <option value="">Select Faculty</option>
+                            <option value="Dr. Sarah Johnson" th:selected="${t.faculty == 'Dr. Sarah Johnson'}">Dr. Sarah Johnson</option>
+                            <option value="Prof. Michael Chen" th:selected="${t.faculty == 'Prof. Michael Chen'}">Prof. Michael Chen</option>
+                            <option value="Dr. Emily Williams" th:selected="${t.faculty == 'Dr. Emily Williams'}">Dr. Emily Williams</option>
+                            <option value="Prof. David Kumar" th:selected="${t.faculty == 'Prof. David Kumar'}">Prof. David Kumar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Room -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-door-open"></i>
+                        Room
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-door-closed"></i>
+                        <select name="room" required>
+                            <option value="">Select Room</option>
+                            <option value="101" th:selected="${t.room == '101'}">Room 101</option>
+                            <option value="102" th:selected="${t.room == '102'}">Room 102</option>
+                            <option value="201" th:selected="${t.room == '201'}">Room 201</option>
+                            <option value="202" th:selected="${t.room == '202'}">Room 202</option>
+                            <option value="Lab 1" th:selected="${t.room == 'Lab 1'}">Computer Lab 1</option>
+                            <option value="Lab 2" th:selected="${t.room == 'Lab 2'}">Computer Lab 2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Lecture Type -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-chalkboard"></i>
+                        Lecture Type
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-tag"></i>
+                        <select name="lectureType" required>
+                            <option value="Theory" th:selected="${t.lectureType == 'Theory'}">Theory</option>
+                            <option value="Practical" th:selected="${t.lectureType == 'Practical'}">Practical</option>
+                            <option value="Tutorial" th:selected="${t.lectureType == 'Tutorial'}">Tutorial</option>
+                            <option value="Project" th:selected="${t.lectureType == 'Project'}">Project</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Break Time -->
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-mug-hot"></i>
+                        Break
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-coffee"></i>
+                        <select name="breakTime" required>
+                            <option value="No Break" th:selected="${t.breakTime == 'No Break'}">No Break</option>
+                            <option value="Short Break" th:selected="${t.breakTime == 'Short Break'}">Short Break (15 min)</option>
+                            <option value="Lunch Break" th:selected="${t.breakTime == 'Lunch Break'}">Lunch Break (45 min)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Additional Notes -->
+                <div class="form-group full-width">
+                    <label>
+                        <i class="fas fa-sticky-note"></i>
+                        Additional Notes
+                    </label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-pen"></i>
+                        <input type="text" name="notes" th:value="${t.notes}" placeholder="Any special instructions or notes..." />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Range Info -->
+            <div class="time-range">
+                <span><i class="fas fa-hourglass-half"></i> Total Duration:</span>
+                <span th:text="${t.duration}">1 hour</span>
+                <small>(calculated from start and end time)</small>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="info-banner">
+                <i class="fas fa-info-circle"></i>
+                <p>Changes made here will be reflected immediately. Please ensure no scheduling conflicts with other entries.</p>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <button type="submit" id="submitBtn">
+                    <i class="fas fa-save"></i>
+                    Update Timetable
+                </button>
+                <a href="/view-timetable" class="btn-cancel">
+                    <i class="fas fa-times"></i>
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- JavaScript for form validation and enhancement -->
+<script>
+    // Form submission with loading state
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="fas fa-spinner spinner"></i> Updating...';
+        submitBtn.classList.add('loading');
+    });
+
+    // Time validation
+    const startTime = document.querySelector('input[name="startTime"]');
+    const endTime = document.querySelector('input[name="endTime"]');
+
+    function validateTime() {
+        if (startTime.value && endTime.value) {
+            if (startTime.value >= endTime.value) {
+                endTime.setCustomValidity('End time must be after start time');
+            } else {
+                endTime.setCustomValidity('');
+            }
+        }
+    }
+
+    startTime.addEventListener('change', validateTime);
+    endTime.addEventListener('change', validateTime);
+
+    // Auto-calculate end time based on duration (optional)
+    function suggestEndTime() {
+        if (startTime.value && !endTime.value) {
+            // Suggest 1 hour later by default
+            const [hours, minutes] = startTime.value.split(':');
+            let endHour = parseInt(hours) + 1;
+            endTime.value = `${endHour.toString().padStart(2, '0')}:${minutes}`;
+        }
+    }
+
+    startTime.addEventListener('change', suggestEndTime);
+
+    // Confirmation for unsaved changes
+    window.addEventListener('beforeunload', function(e) {
+        const form = document.getElementById('editForm');
+        const formData = new FormData(form);
+        const hasChanges = Array.from(formData.entries()).some(([key, value]) => {
+            // Skip CSRF token and ID
+            if (key === '_csrf' || key === 'id') return false;
+            return true;
+        });
+
+        if (hasChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+</script>
+
+</body>
+</html>

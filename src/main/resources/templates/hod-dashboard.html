@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="hod-layout :: head('HOD · Department Dashboard', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell{display:flex;flex-direction:column;gap:18px;}
+            .quick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+            .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;box-shadow:0 10px 24px -16px rgba(0,0,0,0.18);cursor:pointer;transition:transform .1s;}
+            .card:hover{transform:translateY(-2px);}
+            .card h3{margin:8px 0 4px 0;font-size:18px;}
+            .card p{color:#6b7280;font-size:13px;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="hod-layout :: shell('dashboard', 'HOD Dashboard', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div>
+        <h2 style="font-size:22px;margin-bottom:6px;">Automatic Timetable · HOD</h2>
+        <p style="color:#64748b;">Quick links to manage your department.</p>
+    </div>
+
+    <div class="quick-grid">
+        <div class="card" onclick="location.href='/hod-faculty'">
+            <i class="fas fa-users" style="color:#6366f1;"></i>
+            <h3>Faculty</h3>
+            <p>View department faculty</p>
+        </div>
+        <div class="card" onclick="location.href='/hod-subjects'">
+            <i class="fas fa-book" style="color:#10b981;"></i>
+            <h3>Subjects</h3>
+            <p>View subjects</p>
+        </div>
+        <div class="card" onclick="location.href='/hod-classes'">
+            <i class="fas fa-layer-group" style="color:#f59e0b;"></i>
+            <h3>Classes</h3>
+            <p>Create & manage semesters</p>
+        </div>
+        <div class="card" onclick="location.href='/hod-generate'">
+            <i class="fas fa-magic" style="color:#f97316;"></i>
+            <h3>Generate</h3>
+            <p>Auto-create timetable</p>
+        </div>
+        <div class="card" onclick="location.href='/hod-timetable'">
+            <i class="fas fa-table" style="color:#0ea5e9;"></i>
+            <h3>Dept. Timetable</h3>
+            <p>View department timetable</p>
+        </div>
+    </div>
+</section>
+</body>
+</html>

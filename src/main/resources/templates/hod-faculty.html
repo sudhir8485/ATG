@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="hod-layout :: head('Faculty Directory · HOD', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell{display:flex;flex-direction:column;gap:18px;}
+            .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+            .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;box-shadow:0 8px 22px -14px rgba(0,0,0,0.2);}
+            table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 8px 22px -16px rgba(0,0,0,0.18);}
+            th,td{padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:left;}
+            th{background:#f8fafc;text-transform:uppercase;font-size:12px;letter-spacing:0.3px;color:#475569;}
+        </style>
+    </th:block>
+</head>
+<body th:replace="hod-layout :: shell('faculty', 'Faculty Directory', ~{::content})">
+<section th:fragment="content" class="page-shell">
+    <div>
+        <h2 style="font-size:22px;margin-bottom:6px;">Faculty Directory</h2>
+        <p style="color:#64748b;">View faculty in the department.</p>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <div style="font-weight:700;font-size:18px;" th:text="${#lists.size(facultyList)}">0</div>
+            <div style="color:#6b7280;">Total Faculty</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Department</th>
+            <th>Subjects</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="f : ${facultyList}">
+            <td th:text="${f.name}"></td>
+            <td th:text="${f.email}"></td>
+            <td th:text="${f.department}"></td>
+            <td th:text="${f.subjectsHandled}"></td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(facultyList)}">
+            <td colspan="4" style="text-align:center;color:#6b7280;padding:12px;">No faculty found.</td>
+        </tr>
+        </tbody>
+    </table>
+</section>
+</body>
+</html>
