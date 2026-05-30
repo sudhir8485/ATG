@@ -15,6 +15,9 @@ private String year;
 private Integer semesterNumber;
 private Integer capacity;
 private String classroom;
+private Integer batchCount;  // e.g. 4 → batches S1,S2,S3,S4
+private String batchPrefix;  // e.g. "S" for SE, "T" for TE, "B" for BE
+private String labPreference; // MORNING | MIDDAY | AFTERNOON (default)
 
 public int getId() {
 return id;
@@ -70,6 +73,30 @@ return classroom;
 
 public void setClassroom(String classroom) {
 this.classroom = classroom;
+}
+
+public Integer getBatchCount() {
+	return batchCount;
+}
+
+public void setBatchCount(Integer batchCount) {
+	this.batchCount = batchCount;
+}
+
+public String getBatchPrefix() {
+	return batchPrefix;
+}
+
+public void setBatchPrefix(String batchPrefix) {
+	this.batchPrefix = batchPrefix;
+}
+
+public String getLabPreference() {
+	return labPreference;
+}
+
+public void setLabPreference(String labPreference) {
+	this.labPreference = labPreference;
 }
 
 }

@@ -52,8 +52,13 @@ public class TimetableGeneratorService {
         GenerationResult result = new GenerationResult();
         result.existingCount = timetableRepo.findByDeletedFalse().size();
 
-        List<Subject> subjects = subjectRepo.findByDeletedFalse();
+        // Sort by id for deterministic processing order — PostgreSQL heap order can change
+        // after UPDATEs, causing subjects to interleave unpredictably across semesters
+        List<Subject> subjects = subjectRepo.findByDeletedFalse().stream()
+                .sorted(Comparator.comparingInt(Subject::getId))
+                .collect(Collectors.toList());
         List<Timeslot> slots = getEffectiveSlots();
+
         List<String> workingDays = getWorkingDays();
         List<Classroom> rooms = new ArrayList<>(roomRepo.findAll());
         List<Division> divisions = divisionRepo.findAll();
@@ -121,10 +126,51 @@ public class TimetableGeneratorService {
 
         List<Timetable> generated = new ArrayList<>();
 
-        for (Subject subject : subjects) {
-            // Shuffle working days to avoid early-week clustering for this subject
+        // ── LAB ROTATION PHASE ──
+        // Build rotation list with consecutive duplicates so multi-block subjects
+        // appear adjacent in the list. This ensures paired batches (e.g. B1+B2 on LP5)
+        // match the reference pattern: [LP5,LP5,LP6,PS2] not [LP5,LP6,PS2,LP5].
+        // Each lab subject is repeated blocks times in sequence.
+        Map<Integer, List<Subject>> labsByDivId = new LinkedHashMap<>();
+        for (Subject subj : subjects) {
+            if (isWholeClassActivity(subj)) continue; // Audit/Seminar placed separately
+            int _phpw = resolvePracticalHours(subj);
+            int _pd   = _phpw > 0 ? practicalDuration(subj) : 0;
+            if (_phpw > 0 && _pd > 0) {
+                int _blocks = Math.max(1, (int) Math.ceil(_phpw / (double) _pd));
+                for (Division div : findMatchingDivisions(divisions, subj)) {
+                    List<Subject> divList = labsByDivId.computeIfAbsent(div.getId(), k -> new ArrayList<>());
+                    for (int _e = 0; _e < _blocks; _e++) {
+                        divList.add(subj);
+                    }
+                }
+            }
+        }
+        // Track which subject+division pairs are already placed by the rotation
+        Set<String> rotationPlaced = new HashSet<>();
+        for (Division division : divisions) {
+            int bc = (division.getBatchCount() != null && division.getBatchCount() > 0)
+                    ? division.getBatchCount() : 1;
+            List<Subject> divLabs = labsByDivId.getOrDefault(division.getId(), Collections.emptyList());
+            if (bc <= 1 || divLabs.size() <= 1) continue; // need multiple batches AND labs
+            List<Timetable> rotRows = generateLabRotation(
+                    division, divLabs, workingDays, slots, rooms, allFaculty,
+                    teacherBusy, roomBusy, classBusy, subjectDayBusy,
+                    facultyWeekCount, facultyDayCount, facultyByName, result);
+            generated.addAll(rotRows);
+            divLabs.forEach(s -> rotationPlaced.add(s.getId() + "_" + division.getId()));
+        }
+
+        // Sort theory subjects by lecture hours DESC so high-frequency subjects (e.g. ISM=4, EL5=6)
+        // are placed first and can spread across multiple days before lower-frequency ones consume slots.
+        List<Subject> theoryOrderedSubjects = subjects.stream()
+                .sorted(Comparator.comparingInt((Subject s) -> resolveLectureHours(s)).reversed())
+                .collect(Collectors.toList());
+
+        for (Subject subject : theoryOrderedSubjects) {
+            // Use natural Mon→Fri order. subjectDayBusy prevents same subject on same day,
+            // so theory fills each day from the top and any spare capacity moves to later days.
             List<String> shuffledDays = new ArrayList<>(workingDays);
-            Collections.shuffle(shuffledDays);
 
             List<Division> targetDivisions = findMatchingDivisions(divisions, subject);
             if (targetDivisions.isEmpty()) {
@@ -143,14 +189,67 @@ public class TimetableGeneratorService {
             int practicalDuration = practicalHours > 0 ? practicalDuration(subject) : 0;
 
             for (Division division : targetDivisions) {
-                // Lectures first
+                String rotKey = subject.getId() + "_" + division.getId();
+
+            	if (!rotationPlaced.contains(rotKey) && practicalHours > 0 && practicalDuration > 0) {
+                    int blocks = Math.max(1, (int) Math.ceil(practicalHours / (double) practicalDuration));
+                    // Audit/Seminar subjects are whole-class activities — no batch split
+                    boolean isWholeClass = isWholeClassActivity(subject);
+                    int batchCount = isWholeClass ? 1
+                            : (division.getBatchCount() != null && division.getBatchCount() > 0)
+                                    ? division.getBatchCount() : 1;
+                    String batchPrefix = isWholeClass ? ""
+                            : (division.getBatchPrefix() != null && !division.getBatchPrefix().isBlank())
+                                    ? division.getBatchPrefix() : "";
+                    // Whole-class audit activities (VL, INTP, AC, SEM, TP) don't need a
+                    // physical lab room — use the subject's own type so any free room qualifies.
+                    String practicalSessionType = isWholeClass
+                            ? (subject.getType() != null ? subject.getType() : "Audit")
+                            : "Practical";
+                    result.requested += blocks * batchCount * practicalDuration;
+                    Set<String> practicalDaysUsed = new HashSet<>();
+                    for (int blk = 0; blk < blocks; blk++) {
+                        List<String> availableDays = shuffledDays.stream()
+                                .filter(d -> !practicalDaysUsed.contains(d.toLowerCase()))
+                                .collect(Collectors.toList());
+                        if (availableDays.isEmpty()) availableDays = new ArrayList<>(shuffledDays);
+                        // Place ALL batches simultaneously in the same timeslot (different rooms)
+                        List<Timetable> placed = tryPlaceAllBatchesSimultaneously(
+                                subject, division, availableDays, slots, rooms, allFaculty,
+                                teacherBusy, roomBusy, classBusy, subjectDayBusy,
+                                facultyWeekCount, facultyDayCount, facultyByName,
+                                practicalDuration, practicalSessionType, batchCount, batchPrefix);
+                        if (placed == null) {
+                            // Fallback: relax day-exclusivity constraint
+                            placed = tryPlaceAllBatchesSimultaneously(
+                                    subject, division, new ArrayList<>(shuffledDays), slots, rooms, allFaculty,
+                                    teacherBusy, roomBusy, classBusy, subjectDayBusy,
+                                    facultyWeekCount, facultyDayCount, facultyByName,
+                                    practicalDuration, practicalSessionType, batchCount, batchPrefix);
+                        }
+                        if (placed != null) {
+                            practicalDaysUsed.add(placed.get(0).getDay().toLowerCase());
+                            generated.addAll(placed);
+                            result.placed += placed.size();
+                        } else {
+                            result.addMessage("Could not place practical block (" + practicalDuration + " slots) for "
+                                    + subject.getName() + labelForDivision(division)
+                                    + " (block " + (blk + 1) + "/" + blocks + ")");
+                        }
+                    }
+                }
+
+                // Use natural slot order (earliest-first); labs are already placed so
+                // classBusy prevents double-booking — no time-window bias needed.
+                List<Timeslot> lectureSlots = slots.stream()
+                        .filter(ts -> !ts.isBreak())
+                        .collect(Collectors.toList());
                 for (int i = 0; i < lectureSessions; i++) {
                     result.requested++;
-                    Timetable placed = tryPlace(subject, division, shuffledDays, slots, rooms, allFaculty,
+                    Timetable placed = tryPlace(subject, division, shuffledDays, lectureSlots, rooms, allFaculty,
                             teacherBusy, roomBusy, classBusy, subjectDayBusy,
                             facultyWeekCount, facultyDayCount, facultyByName, "Lecture");
                     if (placed == null) {
-                        // fallback: ignore subject-per-day & faculty caps to avoid empty timetables
                         placed = tryPlaceRelaxed(subject, division, shuffledDays, slots, rooms, allFaculty,
                                 teacherBusy, roomBusy, classBusy, subjectDayBusy, facultyByName, "Lecture");
                     }
@@ -158,34 +257,19 @@ public class TimetableGeneratorService {
                         generated.add(placed);
                         result.placed++;
                     } else {
+                        if (subject.getCode() != null && subject.getCode().equals("CG")) {
+                            System.out.println("[CG DEBUG] failed session " + (i+1) + "/" + lectureSessions
+                                + " div=" + division.getName()
+                                + " shuffledDays=" + shuffledDays
+                                + " classBusy(SE-IT)=" + classBusy.stream().filter(k->k.contains("se(it)")).toList()
+                                + " teacherBusy(PGK)=" + teacherBusy.stream().filter(k->k.contains("khaire")).toList());
+                        }
                         result.addMessage("Could not place " + subject.getName() +
                                 labelForDivision(division) + " (lecture " + (i + 1) + "/" + lectureSessions + ")");
                     }
                 }
-
-                // Practicals / labs
-                if (practicalHours > 0 && practicalDuration > 0) {
-                    int blocks = Math.max(1, (int) Math.ceil(practicalHours / (double) practicalDuration));
-                    for (int b = 0; b < blocks; b++) {
-                        result.requested += practicalDuration;
-                        List<Timetable> block = tryPlaceLab(subject, division, shuffledDays, slots, rooms, allFaculty,
-                                teacherBusy, roomBusy, classBusy, subjectDayBusy,
-                                facultyWeekCount, facultyDayCount, facultyByName, practicalDuration, "Practical");
-                        if (block == null) {
-                            block = tryPlaceLabFallback(subject, division, shuffledDays, slots, rooms, allFaculty,
-                                    teacherBusy, roomBusy, classBusy, subjectDayBusy,
-                                    facultyWeekCount, facultyDayCount, facultyByName, practicalDuration, "Practical");
-                        }
-                        if (block != null) {
-                            generated.addAll(block);
-                            result.placed += block.size();
-                        } else {
-                            result.addMessage("Could not place practical block (" + practicalDuration + " slots) for "
-                                    + subject.getName() + labelForDivision(division) + " (block " + (b + 1) + "/" + blocks + ")");
-                        }
-                    }
-                }
             }
+        
         }
 
         if (!generated.isEmpty()) {
@@ -194,6 +278,7 @@ public class TimetableGeneratorService {
         result.generated = generated;
         return result;
     }
+    
 
     private Timetable tryPlace(Subject subject,
                                Division division,
@@ -220,8 +305,8 @@ public class TimetableGeneratorService {
 
         for (String day : days) {
             String dayKey = safeLower(day);
-            // Avoid same subject twice on the same day for the class
-            if (subjectDayBusy.contains(key(dayKey, safeLower(className), safeLower(divisionName), safeLower(subject.getName())))) {
+            // Skip days where this subject is already placed
+            if (subjectDayBusy.contains(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey))) {
                 continue;
             }
 
@@ -293,7 +378,8 @@ public class TimetableGeneratorService {
         return null;
     }
 
-    // Relaxed placer: allows same subject twice a day and ignores faculty max caps
+    // Relaxed placer: ignores faculty max caps but still prefers days where subject isn't yet placed.
+    // Same-day placement is allowed only when every other day has already been tried and failed.
     private Timetable tryPlaceRelaxed(Subject subject,
                                       Division division,
                                       List<String> days,
@@ -311,8 +397,14 @@ public class TimetableGeneratorService {
         String divisionName = division != null ? division.getName() : "";
         String preferredRoom = division != null ? division.getClassroom() : null;
         List<String> facultyNames = buildFacultyList(subject, faculty);
+        String subjectKey = safeLower(subject.getName());
 
-        for (String day : days) {
+        // Sort: days where subject NOT yet placed come first, same-day as last resort
+        List<String> sortedDays = days.stream().sorted(Comparator.comparingInt(d ->
+                subjectDayBusy.contains(key(safeLower(d), safeLower(className), safeLower(divisionName), subjectKey))
+                        ? 1 : 0)).collect(Collectors.toList());
+
+        for (String day : sortedDays) {
             String dayKey = safeLower(day);
             for (Timeslot slot : slots) {
                 String slotLabel = formatSlot(slot);
@@ -344,12 +436,22 @@ public class TimetableGeneratorService {
                     teacherBusy.add(key(dayKey, slotKey, facKey));
                     roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
                     classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
-                    subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), safeLower(subject.getName())));
+                    subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey));
                     return t;
                 }
             }
         }
         return null;
+    }
+    /** Returns true only if all slots in the list are time-adjacent (no gaps between them) */
+    private boolean areConsecutive(List<Timeslot> window) {
+        for (int i = 0; i < window.size() - 1; i++) {
+            Integer endOfCurrent = parseMinutes(window.get(i).getEndTime());
+            Integer startOfNext  = parseMinutes(window.get(i + 1).getStartTime());
+            if (endOfCurrent == null || startOfNext == null) return false;
+            if (!endOfCurrent.equals(startOfNext)) return false; // gap or overlap
+        }
+        return true;
     }
 
     private List<Timetable> tryPlaceLab(Subject subject,
@@ -387,6 +489,7 @@ public class TimetableGeneratorService {
             }
             for (int start = 0; start <= orderedSlots.size() - durationSlots; start++) {
                 List<Timeslot> window = orderedSlots.subList(start, start + durationSlots);
+                if (!areConsecutive(window)) continue; // skip non-adjacent windows
 
                 List<String> sortedByLoad = facultyNames.stream()
                         .sorted(Comparator
@@ -511,6 +614,7 @@ public class TimetableGeneratorService {
             String dayKey = safeLower(day);
             for (int start = 0; start <= orderedSlots.size() - durationSlots; start++) {
                 List<Timeslot> window = orderedSlots.subList(start, start + durationSlots);
+                if (!areConsecutive(window)) continue; // skip non-adjacent windows
                 for (String facultyName : facultyNames) {
                     if (facultyName == null || facultyName.isBlank()) continue;
                     String facKey = safeLower(facultyName);
@@ -559,6 +663,347 @@ public class TimetableGeneratorService {
                     subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), safeLower(subject.getName())));
                     return block;
                 }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Rotation schedule: numLabs days, each day all batches are in different labs simultaneously.
+     * On rotation day R, batch B does labSubjects[(B + R) % numLabs].
+     * This produces the same layout as the reference master timetable.
+     */
+    private List<Timetable> generateLabRotation(
+            Division division, List<Subject> labSubjects, List<String> workingDays,
+            List<Timeslot> slots, List<Classroom> rooms, List<User> allFaculty,
+            Set<String> teacherBusy, Set<String> roomBusy, Set<String> classBusy,
+            Set<String> subjectDayBusy,
+            Map<String, Integer> facWeek, Map<String, Integer> facDay,
+            Map<String, User> facultyByName, GenerationResult result) {
+
+        int batchCount = (division.getBatchCount() != null && division.getBatchCount() > 0)
+                ? division.getBatchCount() : 1;
+        String batchPrefix = (division.getBatchPrefix() != null && !division.getBatchPrefix().isBlank())
+                ? division.getBatchPrefix() : "";
+        String className  = deriveClassName(labSubjects.get(0), division);
+        String divName    = division.getName() != null ? division.getName() : "";
+        int numLabs       = labSubjects.size();
+        int durationSlots = labSubjects.stream().mapToInt(this::practicalDuration).max().orElse(2);
+
+        // Pre-build faculty candidate list per lab
+        List<List<String>> facPerLab = new ArrayList<>();
+        for (Subject lab : labSubjects) facPerLab.add(buildFacultyList(lab, allFaculty));
+
+        List<Timeslot> orderedSlots = getOrderedSlots(slots);
+        if (orderedSlots.size() < durationSlots) return Collections.emptyList();
+
+        // Use natural (earliest-first) window order — no morning/midday/afternoon bias.
+        // With 8 lab rooms, different divisions naturally land in non-overlapping rooms
+        // even in the same time window, so no artificial time-preference is needed.
+        List<Integer> windowStarts = new ArrayList<>();
+        for (int i = 0; i <= orderedSlots.size() - durationSlots; i++) {
+            if (areConsecutive(orderedSlots.subList(i, i + durationSlots))) windowStarts.add(i);
+        }
+
+        // Use natural day order (Mon→Fri) for deterministic, conflict-free rotation.
+        List<String> shuffledDays = new ArrayList<>(workingDays);
+
+        List<Timetable> allRows  = new ArrayList<>();
+        Set<String> usedDays     = new HashSet<>();
+        // Track per-batch which labs have been placed on which day: "batchIdx|day|labName"
+        // Used to prevent same batch getting same lab twice on the same day (overflow guard).
+        Set<String> batchLabDayPlaced = new HashSet<>();
+        // Track how many rotation slots each day already has — used to spread overflow
+        Map<String, Integer> dayRotCount = new HashMap<>();
+
+        result.requested += (long) numLabs * batchCount * durationSlots;
+
+        for (int rotSlot = 0; rotSlot < numLabs; rotSlot++) {
+            List<String> candidates = shuffledDays.stream()
+                    .filter(d -> !usedDays.contains(safeLower(d)))
+                    .collect(Collectors.toList());
+            if (candidates.isEmpty()) {
+                // All days have been used at least once — spread overflow to least-loaded days
+                candidates = new ArrayList<>(shuffledDays);
+                candidates.sort(Comparator.comparingInt(d ->
+                        dayRotCount.getOrDefault(safeLower(d), 0)));
+            }
+
+            boolean placed = false;
+            outer:
+            for (String day : candidates) {
+                String dayKey = safeLower(day);
+                for (int wStart : windowStarts) {
+                    List<Timeslot> window = orderedSlots.subList(wStart, wStart + durationSlots);
+
+                    // Class must be free in this window
+                    boolean blocked = window.stream().anyMatch(ts ->
+                            classBusy.contains(key(dayKey, safeSlot(formatSlot(ts)),
+                                    safeLower(className), safeLower(divName))));
+                    if (blocked) continue;
+
+                    // Overflow guard: prevent the same batch from doing the same lab twice on the same day.
+                    // Uses per-batch tracking (batchLabDayPlaced) not division-level subjectDayBusy,
+                    // so overflow slots can still use days where OTHER batches do the same subject.
+                    boolean batchRepeatOnDay = false;
+                    for (int b = 0; b < batchCount; b++) {
+                        int chkIdx = (b + rotSlot) % numLabs;
+                        String batchLabDayKey = b + "|" + dayKey + "|" + safeLower(labSubjects.get(chkIdx).getName());
+                        if (batchLabDayPlaced.contains(batchLabDayKey)) {
+                            batchRepeatOnDay = true;
+                            break;
+                        }
+                    }
+                    if (batchRepeatOnDay) continue;
+
+                    // Assign faculty: batch B → lab[(B+rotSlot)%numLabs]
+                    // Prefer distinct faculty per batch; fall back to reuse when numLabs < batchCount
+                    List<String> chosenFac  = new ArrayList<>();
+                    List<Subject> chosenLab = new ArrayList<>();
+                    Set<String> usedFacHere = new HashSet<>();
+                    boolean feasible = true;
+
+                    // Pre-check: count free distinct faculty per subject in this window.
+                    // If a subject is assigned to N batches, it needs N distinct free faculty.
+                    // This prevents > N batches sharing a subject when only N faculty exist.
+                    Map<Integer, Long> freeFacPerSubject = new HashMap<>();
+                    for (int b = 0; b < batchCount; b++) {
+                        int labIdx = (b + rotSlot) % numLabs;
+                        Subject lab = labSubjects.get(labIdx);
+                        final List<String> facListForSubject = facPerLab.get(labIdx);
+                        freeFacPerSubject.computeIfAbsent(lab.getId(), id -> {
+                            long cnt = 0;
+                            for (String f2 : facListForSubject) {
+                                if (f2 == null || f2.isBlank()) continue;
+                                String fk2 = safeLower(f2);
+                                boolean isFree = window.stream().noneMatch(ts ->
+                                        teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk2)));
+                                if (isFree) cnt++;
+                            }
+                            return cnt;
+                        });
+                    }
+                    // Count how many batches each subject is assigned in this rotation slot
+                    Map<Integer, Integer> batchesPerSubject = new HashMap<>();
+                    for (int b = 0; b < batchCount; b++) {
+                        int labIdx = (b + rotSlot) % numLabs;
+                        batchesPerSubject.merge(labSubjects.get(labIdx).getId(), 1, Integer::sum);
+                    }
+                    // Reject this window if any subject needs more faculty than are available
+                    for (Map.Entry<Integer, Integer> e : batchesPerSubject.entrySet()) {
+                        long available = freeFacPerSubject.getOrDefault(e.getKey(), 0L);
+                        if (e.getValue() > available) { feasible = false; break; }
+                    }
+                    if (!feasible) continue;
+
+                    for (int b = 0; b < batchCount; b++) {
+                        int labIdx = (b + rotSlot) % numLabs;
+                        Subject lab = labSubjects.get(labIdx);
+                        String fac = null;
+                        for (String f : facPerLab.get(labIdx)) {
+                            if (f == null || f.isBlank()) continue;
+                            String fk = safeLower(f);
+                            if (usedFacHere.contains(fk)) continue;
+                            boolean free = window.stream().noneMatch(ts ->
+                                    teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk)));
+                            if (free) { fac = f; usedFacHere.add(fk); break; }
+                        }
+                        if (fac == null) { feasible = false; break; }
+                        chosenFac.add(fac);
+                        chosenLab.add(lab);
+                    }
+                    if (!feasible) continue;
+
+                    // Collect free lab rooms
+                    List<Classroom> freeRooms = new ArrayList<>();
+                    for (Classroom r : rooms) {
+                        if (isRoomFreeForWindow(r, dayKey, window, roomBusy, "Practical")) freeRooms.add(r);
+                    }
+                    if (freeRooms.isEmpty()) continue;
+
+                    // Commit placements
+                    Set<String> countedFac = new HashSet<>();
+                    for (int b = 0; b < batchCount; b++) {
+                        String batchLabel = batchCount > 1 ? batchPrefix + (b + 1) : "";
+                        String fac  = chosenFac.get(b);
+                        String facK = safeLower(fac);
+                        Subject lab = chosenLab.get(b);
+                        Classroom room = freeRooms.get(b % freeRooms.size());
+
+                        for (Timeslot ts : window) {
+                            String slotLabel = formatSlot(ts);
+                            String slotKey   = safeSlot(slotLabel);
+                            Timetable t = new Timetable();
+                            t.setDay(day);
+                            t.setDepartment(lab.getDepartment());
+                            t.setClassName(className);
+                            t.setDivision(divName);
+                            t.setSubject(lab.getName());
+                            t.setFaculty(fac);
+                            t.setRoom(room.getRoom());
+                            t.setLectureType("Practical");
+                            t.setTimeSlot(slotLabel);
+                            t.setBatch(batchLabel);
+                            t.setStatus("Pending");
+                            allRows.add(t);
+                            roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
+                            teacherBusy.add(key(dayKey, slotKey, facK));
+                            classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divName)));
+                        }
+                        subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divName), safeLower(lab.getName())));
+                        // Record per-batch placement to prevent same batch repeating same lab on same day
+                        batchLabDayPlaced.add(b + "|" + dayKey + "|" + safeLower(lab.getName()));
+                        // Count faculty load only once per unique faculty per rotation slot
+                        if (countedFac.add(facK)) {
+                            facWeek.merge(facK, durationSlots, Integer::sum);
+                            facDay.merge(key(facK, dayKey), durationSlots, Integer::sum);
+                        }
+                    }
+                    result.placed += batchCount * durationSlots;
+                    usedDays.add(dayKey);
+                    dayRotCount.merge(dayKey, 1, Integer::sum);
+                    placed = true;
+                    break outer;
+                }
+            }
+            if (!placed) {
+                result.addMessage("Lab rotation slot " + (rotSlot + 1) + "/" + numLabs
+                        + " could not be placed for " + divName);
+            }
+        }
+        return allRows;
+    }
+
+    /**
+     * Places ALL batches of one lab subject at the SAME day+timeslot simultaneously.
+     * Each batch gets a distinct room; faculty is cycled across batches if fewer
+     * distinct free faculty are available than batches.
+     */
+    private List<Timetable> tryPlaceAllBatchesSimultaneously(
+            Subject subject, Division division, List<String> days, List<Timeslot> slots,
+            List<Classroom> rooms, List<User> allFaculty,
+            Set<String> teacherBusy, Set<String> roomBusy, Set<String> classBusy,
+            Set<String> subjectDayBusy,
+            Map<String, Integer> facWeek, Map<String, Integer> facDay,
+            Map<String, User> facultyByName,
+            int durationSlots, String sessionType,
+            int batchCount, String batchPrefix) {
+
+        String className = deriveClassName(subject, division);
+        String divisionName = division != null ? division.getName() : "";
+        String subjectKey = safeLower(subject.getName());
+        List<String> facultyNames = buildFacultyList(subject, allFaculty);
+        List<Timeslot> orderedSlots = getOrderedSlots(slots);
+        if (orderedSlots.size() < durationSlots) return null;
+
+        for (String day : days) {
+            String dayKey = safeLower(day);
+            if (subjectDayBusy.contains(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey))) {
+                continue;
+            }
+
+            // Build valid consecutive windows in natural (earliest-first) order.
+            List<Integer> windowStarts = new ArrayList<>();
+            for (int i = 0; i <= orderedSlots.size() - durationSlots; i++) {
+                if (areConsecutive(orderedSlots.subList(i, i + durationSlots))) windowStarts.add(i);
+            }
+
+            for (int start : windowStarts) {
+                List<Timeslot> window = orderedSlots.subList(start, start + durationSlots);
+
+                // Whole class must not already be in a lecture during this window
+                boolean classBlocked = false;
+                for (Timeslot slot : window) {
+                    if (classBusy.contains(key(dayKey, safeSlot(formatSlot(slot)),
+                            safeLower(className), safeLower(divisionName)))) {
+                        classBlocked = true;
+                        break;
+                    }
+                }
+                if (classBlocked) continue;
+
+                // Collect rooms that are free for the entire window (prefer lab type)
+                List<Classroom> freeRooms = new ArrayList<>();
+                for (Classroom room : rooms) {
+                    if (isRoomFreeForWindow(room, dayKey, window, roomBusy, sessionType)) {
+                        freeRooms.add(room);
+                    }
+                }
+                // If not enough typed rooms, also accept any free room
+                if (freeRooms.size() < batchCount) {
+                    for (Classroom room : rooms) {
+                        if (freeRooms.contains(room)) continue;
+                        boolean free = true;
+                        for (Timeslot slot : window) {
+                            if (roomBusy.contains(key(dayKey, safeSlot(formatSlot(slot)), safeLower(room.getRoom())))) {
+                                free = false;
+                                break;
+                            }
+                        }
+                        if (free) freeRooms.add(room);
+                    }
+                }
+                if (freeRooms.isEmpty()) continue;
+
+                // Collect faculty that are free for the entire window, sorted by load
+                List<String> freeFac = facultyNames.stream()
+                        .filter(f -> f != null && !f.isBlank())
+                        .filter(f -> {
+                            String fk = safeLower(f);
+                            for (Timeslot slot : window) {
+                                if (teacherBusy.contains(key(dayKey, safeSlot(formatSlot(slot)), fk))) return false;
+                            }
+                            return true;
+                        })
+                        .sorted(Comparator
+                                .comparingInt((String f) -> isSpecialist(f, facultyByName, subjectKey) ? 0 : 1)
+                                .thenComparingInt(f -> facDay.getOrDefault(key(safeLower(f), dayKey), 0))
+                                .thenComparingInt(f -> facWeek.getOrDefault(safeLower(f), 0)))
+                        .collect(Collectors.toList());
+                if (freeFac.isEmpty()) continue;
+
+                // Build batch rows — cycle rooms and faculty if fewer available than batchCount
+                List<Timetable> rows = new ArrayList<>();
+                Set<String> countedFac = new HashSet<>();
+
+                for (int b = 0; b < batchCount; b++) {
+                    String batchLabel = batchCount > 1 ? batchPrefix + (b + 1) : "";
+                    Classroom room = freeRooms.get(b % freeRooms.size());
+                    String facName = freeFac.get(b % freeFac.size());
+                    String facKey = safeLower(facName);
+
+                    for (Timeslot slot : window) {
+                        String slotLabel = formatSlot(slot);
+                        String slotKey = safeSlot(slotLabel);
+
+                        Timetable t = new Timetable();
+                        t.setDay(day);
+                        t.setDepartment(subject.getDepartment());
+                        t.setClassName(className);
+                        t.setDivision(divisionName);
+                        t.setSubject(subject.getName());
+                        t.setFaculty(facName);
+                        t.setRoom(room.getRoom());
+                        t.setLectureType(sessionType != null && !sessionType.isBlank() ? sessionType
+                                : (subject.getType() != null ? subject.getType() : "Practical"));
+                        t.setTimeSlot(slotLabel);
+                        t.setBatch(batchLabel);
+                        t.setStatus("Pending");
+                        rows.add(t);
+
+                        roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
+                        teacherBusy.add(key(dayKey, slotKey, facKey));
+                        classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
+                    }
+                    // Count faculty load only once per unique faculty
+                    if (countedFac.add(facKey)) {
+                        facWeek.merge(facKey, durationSlots, Integer::sum);
+                        facDay.merge(key(facKey, dayKey), durationSlots, Integer::sum);
+                    }
+                }
+
+                subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey));
+                return rows;
             }
         }
         return null;
@@ -756,24 +1201,83 @@ public class TimetableGeneratorService {
     private String deriveClassName(Subject subject, Division division) {
         if (division != null) {
             String year = division.getYear() != null ? division.getYear().trim() : "";
-            String div = division.getName() != null ? division.getName().trim() : "";
-            if (!year.isEmpty() && !div.isEmpty()) {
-                return year + " - " + div;
+            String dept = division.getDepartment() != null ? division.getDepartment().trim() : "";
+
+            // Build short dept code e.g. "Information Technology" → "IT"
+            String deptCode = shortDeptCode(dept.isEmpty() ? subject.getDepartment() : dept);
+
+            // Map year label to short form e.g. "Second Year" or "SE" → "SE"
+            String shortYear = toShortYear(year, subject.getSemester());
+
+            if (!shortYear.isEmpty() && !deptCode.isEmpty()) {
+                return shortYear + "(" + deptCode + ")"; // e.g. SE(IT)
+            }
+            if (!shortYear.isEmpty()) {
+                return shortYear;
             }
             if (!year.isEmpty()) {
-                return year;
-            }
-            if (!div.isEmpty()) {
-                return div;
+                return year; // fallback to whatever was stored
             }
         }
         if (subject.getSemester() != null) {
-            return "SEM " + subject.getSemester();
+            String shortYear = mapSemToYear(subject.getSemester());
+            String deptCode = shortDeptCode(subject.getDepartment());
+            if (!deptCode.isEmpty()) return shortYear + "(" + deptCode + ")";
+            return shortYear;
         }
         if (subject.getDepartment() != null && !subject.getDepartment().isBlank()) {
             return subject.getDepartment();
         }
         return "Class";
+    }
+
+    /** Converts full department name to short code e.g. "Information Technology" → "IT" */
+    private String shortDeptCode(String dept) {
+        if (dept == null || dept.isBlank()) return "";
+        // Check known mappings first
+        String d = dept.trim().toLowerCase();
+        if (d.contains("information technology") || d.equals("it")) return "IT";
+        if (d.contains("computer") || d.equals("cs") || d.equals("cse")) return "CS";
+        if (d.contains("mechanical") || d.equals("me")) return "ME";
+        if (d.contains("civil") || d.equals("ce")) return "CE";
+        if (d.contains("electrical") || d.equals("ee")) return "EE";
+        if (d.contains("electronics") || d.equals("entc") || d.equals("ece")) return "ENTC";
+        // Generic fallback: take initials of each word
+        String[] words = dept.trim().split("\\s+");
+        if (words.length == 1) return dept.trim().toUpperCase().substring(0, Math.min(3, dept.trim().length()));
+        StringBuilder code = new StringBuilder();
+        for (String w : words) {
+            if (!w.isBlank()) code.append(Character.toUpperCase(w.charAt(0)));
+        }
+        return code.toString();
+    }
+
+    /** Converts year label or semester number to short form e.g. "Second Year" → "SE", sem 4 → "SE" */
+    private String toShortYear(String yearLabel, Integer semester) {
+        if (yearLabel != null && !yearLabel.isBlank()) {
+            String y = yearLabel.trim().toLowerCase().replaceAll("\\s+", "");
+            if (y.equals("fe") || y.contains("first"))  return "FE";
+            if (y.equals("se") || y.contains("second")) return "SE";
+            if (y.equals("te") || y.contains("third"))  return "TE";
+            if (y.equals("be") || y.contains("final") || y.contains("fourth")) return "BE";
+            // already short — return as-is uppercased
+            if (yearLabel.trim().length() <= 4) return yearLabel.trim().toUpperCase();
+        }
+        // fall back to semester number
+        return mapSemToYear(semester);
+    }
+
+    /**
+     * Returns the preferred lab window start in minutes-from-midnight for a division.
+     * SE (AFTERNOON) → 14:00 = 840 min
+     * TE (MIDDAY)    → 11:15 = 675 min
+     * BE (MORNING)   → 09:00 = 540 min
+     */
+    /** True for Audit/Seminar/Special subjects that are whole-class single blocks, not batch rotations. */
+    private boolean isWholeClassActivity(Subject s) {
+        if (s == null || s.getType() == null) return false;
+        String t = s.getType().toLowerCase();
+        return t.equals("audit") || t.equals("seminar") || t.equals("special");
     }
 
     private String mapSemToYear(Integer sem) {
@@ -865,15 +1369,19 @@ public class TimetableGeneratorService {
         if(subject.getLectureHoursPerWeek() != null && subject.getLectureHoursPerWeek() > 0){
             return subject.getLectureHoursPerWeek();
         }
-        // if explicit practical hours are set, do not infer lectures from total hours
+        // Explicitly set to 0 — respect the admin's intent, no fallback
+        if(subject.getLectureHoursPerWeek() != null && subject.getLectureHoursPerWeek() == 0){
+            return 0;
+        }
+        // Lab-only subjects: no lecture sessions
         if(subject.getPracticalHoursPerWeek() != null && subject.getPracticalHoursPerWeek() > 0){
-            return 1; // still schedule at least one lecture to avoid empty grids
+            return 0;
         }
         Integer legacy = subject.getHours();
         if(legacy != null && legacy > 0){
             return isLab(subject) ? 0 : legacy;
         }
-        // fallback to 1 session to keep behaviour for legacy empty records
+        // fallback to 1 session for truly unspecified legacy records (hours field also null)
         return 1;
     }
 
@@ -950,7 +1458,12 @@ public class TimetableGeneratorService {
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
                 .map(String::toLowerCase)
-                .anyMatch(s -> s.equals(subjectKey) || s.contains(subjectKey));
+                // s.startsWith(subjectKey + " "): lab name starts with theory name → lab faculty teaches theory
+                // subjectKey.startsWith(s + " "): theory name starts with handled subject → e.g. "CG Lab" for "CG" handler
+                // Avoids "Lab Practice V" ↔ "Lab Practice VI" false positive (no trailing space boundary)
+                .anyMatch(s -> s.equals(subjectKey)
+                        || s.startsWith(subjectKey + " ")
+                        || subjectKey.startsWith(s + " "));
     }
 
     private boolean isSpecialist(String facultyName, Map<String,User> facultyByName, String targetSubjectLower){

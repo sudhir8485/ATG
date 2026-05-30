@@ -31,6 +31,8 @@ private String timeSlot;
 
 private String breakTime;
 
+private String batch;
+
 private String status;
 
 private boolean deleted = false;
@@ -140,6 +142,16 @@ return deleted;
 public void setDeleted(boolean deleted) {
 this.deleted = deleted;
 }
+
+public String getBatch() {
+	return batch;
+}
+
+public void setBatch(String batch) {
+	this.batch = batch;
+}
+
+
 
 }
 

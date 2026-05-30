@@ -188,8 +188,9 @@ public String showGenerator(Model model, jakarta.servlet.http.HttpSession sessio
 public String generateTimetable(Model model, jakarta.servlet.http.HttpSession session){
 
     // Soft-clear existing timetable to avoid duplicates on repeated runs
-    timetableRepo.findAll().forEach(t -> t.setDeleted(true));
-    timetableRepo.saveAll(timetableRepo.findAll());
+    List<Timetable> allEntries = timetableRepo.findAll();
+    allEntries.forEach(t -> t.setDeleted(true));
+    timetableRepo.saveAll(allEntries);
 
     TimetableGeneratorService.GenerationResult result = generatorService.generate();
 
@@ -392,7 +393,8 @@ return "hod-approve-timetable";
 @GetMapping("/approve/{id}")
 public String approve(@PathVariable int id){
 
-Timetable t = timetableRepo.findById(id).get();
+Timetable t = timetableRepo.findById(id).orElse(null);
+if (t == null) return "redirect:/approve-timetable";
 
 t.setStatus("Approved");
 
@@ -407,7 +409,8 @@ return "redirect:/approve-timetable";
 @GetMapping("/reject/{id}")
 public String reject(@PathVariable int id){
 
-Timetable t = timetableRepo.findById(id).get();
+Timetable t = timetableRepo.findById(id).orElse(null);
+if (t == null) return "redirect:/approve-timetable";
 
 t.setStatus("Rejected");
 
@@ -453,15 +456,15 @@ public String editClass(@PathVariable int id, Model model){
 @PostMapping("/hod-classes/save")
 public String saveClass(@RequestParam String semester,
                         @RequestParam(required=false) Integer semesterNumber,
-                        @RequestParam String division){
+                        @RequestParam String division,
+                        @RequestParam(required=false) String labPreference){
 
     Division d = new Division();
     d.setYear(semester);
     d.setSemesterNumber(semesterNumber != null ? semesterNumber : parseSemester(semester));
     d.setName(division);
-
+    d.setLabPreference(labPreference != null ? labPreference : "AFTERNOON");
     divisionRepo.save(d);
-
     return "redirect:/hod-classes";
 }
 
@@ -469,16 +472,17 @@ public String saveClass(@RequestParam String semester,
 public String updateClass(@PathVariable int id,
                           @RequestParam String semester,
                           @RequestParam(required=false) Integer semesterNumber,
-                          @RequestParam String division){
+                          @RequestParam String division,
+                          @RequestParam(required=false) String labPreference){
 
     Division d = divisionRepo.findById(id).orElse(null);
     if(d != null){
         d.setYear(semester);
         d.setSemesterNumber(semesterNumber != null ? semesterNumber : parseSemester(semester));
         d.setName(division);
+        d.setLabPreference(labPreference != null ? labPreference : "AFTERNOON");
         divisionRepo.save(d);
     }
-
     return "redirect:/hod-classes";
 }
 

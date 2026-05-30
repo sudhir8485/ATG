@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{admin-layout :: head('Special Slots', ~{})}"></head>
+<body th:replace="~{admin-layout :: shell('specialslots', 'Special Slots', ~{::section})}">
+<section>
+    <div class="content-card">
+        <h2 style="margin-bottom:6px;">Special Slots</h2>
+        <p style="color:var(--muted); margin-bottom:18px;">
+            Manually add fixed entries like INTERNSHIP, AUDIT COURSE, T&amp;P, LIBRARY etc.
+        </p>
+
+        <!-- Flash message -->
+        <div th:if="${message}"
+             th:style="${messageType == 'error'} ? 'padding:12px;border-radius:10px;background:#fee2e2;color:#991b1b;margin-bottom:14px;' : 'padding:12px;border-radius:10px;background:#dcfce7;color:#166534;margin-bottom:14px;'"
+             th:text="${message}"></div>
+
+        <form method="post" th:action="@{/save-special-slot}"
+              style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+            <div class="form-group">
+                <label>Day</label>
+                <select name="day" required>
+                    <option value="">-- Select Day --</option>
+                    <option th:each="d : ${workingDays}" th:value="${d}" th:text="${d}"></option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Division</label>
+                <select name="division" id="divSelect" required onchange="updateClassName(this)">
+                    <option value="">-- Select Division --</option>
+                    <option th:each="div : ${divisions}"
+                            th:value="${div.name}"
+                            th:text="${div.year + ' - ' + div.name}"
+                            th:attr="data-year=${div.year}, data-dept=${div.department}">
+                    </option>
+                </select>
+            </div>
+
+            <input type="hidden" name="className" id="className"/>
+            <input type="hidden" name="department" id="department"/>
+
+            <div class="form-group">
+                <label>Batch <span style="font-weight:400;color:var(--muted)">(optional — blank = whole division)</span></label>
+                <input type="text" name="batch" placeholder="e.g. T1, S2, B3"/>
+            </div>
+
+            <div class="form-group">
+                <label>Special Slot Type</label>
+                <select name="label" required onchange="toggleCustom(this)">
+                    <option value="">-- Select Type --</option>
+                    <option th:each="st : ${specialTypes}" th:value="${st}" th:text="${st}"></option>
+                </select>
+            </div>
+
+            <div class="form-group" id="customLabelDiv" style="display:none;">
+                <label>Custom Label</label>
+                <input type="text" name="customLabel" placeholder="e.g. SEMINAR, SPORTS DAY"/>
+            </div>
+
+            <div class="form-group">
+                <label>Start Time</label>
+                <select name="startTime" required>
+                    <option value="">-- Start --</option>
+                    <option th:each="ts : ${times}"
+                            th:value="${ts.startTime}"
+                            th:text="${ts.startTime}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>End Time</label>
+                <select name="endTime" required>
+                    <option value="">-- End --</option>
+                    <option th:each="ts : ${times}"
+                            th:value="${ts.endTime}"
+                            th:text="${ts.endTime}">
+                    </option>
+                </select>
+            </div>
+
+            <div style="grid-column:1/-1;">
+                <button type="submit" class="btn">
+                    <i class="fas fa-plus"></i> Add Special Slot
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing special slots table -->
+    <div class="content-card" style="margin-top:18px;">
+        <h4 style="margin-bottom:14px;">Existing Special Slots</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Class</th>
+                    <th>Division</th>
+                    <th>Batch</th>
+                    <th>Time Slot</th>
+                    <th>Label</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:if="${#lists.isEmpty(specialSlots)}">
+                    <td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">
+                        No special slots added yet.
+                    </td>
+                </tr>
+                <tr th:each="t : ${specialSlots}">
+                    <td th:text="${t.day}"></td>
+                    <td th:text="${t.className}"></td>
+                    <td th:text="${t.division}"></td>
+                    <td th:text="${t.batch ?: '-'}"></td>
+                    <td th:text="${t.timeSlot}"></td>
+                    <td>
+                        <span style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:600;"
+                              th:text="${t.subject}"></span>
+                    </td>
+                    <td>
+                        <a th:href="@{/delete-timetable/{id}(id=${t.id})}"
+                           class="btn secondary"
+                           style="padding:6px 12px;font-size:13px;background:#fee2e2;color:#991b1b;box-shadow:none;"
+                           onclick="return confirm('Delete this special slot?')">
+                            <i class="fas fa-trash"></i> Delete
+                        </a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function toggleCustom(sel) {
+            document.getElementById('customLabelDiv').style.display =
+                sel.value === 'OTHER' ? 'block' : 'none';
+        }
+        function updateClassName(sel) {
+            const opt = sel.options[sel.selectedIndex];
+            document.getElementById('className').value =
+                (opt.dataset.year || '') + ' - ' + sel.value;
+            document.getElementById('department').value = opt.dataset.dept || '';
+        }
+    </script>
+</section>
+</body>
+</html>
