@@ -15,9 +15,11 @@ import com.nt.entity.Subject;
 import com.nt.entity.Timeslot;
 import com.nt.entity.Timetable;
 import com.nt.entity.User;
+import com.nt.entity.SubjectFacultyAssignment;
 import com.nt.repository.AcademicSettingRepository;
 import com.nt.repository.ClassroomRepository;
 import com.nt.repository.DivisionRepository;
+import com.nt.repository.SubjectFacultyAssignmentRepository;
 import com.nt.repository.SubjectRepository;
 import com.nt.repository.TimeslotRepository;
 import com.nt.repository.TimetableRepository;
@@ -46,6 +48,9 @@ public class TimetableGeneratorService {
 
     @Autowired
     private AcademicSettingRepository academicSettingRepo;
+
+    @Autowired
+    private SubjectFacultyAssignmentRepository sfaRepo;
 
 
     public GenerationResult generate() {
@@ -836,6 +841,17 @@ public class TimetableGeneratorService {
         int numLabs       = labSubjects.size();
         int durationSlots = labSubjects.stream().mapToInt(this::practicalDuration).max().orElse(2);
 
+        // Load batch-pinned faculty from subject_faculty_assignment for this division.
+        // Key: subjectId + "_" + batchLabel → facultyName (e.g. "28_B1" → "Dr. S. R. Kokane")
+        List<Integer> labSubjectIds = labSubjects.stream().map(Subject::getId).collect(Collectors.toList());
+        Map<String, String> batchPinned = new HashMap<>();
+        for (SubjectFacultyAssignment a : sfaRepo.findBySubjectIdIn(labSubjectIds)) {
+            if (divName.equals(a.getDivisionName()) && a.getBatch() != null && a.getFacultyName() != null
+                    && !a.getFacultyName().isBlank()) {
+                batchPinned.put(a.getSubjectId() + "_" + a.getBatch(), a.getFacultyName());
+            }
+        }
+
         // Pre-build faculty candidate list per lab
         List<List<String>> facPerLab = new ArrayList<>();
         for (Subject lab : labSubjects) facPerLab.add(buildFacultyList(lab, allFaculty));
@@ -975,17 +991,31 @@ public class TimetableGeneratorService {
                         int labIdx = (b + rotSlot) % numLabs;
                         Subject lab = labSubjects.get(labIdx);
                         List<String> facList = facPerLab.get(labIdx);
+                        String batchLabel = batchCount > 1 ? batchPrefix + (b + 1) : "";
                         String fac = null;
                         if (facList.isEmpty()) {
                             fac = ""; // no faculty required (Library, PS2, T&P, Audit)
                         } else {
-                            for (String f : facList) {
-                                if (f == null || f.isBlank()) continue;
-                                String fk = safeLower(f);
-                                if (usedFacHere.contains(fk)) continue;
-                                boolean free = window.stream().noneMatch(ts ->
-                                        teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk)));
-                                if (free) { fac = f; usedFacHere.add(fk); break; }
+                            // Try batch-pinned faculty first (set via assign-subjects UI)
+                            String pinned = batchPinned.get(lab.getId() + "_" + batchLabel);
+                            if (pinned != null && !pinned.isBlank()) {
+                                String pk = safeLower(pinned);
+                                if (!usedFacHere.contains(pk)) {
+                                    boolean free = window.stream().noneMatch(ts ->
+                                            teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), pk)));
+                                    if (free) { fac = pinned; usedFacHere.add(pk); }
+                                }
+                            }
+                            // Fall back to load-balanced pick if no pin or pin is busy/already used
+                            if (fac == null) {
+                                for (String f : facList) {
+                                    if (f == null || f.isBlank()) continue;
+                                    String fk = safeLower(f);
+                                    if (usedFacHere.contains(fk)) continue;
+                                    boolean free = window.stream().noneMatch(ts ->
+                                            teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk)));
+                                    if (free) { fac = f; usedFacHere.add(fk); break; }
+                                }
                             }
                         }
                         if (fac == null) { feasible = false; break; }

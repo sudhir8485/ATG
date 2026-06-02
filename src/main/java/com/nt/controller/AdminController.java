@@ -320,11 +320,14 @@ public class AdminController {
 		List<Division> divisions = divRepo.findAll();
 
 		// Separate theory and lab subjects
+		// Exclude Audit/Project/Seminar types from lab section — they don't need batch-faculty assignment
+		java.util.Set<String> noAssignTypes = java.util.Set.of("audit", "project", "seminar");
 		List<Subject> theorySubjects = subjects.stream()
 				.filter(s -> s.getPracticalHoursPerWeek() == null || s.getPracticalHoursPerWeek() == 0)
 				.collect(Collectors.toList());
 		List<Subject> labSubjects = subjects.stream()
 				.filter(s -> s.getPracticalHoursPerWeek() != null && s.getPracticalHoursPerWeek() > 0)
+				.filter(s -> s.getType() == null || !noAssignTypes.contains(s.getType().toLowerCase()))
 				.collect(Collectors.toList());
 
 		// For each lab subject, find which divisions it belongs to (by semester match)
