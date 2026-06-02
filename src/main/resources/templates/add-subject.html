@@ -3,102 +3,22 @@
 <head th:replace="admin-layout :: head('Subject Management · Admin', ~{::extraHead})">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell {
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-            }
-
-            .page-header h2 {
-                font-size: 26px;
-                color: #2c3e50;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            .page-header p {
-                color: #7f8c8d;
-                margin-top: 6px;
-            }
-
-            .stats-row {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 16px;
-            }
-
-            .stat-card {
-                background: white;
-                padding: 18px;
-                border-radius: 12px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                border: 1px solid #e2e8f0;
-            }
-
-            .stat-icon {
-                width: 52px;
-                height: 52px;
-                background: rgba(102, 126, 234, 0.1);
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #667eea;
-                font-size: 20px;
-            }
-
-            .content-grid {
-                display: grid;
-                grid-template-columns: 1fr 1.2fr;
-                gap: 22px;
-            }
-
-            .card {
-                background: white;
-                padding: 24px;
-                border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e2e8f0;
-            }
-
-            .form-group {
-                margin-bottom: 14px;
-            }
-
-            .form-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 14px;
-            }
-
-            .form-actions {
-                display: flex;
-                gap: 14px;
-                margin-top: 16px;
-                flex-wrap: wrap;
-            }
-
-            .btn-secondary {
-                background: #95a5a6;
-                color: #fff;
-            }
-
-            .subjects-list {
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e2e8f0;
-                overflow: hidden;
-            }
-
-            .subjects-list table th,
-            .subjects-list table td {
-                padding: 12px 10px;
-            }
+            .page-shell { display:flex; flex-direction:column; gap:20px; }
+            .page-header h2 { font-size:26px; color:#2c3e50; display:flex; align-items:center; gap:10px; }
+            .page-header p { color:#7f8c8d; margin-top:6px; }
+            .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+            .stat-card { background:white; padding:18px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08); display:flex; align-items:center; gap:14px; border:1px solid #e2e8f0; }
+            .stat-icon { width:52px; height:52px; background:rgba(102,126,234,0.1); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#667eea; font-size:20px; }
+            .content-grid { display:grid; grid-template-columns:1fr 1.3fr; gap:22px; }
+            .card { background:white; padding:24px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08); border:1px solid #e2e8f0; }
+            .form-group { margin-bottom:14px; }
+            .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+            .form-actions { display:flex; gap:14px; margin-top:16px; flex-wrap:wrap; }
+            .btn-secondary { background:#95a5a6; color:#fff; }
+            .btn-cancel { background:#e2e8f0; color:#374151; text-decoration:none; padding:10px 18px; border-radius:10px; font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px; }
+            .subjects-list { background:white; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.08); border:1px solid #e2e8f0; overflow:hidden; }
+            .subjects-list table th, .subjects-list table td { padding:11px 10px; }
+            .edit-banner { background:#fffbeb; border:1px solid #fcd34d; border-radius:10px; padding:10px 14px; margin-bottom:14px; color:#92400e; font-weight:600; font-size:13px; }
         </style>
     </th:block>
 </head>
@@ -112,42 +32,38 @@
     <div class="stats-row">
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-book"></i></div>
-            <div>
-                <h3 th:text="${#lists.size(subjects)}">0</h3>
-                <p>Subjects</p>
-            </div>
+            <div><h3 th:text="${#lists.size(subjects)}">0</h3><p>Subjects</p></div>
         </div>
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-building"></i></div>
-            <div>
-                <h3 th:text="${#lists.size(departments)}">0</h3>
-                <p>Departments</p>
-            </div>
+            <div><h3 th:text="${#lists.size(departments)}">0</h3><p>Departments</p></div>
         </div>
         <div class="stat-card">
             <div class="stat-icon"><i class="fas fa-calendar-week"></i></div>
-            <div>
-                <h3>8</h3>
-                <p>Semesters</p>
-            </div>
+            <div><h3>8</h3><p>Semesters</p></div>
         </div>
     </div>
 
     <div class="content-grid">
+        <!-- ── FORM ── -->
         <div class="card">
-            <h3 th:text="${isEdit} ? 'Update Subject' : 'Add New Subject'"></h3>
+            <div th:if="${isEdit}" class="edit-banner">
+                <i class="fas fa-edit"></i> Editing subject — all fields loaded from database.
+            </div>
+            <h3 style="margin-bottom:16px;" th:text="${isEdit} ? 'Update Subject' : 'Add New Subject'"></h3>
 
-            <form th:action="${isEdit} ? @{/update-subject/{id}(id=${subject.id})} : @{/save-subject}" method="post">
+            <form th:action="${isEdit and subject != null} ? @{/update-subject/{id}(id=${subject.id})} : @{/save-subject}" method="post">
+
                 <div class="form-group">
                     <label>Subject Name</label>
                     <input type="text" name="name" placeholder="e.g., Data Structures" required
-                           th:value="${subject != null} ? subject.name : ''">
+                           th:value="${subject != null ? subject.name : ''}">
                 </div>
 
                 <div class="form-group">
                     <label>Subject Code</label>
                     <input type="text" name="code" placeholder="e.g., CS301"
-                           th:value="${subject != null} ? subject.code : ''">
+                           th:value="${subject != null ? subject.code : ''}">
                 </div>
 
                 <div class="form-row">
@@ -158,7 +74,7 @@
                             <option th:each="d : ${departments}"
                                     th:value="${d.name}"
                                     th:text="${d.name}"
-                                    th:selected="${subject != null} ? (d.name == subject.department) : false"></option>
+                                    th:selected="${subject != null and d.name == subject.department}"></option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -168,7 +84,7 @@
                             <option th:each="sem : ${#numbers.sequence(1,8)}"
                                     th:value="${sem}"
                                     th:text="${'Semester ' + sem}"
-                                    th:selected="${subject != null} ? (sem == subject.semester) : false"></option>
+                                    th:selected="${subject != null and sem == subject.semester}"></option>
                         </select>
                     </div>
                 </div>
@@ -176,10 +92,16 @@
                 <div class="form-group">
                     <label>Type</label>
                     <select name="type">
-                        <option value="" disabled th:selected="${subject == null || subject.type == null}">Select Type</option>
-                        <option value="Lecture" th:selected="${subject != null} ? ('Lecture' == subject.type) : false">Lecture</option>
-                        <option value="Practical" th:selected="${subject != null} ? ('Practical' == subject.type) : false">Practical</option>
-                        <option value="Tutorial" th:selected="${subject != null} ? ('Tutorial' == subject.type) : false">Tutorial</option>
+                        <option value="" disabled th:selected="${subject == null or subject.type == null}">Select Type</option>
+                        <option value="Theory"    th:selected="${subject != null and 'Theory' == subject.type}">Theory (Lecture)</option>
+                        <option value="Lecture"   th:selected="${subject != null and 'Lecture' == subject.type}">Lecture</option>
+                        <option value="Lab"       th:selected="${subject != null and 'Lab' == subject.type}">Lab / Practical</option>
+                        <option value="Practical" th:selected="${subject != null and 'Practical' == subject.type}">Practical</option>
+                        <option value="Audit"     th:selected="${subject != null and 'Audit' == subject.type}">Audit / VL / T&amp;P</option>
+                        <option value="Seminar"   th:selected="${subject != null and 'Seminar' == subject.type}">Seminar</option>
+                        <option value="Honours"   th:selected="${subject != null and 'Honours' == subject.type}">Honours</option>
+                        <option value="Elective"  th:selected="${subject != null and 'Elective' == subject.type}">Elective</option>
+                        <option value="Project"   th:selected="${subject != null and 'Project' == subject.type}">Project</option>
                     </select>
                 </div>
 
@@ -187,26 +109,46 @@
                     <div class="form-group">
                         <label>Lecture Hours / Week</label>
                         <input type="number" name="lectureHoursPerWeek" min="0" placeholder="e.g., 3"
-                               th:value="${subject != null} ? subject.lectureHoursPerWeek : ''">
+                               th:value="${subject != null ? subject.lectureHoursPerWeek : ''}">
                     </div>
                     <div class="form-group">
                         <label>Practical Hours / Week</label>
                         <input type="number" name="practicalHoursPerWeek" min="0" placeholder="e.g., 2"
-                               th:value="${subject != null} ? subject.practicalHoursPerWeek : ''">
+                               th:value="${subject != null ? subject.practicalHoursPerWeek : ''}">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Practical Slot Duration (number of contiguous slots)</label>
-                        <input type="number" name="practicalSlotDuration" min="1" placeholder="Default 2"
-                               th:value="${subject != null} ? subject.practicalSlotDuration : ''">
+                        <label>Practical Slot Duration (slots, usually 2)</label>
+                        <input type="number" name="practicalSlotDuration" min="1" placeholder="2"
+                               th:value="${subject != null ? subject.practicalSlotDuration : ''}">
                     </div>
                     <div class="form-group">
-                        <label>Legacy Hours (optional)</label>
+                        <label>Legacy Hours <span style="color:#94a3b8;font-weight:400;">(fallback)</span></label>
                         <input type="number" name="hours" min="0"
-                               th:value="${subject != null} ? subject.hours : ''">
-                        <small style="color:#94a3b8;">Used only as fallback when above fields are empty.</small>
+                               th:value="${subject != null ? subject.hours : ''}">
+                    </div>
+                </div>
+
+                <!-- Pin fields: optional, admin sets for fixed-slot subjects (VL, Internship, Seminar, etc.) -->
+                <div style="border-top:1px solid #e2e8f0;margin:14px 0;padding-top:14px;">
+                    <p style="font-size:12px;color:#64748b;margin:0 0 10px;">
+                        <strong>Fixed Slot (optional)</strong> — set only for subjects that must always be on a specific day/time
+                        (e.g. Virtual Lab on Friday 16:00, Internship on Monday+Thursday 14:00).
+                        Leave blank for greedy placement.
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pin Day(s) <span style="color:#94a3b8;font-weight:400;">comma-separated, e.g. Friday or Monday,Thursday</span></label>
+                            <input type="text" name="pinDays" placeholder="e.g. Friday"
+                                   th:value="${subject != null ? subject.pinDays : ''}">
+                        </div>
+                        <div class="form-group">
+                            <label>Pin Time Slot <span style="color:#94a3b8;font-weight:400;">HH:MM 24h, e.g. 16:00</span></label>
+                            <input type="text" name="pinSlot" placeholder="e.g. 16:00"
+                                   th:value="${subject != null ? subject.pinSlot : ''}">
+                        </div>
                     </div>
                 </div>
 
@@ -215,50 +157,53 @@
                         <i class="fas fa-save"></i>
                         <span th:text="${isEdit} ? 'Save Changes' : 'Create Subject'"></span>
                     </button>
-                    <button type="reset" class="btn btn-secondary">Reset</button>
+                    <button type="reset" class="btn btn-secondary" th:if="${!isEdit}">Reset</button>
+                    <a href="/add-subject" class="btn-cancel" th:if="${isEdit}"><i class="fas fa-times"></i> Cancel</a>
                 </div>
             </form>
         </div>
 
+        <!-- ── LIST ── -->
         <div class="subjects-list">
-            <h3 style="padding:20px;">Subject Catalogue</h3>
-
-            <table>
-                <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Code</th>
-                    <th>Dept</th>
-                    <th>Sem</th>
-                    <th>Type</th>
-                    <th>Lecture / Practical hrs</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="s : ${subjects}">
-                    <td th:text="${s.name}"></td>
-                    <td th:text="${s.code}"></td>
-                    <td th:text="${s.department}"></td>
-                    <td th:text="${s.semester}"></td>
-                    <td th:text="${s.type}"></td>
-                    <td th:text="${(s.lectureHoursPerWeek != null ? s.lectureHoursPerWeek : 0) + ' / ' + (s.practicalHoursPerWeek != null ? s.practicalHoursPerWeek : 0)}"></td>
-                    <td>
-                        <a th:href="@{/edit-subject/{id}(id=${s.id})}" style="margin-right:10px;color:#3498db;text-decoration:none;">
-                            <i class="fas fa-edit"></i> Edit
-                        </a>
-                        <a th:href="@{/delete-subject/{id}(id=${s.id})}"
-                           onclick="return confirm('Delete this subject?')"
-                           style="color:#e74c3c;text-decoration:none;">
-                            <i class="fas fa-trash"></i> Delete
-                        </a>
-                    </td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(subjects)}">
-                    <td colspan="7" style="text-align:center;padding:12px;color:#6b7280;">No subjects added yet.</td>
-                </tr>
-                </tbody>
-            </table>
+            <h3 style="padding:18px 20px;margin:0;border-bottom:1px solid #e2e8f0;">Subject Catalogue</h3>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Code</th>
+                        <th>Dept</th>
+                        <th>Sem</th>
+                        <th>Type</th>
+                        <th>Lec / Prac hrs</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="s : ${subjects}">
+                        <td th:text="${s.name}"></td>
+                        <td th:text="${s.code}"></td>
+                        <td th:text="${s.department}"></td>
+                        <td th:text="${s.semester}"></td>
+                        <td th:text="${s.type}"></td>
+                        <td th:text="${(s.lectureHoursPerWeek != null ? s.lectureHoursPerWeek : 0) + ' / ' + (s.practicalHoursPerWeek != null ? s.practicalHoursPerWeek : 0)}"></td>
+                        <td>
+                            <a th:href="@{/edit-subject/{id}(id=${s.id})}" style="margin-right:8px;color:#3498db;text-decoration:none;font-weight:600;">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a th:href="@{/delete-subject/{id}(id=${s.id})}"
+                               onclick="return confirm('Delete this subject?')"
+                               style="color:#e74c3c;text-decoration:none;font-weight:600;">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(subjects)}">
+                        <td colspan="7" style="text-align:center;padding:14px;color:#6b7280;">No subjects added yet.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </section>

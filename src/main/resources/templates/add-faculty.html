@@ -3,346 +3,441 @@
 <head th:replace="~{admin-layout :: head('Faculty Management · Admin', ~{::extraHead})}">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell {
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-            }
+            .page-shell { display:flex; flex-direction:column; gap:20px; }
 
-            .page-header h2 {
-                font-size: 26px;
-                color: #2c3e50;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
+            /* Two-panel layout: narrow form | wide list */
             .content-grid {
                 display: grid;
-                grid-template-columns: 1fr 1.3fr;
-                gap: 22px;
+                grid-template-columns: 360px 1fr;
+                gap: 20px;
+                align-items: start;
+            }
+            @media (max-width: 1000px) {
+                .content-grid { grid-template-columns: 1fr; }
             }
 
+            /* Card */
             .card {
-                background: white;
-                padding: 24px;
+                background: #fff;
                 border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
                 border: 1px solid #e2e8f0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+                padding: 22px;
             }
-
-            .form-group {
-                margin-bottom: 16px;
-            }
-
-            .input-wrapper {
-                position: relative;
-            }
-
-            .input-wrapper i {
-                position: absolute;
-                left: 15px;
-                top: 14px;
-                color: #95a5a6;
-            }
-
-            .page-shell input,
-            .page-shell select {
-                padding-left: 45px;
-            }
-
-            .form-actions {
+            .card-title {
+                font-size: 15px;
+                font-weight: 700;
+                color: #1e293b;
+                margin-bottom: 18px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #f1f5f9;
                 display: flex;
-                gap: 14px;
-                margin-top: 18px;
-                flex-wrap: wrap;
-            }
-
-            .btn-secondary {
-                background: #95a5a6;
-                color: #fff;
-            }
-
-            .faculty-list {
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e2e8f0;
-                overflow: visible; /* allow inner scroll container to show its scrollbar */
-            }
-
-            .faculty-list table th,
-            .faculty-list table td {
-                padding: 14px 12px;
-                white-space: nowrap;
-            }
-
-            .actions {
-                display: flex;
-                gap: 10px;
                 align-items: center;
-                flex-wrap: wrap;
+                gap: 8px;
             }
 
-            .table-scroll {
-                width: 100%;
-                overflow-x: auto;
-                overflow-y: hidden;
+            /* Form */
+            .form-group { margin-bottom: 13px; }
+            .form-group label {
                 display: block;
-                padding-bottom: 6px; /* space for scrollbar */
-                -webkit-overflow-scrolling: touch;
+                font-size: 12px;
+                font-weight: 600;
+                color: #475569;
+                margin-bottom: 5px;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }
+            .form-group input,
+            .form-group select {
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                font-size: 13px;
+                background: #fff;
+                color: #1e293b;
+                transition: border-color .15s;
+            }
+            .form-group input:focus,
+            .form-group select:focus {
+                outline: none;
+                border-color: #4f46e5;
+                box-shadow: 0 0 0 3px rgba(79,70,229,0.08);
+            }
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .form-hint { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+
+            /* Faculty row card (for multi-add) */
+            .faculty-row {
+                border: 1px dashed #cbd5e1;
+                border-radius: 10px;
+                padding: 16px;
+                margin-bottom: 10px;
+                background: #fafbfc;
+            }
+            .faculty-row-header {
+                font-size: 12px;
+                font-weight: 700;
+                color: #64748b;
+                margin-bottom: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
             }
 
-            .faculty-list table {
-                width: max-content !important; /* override global table width */
-                min-width: 1600px;
-                table-layout: auto;
+            /* Buttons */
+            .btn-primary {
+                padding: 8px 18px;
+                border-radius: 9px;
+                border: none;
+                background: #4f46e5;
+                color: #fff;
+                cursor: pointer;
+                font-weight: 700;
+                font-size: 13px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
             }
+            .btn-primary:hover { background: #4338ca; }
+            .btn-secondary {
+                padding: 8px 16px;
+                border-radius: 9px;
+                border: 1px solid #e2e8f0;
+                background: #f8fafc;
+                color: #475569;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 13px;
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                text-decoration: none;
+            }
+            .btn-secondary:hover { background: #f1f5f9; }
+            .btn-danger-soft {
+                padding: 6px 12px;
+                border-radius: 7px;
+                border: 1px solid #fecaca;
+                background: #fef2f2;
+                color: #dc2626;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 12px;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                text-decoration: none;
+            }
+            .btn-danger-soft:hover { background: #fee2e2; }
+            .btn-edit {
+                padding: 6px 12px;
+                border-radius: 7px;
+                border: 1px solid #e0e7ff;
+                background: #eef2ff;
+                color: #4338ca;
+                font-weight: 600;
+                font-size: 12px;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                text-decoration: none;
+            }
+            .btn-edit:hover { background: #e0e7ff; }
+            .form-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+
+            /* Flash */
+            .flash-ok  { padding:10px 16px; border-radius:8px; font-size:13px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+            .flash-err { padding:10px 16px; border-radius:8px; font-size:13px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+            .flash-warn{ padding:10px 16px; border-radius:8px; font-size:13px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+
+            /* Faculty list panel */
+            .list-panel {
+                background: #fff;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.07);
+                overflow: hidden;
+            }
+            .list-panel-head {
+                padding: 16px 20px;
+                border-bottom: 1px solid #e2e8f0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: #f8fafc;
+            }
+            .list-panel-head h3 { font-size: 14px; font-weight: 700; color: #1e293b; margin: 0; }
+            .badge-count {
+                background: #4f46e5;
+                color: #fff;
+                border-radius: 999px;
+                font-size: 11px;
+                font-weight: 700;
+                padding: 2px 8px;
+            }
+            .table-scroll { overflow-x: auto; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            th {
+                padding: 10px 14px;
+                background: #f8fafc;
+                text-align: left;
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                color: #64748b;
+                white-space: nowrap;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            td {
+                padding: 10px 14px;
+                border-bottom: 1px solid #f1f5f9;
+                vertical-align: middle;
+                color: #1e293b;
+            }
+            tr:last-child td { border-bottom: none; }
+            tr:hover td { background: #f9fafb; }
+            .faculty-name { font-weight: 600; }
+            .faculty-email { font-size: 12px; color: #64748b; }
+            .dept-badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 600;
+                background: #eff6ff;
+                color: #1e40af;
+                border: 1px solid #bfdbfe;
+            }
+            /* Subjects: clip long text, show tooltip */
+            .subjects-cell {
+                max-width: 200px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 12px;
+                color: #475569;
+                cursor: default;
+            }
+            .actions-cell { display:flex; gap:6px; align-items:center; white-space:nowrap; }
         </style>
     </th:block>
 </head>
 <body th:replace="~{admin-layout :: shell('faculty', 'Faculty Management', ~{::content})}">
 <section th:fragment="content" class="page-shell">
+
     <div class="page-header">
         <h2><i class="fas fa-chalkboard-teacher"></i> Faculty Management</h2>
     </div>
 
-    <div class="content-grid">
-        <div class="card">
-            <h3 th:text="${isEdit} ? 'Update Faculty' : 'Add New Faculty'"></h3>
+    <!-- Flash messages -->
+    <div th:if="${message}"
+         th:class="${messageType == 'error'} ? 'flash-err' : (${messageType == 'warning'} ? 'flash-warn' : 'flash-ok')">
+        <span th:text="${message}"></span>
+    </div>
 
+    <div class="content-grid">
+
+        <!-- ── LEFT: Add / Edit Form ─────────────────────────────── -->
+        <div class="card">
+            <div class="card-title">
+                <i class="fas fa-user-plus" style="color:#4f46e5;"></i>
+                <span th:text="${isEdit} ? 'Edit Faculty' : 'Add New Faculty'"></span>
+            </div>
+
+            <!-- ── EDIT FORM ── -->
             <form th:if="${isEdit}" th:action="@{/update-faculty/{id}(id=${faculty.id})}" method="post">
                 <div class="form-group">
-                    <label>Full Name</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-user"></i>
-                        <input type="text" name="name" required th:value="${faculty != null} ? faculty.name : ''">
-                    </div>
+                    <label>Full Name *</label>
+                    <input type="text" name="name" required
+                           th:value="${faculty != null ? faculty.name : ''}">
                 </div>
-
                 <div class="form-group">
-                    <label>Username (login)</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-id-card"></i>
-                        <input type="text" name="username" placeholder="Unique login ID"
-                               th:value="${faculty != null} ? faculty.username : ''">
-                    </div>
+                    <label>Username (Login ID)</label>
+                    <input type="text" name="username" placeholder="Unique login ID"
+                           th:value="${faculty != null ? faculty.username : ''}">
                 </div>
-
                 <div class="form-group">
                     <label>Password</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-key"></i>
-                        <input type="text" name="password" placeholder="Set / reset password">
-                    </div>
-                    <small style="color:#6b7280;">If left blank, password defaults to the username.</small>
+                    <input type="text" name="password" placeholder="Leave blank to keep current">
+                    <div class="form-hint">Blank = keep existing password unchanged.</div>
                 </div>
-
                 <div class="form-group">
-                    <label>Email</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-envelope"></i>
-                        <input type="email" name="email" th:value="${faculty != null} ? faculty.email : ''">
-                    </div>
+                    <label>Email *</label>
+                    <input type="email" name="email"
+                           th:value="${faculty != null ? faculty.email : ''}">
                 </div>
-
                 <div class="form-group">
                     <label>Department</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-building"></i>
-                        <select name="department" id="departmentSelect" onchange="toggleDepartmentInput()">
-                            <option value="">Select Department</option>
-                            <option th:each="d : ${departments}"
-                                    th:value="${d.name}"
-                                    th:text="${d.name}"
-                                    th:selected="${faculty != null} ? (d.name == faculty.department) : false"></option>
-                            <option value="other" th:selected="${faculty != null} ? (faculty.department == null) : false">Other</option>
-                        </select>
-                    </div>
+                    <select name="department" id="departmentSelect" onchange="toggleDepartmentInput()">
+                        <option value="">-- Select --</option>
+                        <option th:each="d : ${departments}"
+                                th:value="${d.name}" th:text="${d.name}"
+                                th:selected="${faculty != null and d.name == faculty.department}"></option>
+                        <option value="other">Other…</option>
+                    </select>
                 </div>
-
                 <div class="form-group" id="customDept" style="display:none;">
-                    <label>Enter Department</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-building"></i>
-                        <input type="text" name="custom_department" th:value="${faculty != null} ? faculty.department : ''">
-                    </div>
+                    <label>Custom Department</label>
+                    <input type="text" name="custom_department"
+                           th:value="${faculty != null ? faculty.department : ''}">
                 </div>
-
                 <div class="form-group">
                     <label>Subjects Handled</label>
-                    <div class="input-wrapper">
-                        <i class="fas fa-book"></i>
-                        <input type="text" name="subjectsHandled" placeholder="e.g., Java, DBMS"
-                               th:value="${faculty != null} ? faculty.subjectsHandled : ''">
-                    </div>
+                    <input type="text" name="subjectsHandled" placeholder="e.g., DBMS, Java Lab"
+                           th:value="${faculty != null ? faculty.subjectsHandled : ''}">
+                    <div class="form-hint">Comma-separated list used by the generator.</div>
                 </div>
-
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Max Lectures per Day</label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-clock"></i>
-                            <input type="number" name="maxLecturesPerDay" min="0"
-                                   th:value="${faculty != null} ? faculty.maxLecturesPerDay : ''">
-                        </div>
+                        <label>Max / Day</label>
+                        <input type="number" name="maxLecturesPerDay" min="0" placeholder="e.g. 4"
+                               th:value="${faculty != null ? faculty.maxLecturesPerDay : ''}">
                     </div>
                     <div class="form-group">
-                        <label>Max Lectures per Week</label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-calendar-week"></i>
-                            <input type="number" name="maxLecturesPerWeek" min="0"
-                                   th:value="${faculty != null} ? faculty.maxLecturesPerWeek : ''">
-                        </div>
+                        <label>Max / Week</label>
+                        <input type="number" name="maxLecturesPerWeek" min="0" placeholder="e.g. 18"
+                               th:value="${faculty != null ? faculty.maxLecturesPerWeek : ''}">
                     </div>
                 </div>
-
                 <div class="form-actions">
-                    <button type="submit" class="btn">
-                        <i class="fas fa-save"></i>
-                        <span th:text="${isEdit} ? 'Save Changes' : 'Create Faculty'"></span>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
                     </button>
-                    <a href="/add-faculty" class="btn btn-secondary">Cancel</a>
+                    <a href="/add-faculty" class="btn-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
                 </div>
             </form>
 
+            <!-- ── ADD FORM (multi-row) ── -->
             <form th:if="${!isEdit}" th:action="@{/save-faculty}" method="post" id="multiFacultyForm">
                 <div id="facultyRows">
-                    <div class="faculty-row card" style="padding:16px;border:1px dashed #cbd5e1;margin-bottom:12px;">
+                    <div class="faculty-row">
+                        <div class="faculty-row-header"><i class="fas fa-user" style="color:#4f46e5;"></i> Faculty #1</div>
                         <div class="form-group">
-                            <label>Full Name</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-user"></i>
-                                <input type="text" name="name[]" required>
-                            </div>
+                            <label>Full Name *</label>
+                            <input type="text" name="name" required placeholder="e.g., Prof. A. B. Sharma">
                         </div>
-
                         <div class="form-group">
-                            <label>Username (login)</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-id-card"></i>
-                                <input type="text" name="username[]" placeholder="Unique login ID">
-                            </div>
+                            <label>Username (Login)</label>
+                            <input type="text" name="username" placeholder="e.g., abs (unique)">
                         </div>
-
                         <div class="form-group">
                             <label>Password</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-key"></i>
-                                <input type="text" name="password[]" placeholder="Leave blank to default to username">
-                            </div>
+                            <input type="text" name="password" placeholder="Defaults to username if blank">
                         </div>
-
                         <div class="form-group">
-                            <label>Email</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-envelope"></i>
-                                <input type="email" name="email[]" required>
-                            </div>
+                            <label>Email *</label>
+                            <input type="email" name="email" placeholder="faculty@college.edu" required>
                         </div>
-
                         <div class="form-group">
                             <label>Department</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-building"></i>
-                                <select name="department[]" class="departmentSelect">
-                                    <option value="">Select Department</option>
-                                    <option th:each="d : ${departments}"
-                                            th:value="${d.name}"
-                                            th:text="${d.name}"></option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
+                            <select name="department" class="departmentSelect">
+                                <option value="">-- Select --</option>
+                                <option th:each="d : ${departments}"
+                                        th:value="${d.name}" th:text="${d.name}"></option>
+                                <option value="other">Other…</option>
+                            </select>
                         </div>
-
                         <div class="form-group customDept" style="display:none;">
-                            <label>Enter Department</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-building"></i>
-                                <input type="text" name="custom_department[]" placeholder="Custom department">
-                            </div>
+                            <label>Custom Department</label>
+                            <input type="text" name="custom_department" placeholder="Department name">
                         </div>
-
                         <div class="form-group">
                             <label>Subjects Handled</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-book"></i>
-                                <input type="text" name="subjectsHandled[]" placeholder="e.g., Java, DBMS">
-                            </div>
+                            <input type="text" name="subjectsHandled" placeholder="DBMS, Java, Lab">
+                            <div class="form-hint">Comma-separated — used by the timetable generator.</div>
                         </div>
-
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Max Lectures per Day</label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-clock"></i>
-                                    <input type="number" name="maxLecturesPerDay[]" min="0">
-                                </div>
+                                <label>Max / Day</label>
+                                <input type="number" name="maxLecturesPerDay" min="0" placeholder="4">
                             </div>
                             <div class="form-group">
-                                <label>Max Lectures per Week</label>
-                                <div class="input-wrapper">
-                                    <i class="fas fa-calendar-week"></i>
-                                    <input type="number" name="maxLecturesPerWeek[]" min="0">
-                                </div>
+                                <label>Max / Week</label>
+                                <input type="number" name="maxLecturesPerWeek" min="0" placeholder="18">
                             </div>
                         </div>
-
-                        <button type="button" class="btn btn-secondary remove-row" style="margin-top:6px; display:none;">Remove</button>
+                        <button type="button" class="btn-secondary remove-row" style="display:none;margin-top:4px;font-size:12px;">
+                            <i class="fas fa-minus"></i> Remove
+                        </button>
                     </div>
                 </div>
-
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" id="addRowBtn"><i class="fas fa-plus"></i> Add Another Row</button>
-                    <button type="submit" class="btn"><i class="fas fa-save"></i> Save All</button>
+                    <button type="button" class="btn-secondary" id="addRowBtn">
+                        <i class="fas fa-plus"></i> Add Another
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Save All
+                    </button>
                 </div>
-
-                <div style="margin-top:12px;padding:12px;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;">
-                    <strong>Login reminder:</strong>
-                    Each row creates one faculty. Username/email + password will be used to sign in with role <strong>FACULTY</strong>.
+                <div style="margin-top:12px;padding:10px 14px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:12px;color:#0369a1;">
+                    <strong>Note:</strong> Each row creates one faculty account with role <strong>FACULTY</strong>.
+                    Username defaults to email if left blank. Password defaults to username if left blank.
                 </div>
             </form>
         </div>
 
-        <div class="faculty-list">
-            <h3 style="padding:20px;">Faculty Members</h3>
-
-            <div class="table-scroll" style="overflow-x:auto;">
+        <!-- ── RIGHT: Faculty List ───────────────────────────────── -->
+        <div class="list-panel">
+            <div class="list-panel-head">
+                <h3><i class="fas fa-users" style="color:#4f46e5;margin-right:6px;"></i>Faculty Members</h3>
+                <span class="badge-count" th:text="${facultyList.size()} + ' total'">0 total</span>
+            </div>
+            <div class="table-scroll">
                 <table>
                     <thead>
                     <tr>
-                        <th>Faculty</th>
+                        <th>Name</th>
                         <th>Username</th>
-                        <th>Email</th>
                         <th>Department</th>
-                        <th>Subjects</th>
+                        <th>Subjects Handled</th>
                         <th>Max/Day</th>
-                        <th>Max/Week</th>
-                        <th style="width:150px;">Actions</th>
+                        <th>Max/Wk</th>
+                        <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="f : ${facultyList}">
-                        <td th:text="${f.name}"></td>
-                        <td th:text="${f.username}"></td>
-                        <td th:text="${f.email}"></td>
-                        <td th:text="${f.department}"></td>
-                        <td th:text="${f.subjectsHandled}"></td>
-                        <td th:text="${f.maxLecturesPerDay}"></td>
-                        <td th:text="${f.maxLecturesPerWeek}"></td>
-                        <td class="actions">
-                            <a class="btn secondary" th:href="@{/edit-faculty/{id}(id=${f.id})}" style="padding:8px 10px;">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
-                            <a class="btn" th:href="@{/delete-faculty/{id}(id=${f.id})}"
-                               onclick="return confirm('Delete this faculty?')"
-                               style="background:#fee2e2;color:#b91c1c;padding:8px 10px;box-shadow:none;">
-                                <i class="fas fa-trash"></i> Delete
-                            </a>
+                        <td>
+                            <div class="faculty-name" th:text="${f.name}"></div>
+                            <div class="faculty-email" th:text="${f.email}"></div>
+                        </td>
+                        <td style="font-family:monospace;font-size:12px;" th:text="${f.username}"></td>
+                        <td>
+                            <span class="dept-badge" th:if="${f.department != null and !#strings.isEmpty(f.department)}"
+                                  th:text="${f.department}"></span>
+                            <span style="color:#94a3b8;font-size:12px;" th:if="${f.department == null or #strings.isEmpty(f.department)}">—</span>
+                        </td>
+                        <td>
+                            <div class="subjects-cell"
+                                 th:title="${f.subjectsHandled}"
+                                 th:text="${f.subjectsHandled != null ? f.subjectsHandled : '—'}">
+                            </div>
+                        </td>
+                        <td style="text-align:center;" th:text="${f.maxLecturesPerDay != null ? f.maxLecturesPerDay : '—'}"></td>
+                        <td style="text-align:center;" th:text="${f.maxLecturesPerWeek != null ? f.maxLecturesPerWeek : '—'}"></td>
+                        <td>
+                            <div class="actions-cell">
+                                <a class="btn-edit" th:href="@{/edit-faculty/{id}(id=${f.id})}">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <a class="btn-danger-soft" th:href="@{/delete-faculty/{id}(id=${f.id})}"
+                                   onclick="return confirm('Delete this faculty member?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(facultyList)}">
-                        <td colspan="8" style="text-align:center;color:#6b7280;padding:12px;">No faculty added yet.</td>
+                        <td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">
+                            No faculty added yet. Use the form on the left to add one.
+                        </td>
                     </tr>
                     </tbody>
                 </table>
@@ -351,78 +446,79 @@
     </div>
 
     <script>
-        // Single-edit form toggle
+        // Edit form: department toggle
         function toggleDepartmentInput() {
-            const deptSelect = document.getElementById('departmentSelect');
-            if(!deptSelect) return;
+            const sel = document.getElementById('departmentSelect');
             const custom = document.getElementById('customDept');
-            if (deptSelect.value === 'other') {
+            if (!sel || !custom) return;
+            if (sel.value === 'other') {
                 custom.style.display = 'block';
                 custom.querySelector('input').focus();
             } else {
                 custom.style.display = 'none';
             }
         }
-        window.onload = toggleDepartmentInput;
+        window.addEventListener('DOMContentLoaded', toggleDepartmentInput);
 
         // Multi-add rows
         const rowsContainer = document.getElementById('facultyRows');
-        const addRowBtn = document.getElementById('addRowBtn');
+        const addRowBtn     = document.getElementById('addRowBtn');
+        if (!rowsContainer || !addRowBtn) return;
 
-        function wireDeptToggle(row){
-            const select = row.querySelector('.departmentSelect');
+        function wireDeptToggle(row) {
+            const sel = row.querySelector('.departmentSelect');
             const custom = row.querySelector('.customDept');
-            if(!select || !custom) return;
-            select.addEventListener('change', () => {
-                if(select.value === 'other'){
-                    custom.style.display = 'block';
-                    custom.querySelector('input').focus();
-                }else{
-                    custom.style.display = 'none';
-                    custom.querySelector('input').value = '';
-                }
+            if (!sel || !custom) return;
+            sel.addEventListener('change', () => {
+                custom.style.display = sel.value === 'other' ? 'block' : 'none';
+                if (sel.value !== 'other') custom.querySelector('input').value = '';
             });
         }
 
-        function wireRemove(row){
+        function wireRemove(row) {
             const btn = row.querySelector('.remove-row');
-            if(!btn) return;
+            if (!btn) return;
             btn.addEventListener('click', () => {
-                if(rowsContainer.children.length > 1){
+                if (rowsContainer.children.length > 1) {
                     row.remove();
                     updateRemoveButtons();
+                    renumberRows();
                 }
             });
         }
 
-        function updateRemoveButtons(){
+        function updateRemoveButtons() {
             const rows = rowsContainer.querySelectorAll('.faculty-row');
-            rows.forEach((r, idx) => {
+            rows.forEach(r => {
                 const btn = r.querySelector('.remove-row');
-                if(btn){
-                    btn.style.display = rows.length > 1 ? 'inline-flex' : 'none';
-                }
+                if (btn) btn.style.display = rows.length > 1 ? 'inline-flex' : 'none';
             });
         }
 
-        function cloneRow(){
+        function renumberRows() {
+            rowsContainer.querySelectorAll('.faculty-row').forEach((r, i) => {
+                const hdr = r.querySelector('.faculty-row-header');
+                if (hdr) hdr.innerHTML = '<i class="fas fa-user" style="color:#4f46e5;"></i> Faculty #' + (i + 1);
+            });
+        }
+
+        function cloneRow() {
             const first = rowsContainer.querySelector('.faculty-row');
             const clone = first.cloneNode(true);
-            // clear inputs
             clone.querySelectorAll('input').forEach(inp => inp.value = '');
             clone.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+            clone.querySelectorAll('.customDept').forEach(d => d.style.display = 'none');
             rowsContainer.appendChild(clone);
             wireDeptToggle(clone);
             wireRemove(clone);
             updateRemoveButtons();
+            renumberRows();
         }
 
-        if(addRowBtn && rowsContainer){
-            wireDeptToggle(rowsContainer.querySelector('.faculty-row'));
-            wireRemove(rowsContainer.querySelector('.faculty-row'));
-            updateRemoveButtons();
-            addRowBtn.addEventListener('click', cloneRow);
-        }
+        wireDeptToggle(rowsContainer.querySelector('.faculty-row'));
+        wireRemove(rowsContainer.querySelector('.faculty-row'));
+        updateRemoveButtons();
+        addRowBtn.addEventListener('click', cloneRow);
     </script>
 </section>
 </body>

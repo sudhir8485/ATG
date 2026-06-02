@@ -61,7 +61,20 @@ public class TimetableGeneratorService {
 
         List<String> workingDays = getWorkingDays();
         List<Classroom> rooms = new ArrayList<>(roomRepo.findAll());
-        List<Division> divisions = divisionRepo.findAll();
+        // Sort divisions: MORNING first → claims Window A before AFTERNOON overflow can steal faculty.
+        // Order: MORNING (BE) → MIDDAY (TE) → AFTERNOON (SE) → others.
+        List<Division> divisions = divisionRepo.findAll().stream()
+                .sorted(Comparator.comparingInt(d -> {
+                    String pref = d.getLabPreference();
+                    if (pref == null) return 99;
+                    switch (pref.toUpperCase().trim()) {
+                        case "MORNING":   return 0;
+                        case "MIDDAY":    return 1;
+                        case "AFTERNOON": return 2;
+                        default:          return 3;
+                    }
+                }))
+                .collect(Collectors.toList());
         List<User> allFaculty = userRepo.findByRoleAndDeletedFalse("FACULTY");
 
         if (rooms.isEmpty()) {
@@ -146,8 +159,40 @@ public class TimetableGeneratorService {
                 }
             }
         }
-        // Track which subject+division pairs are already placed by the rotation
+        // ── PINNED SESSIONS PHASE ──
+        // Subjects whose admin set pinDays + pinSlot are placed first at those exact positions.
+        // No subject codes hardcoded here — fully data-driven.
+        // To change next semester: edit the subject's pin fields via the Subject form in the UI.
         Set<String> rotationPlaced = new HashSet<>();
+        for (Subject subject : subjects) {
+            String rawPinDays = subject.getPinDays();
+            String rawPinSlot = subject.getPinSlot();
+            if (rawPinDays == null || rawPinDays.isBlank()) continue;
+            if (rawPinSlot == null || rawPinSlot.isBlank()) continue;
+            int slotMinutes = parseMinutes(rawPinSlot.trim());
+            if (slotMinutes == Integer.MAX_VALUE) continue;
+            String[] pinDayArr = rawPinDays.split(",");
+            // For 2-hour pinned blocks (INTP, AC6, AC8, SEM8) place consecutive slots
+            int pinDuration = (isWholeClassActivity(subject)
+                    && subject.getPracticalSlotDuration() != null
+                    && subject.getPracticalSlotDuration() > 1)
+                    ? subject.getPracticalSlotDuration() : 1;
+            for (Division div : findMatchingDivisions(divisions, subject)) {
+                for (String rawDay : pinDayArr) {
+                    String day = rawDay.trim();
+                    if (day.isBlank()) continue;
+                    for (int h = 0; h < pinDuration; h++) {
+                        int slotMin = slotMinutes + (h * 60);
+                        Timetable t = forcePlaceAt(subject, div, day, slotMin, slots, rooms, allFaculty,
+                                teacherBusy, roomBusy, classBusy, subjectDayBusy,
+                                facultyWeekCount, facultyDayCount, facultyByName, result);
+                        if (t != null) generated.add(t);
+                    }
+                }
+                rotationPlaced.add(subject.getId() + "_" + div.getId());
+            }
+        }
+
         for (Division division : divisions) {
             int bc = (division.getBatchCount() != null && division.getBatchCount() > 0)
                     ? division.getBatchCount() : 1;
@@ -171,6 +216,18 @@ public class TimetableGeneratorService {
             // Use natural Mon→Fri order. subjectDayBusy prevents same subject on same day,
             // so theory fills each day from the top and any spare capacity moves to later days.
             List<String> shuffledDays = new ArrayList<>(workingDays);
+            // Subjects with pin_days but NO pin_slot: theory sessions must land on those days only.
+            // (pin_slot subjects are whole-class activities handled above by the pin phase.)
+            boolean pinnedDaysOnly = subject.getPinDays() != null && !subject.getPinDays().isBlank()
+                    && (subject.getPinSlot() == null || subject.getPinSlot().isBlank());
+            if (pinnedDaysOnly) {
+                Set<String> pinDaySet = Arrays.stream(subject.getPinDays().split(","))
+                        .map(d -> d.trim().toLowerCase()).collect(Collectors.toSet());
+                List<String> restricted = shuffledDays.stream()
+                        .filter(d -> pinDaySet.contains(d.toLowerCase()))
+                        .collect(Collectors.toList());
+                if (!restricted.isEmpty()) shuffledDays = restricted;
+            }
 
             List<Division> targetDivisions = findMatchingDivisions(divisions, subject);
             if (targetDivisions.isEmpty()) {
@@ -244,13 +301,19 @@ public class TimetableGeneratorService {
                 List<Timeslot> lectureSlots = slots.stream()
                         .filter(ts -> !ts.isBreak())
                         .collect(Collectors.toList());
+                String className = deriveClassName(subject, division);
+                String divisionName = division != null ? division.getName() : "";
                 for (int i = 0; i < lectureSessions; i++) {
                     result.requested++;
-                    Timetable placed = tryPlace(subject, division, shuffledDays, lectureSlots, rooms, allFaculty,
+                    // Spread theory sessions: sort days so non-adjacent days come first,
+                    // avoiding 3+ consecutive calendar days for the same subject.
+                    List<String> spreadDays = spreadTheoryDays(shuffledDays, subject.getName(),
+                            className, divisionName, subjectDayBusy, workingDays);
+                    Timetable placed = tryPlace(subject, division, spreadDays, lectureSlots, rooms, allFaculty,
                             teacherBusy, roomBusy, classBusy, subjectDayBusy,
-                            facultyWeekCount, facultyDayCount, facultyByName, "Lecture");
+                            facultyWeekCount, facultyDayCount, facultyByName, "Lecture", pinnedDaysOnly);
                     if (placed == null) {
-                        placed = tryPlaceRelaxed(subject, division, shuffledDays, slots, rooms, allFaculty,
+                        placed = tryPlaceRelaxed(subject, division, spreadDays, slots, rooms, allFaculty,
                                 teacherBusy, roomBusy, classBusy, subjectDayBusy, facultyByName, "Lecture");
                     }
                     if (placed != null) {
@@ -280,6 +343,82 @@ public class TimetableGeneratorService {
     }
     
 
+    /**
+     * Hard-pins a subject at an exact day + slot identified by start time (minutes since midnight).
+     * Used for VL, INTP, AC6, AC8, SEM8, TP8 which have fixed reference positions.
+     */
+    private Timetable forcePlaceAt(Subject subject, Division division,
+                                   String day, int startMinutes,
+                                   List<Timeslot> allSlots, List<Classroom> rooms, List<User> allFaculty,
+                                   Set<String> teacherBusy, Set<String> roomBusy, Set<String> classBusy,
+                                   Set<String> subjectDayBusy,
+                                   Map<String,Integer> facultyWeekCount, Map<String,Integer> facultyDayCount,
+                                   Map<String,User> facultyByName, GenerationResult result) {
+        Timeslot targetSlot = allSlots.stream()
+                .filter(s -> !s.isBreak())
+                .filter(s -> { Integer m = parseMinutes(s.getStartTime()); return m != null && m == startMinutes; })
+                .findFirst().orElse(null);
+        if (targetSlot == null) {
+            result.addMessage("Cannot pin " + subject.getName() + " — no slot at " + startMinutes + " min");
+            return null;
+        }
+        String dayKey   = safeLower(day);
+        String slotLabel = formatSlot(targetSlot);
+        String slotKey   = safeSlot(slotLabel);
+        String className     = deriveClassName(subject, division);
+        String divisionName  = division != null ? division.getName() : "";
+
+        if (classBusy.contains(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)))) {
+            result.addMessage("Cannot pin " + subject.getName() + " on " + day + " " + slotLabel + " — slot already busy");
+            return null;
+        }
+        // Audit-type subjects (VL, Audit Course) are whole-class informational sessions.
+        // No specialist faculty needed — leave blank so no real teacher is blocked
+        // for simultaneous lab/theory sessions in other divisions.
+        String subjType = subject.getType() != null ? subject.getType().toLowerCase() : "";
+        boolean noFacultyNeeded = subjType.equals("audit") && (subject.getPracticalHoursPerWeek() != null
+                && subject.getPracticalHoursPerWeek() > 0 && (subject.getLectureHoursPerWeek() == null
+                || subject.getLectureHoursPerWeek() == 0));
+        List<String> facultyNames = noFacultyNeeded ? Collections.emptyList() : buildFacultyList(subject, allFaculty);
+        String assignedFaculty = facultyNames.stream()
+                .filter(f -> f != null && !f.isBlank())
+                .filter(f -> !teacherBusy.contains(key(dayKey, slotKey, safeLower(f))))
+                .findFirst().orElse("");
+
+        String sessionType   = subject.getType() != null ? subject.getType() : "Audit";
+        String preferredRoom = division != null ? division.getClassroom() : null;
+        Classroom room = pickRoom(rooms, preferredRoom, roomBusy, dayKey, slotKey, sessionType);
+        if (room == null) {
+            result.addMessage("Cannot pin " + subject.getName() + " on " + day + " " + slotLabel + " — no room");
+            return null;
+        }
+        Timetable t = new Timetable();
+        t.setDay(day);
+        t.setDepartment(subject.getDepartment());
+        t.setClassName(className);
+        t.setDivision(divisionName);
+        t.setSubject(subject.getName());
+        t.setFaculty(assignedFaculty);
+        t.setRoom(room.getRoom());
+        t.setLectureType(sessionType);
+        t.setTimeSlot(slotLabel);
+        t.setStatus("Pending");
+
+        if (!assignedFaculty.isBlank()) {
+            String facKey = safeLower(assignedFaculty);
+            teacherBusy.add(key(dayKey, slotKey, facKey));
+            facultyWeekCount.merge(facKey, 1, Integer::sum);
+            facultyDayCount.merge(key(facKey, dayKey), 1, Integer::sum);
+        }
+        roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
+        classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
+        subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), safeLower(subject.getName())));
+
+        result.requested++;
+        result.placed++;
+        return t;
+    }
+
     private Timetable tryPlace(Subject subject,
                                Division division,
                                List<String> days,
@@ -293,7 +432,8 @@ public class TimetableGeneratorService {
                                Map<String,Integer> facWeek,
                                Map<String,Integer> facDay,
                                Map<String,User> facultyByName,
-                               String sessionType) {
+                               String sessionType,
+                               boolean allowSameDay) {
 
         String className = deriveClassName(subject, division);
         String divisionName = division != null ? division.getName() : "";
@@ -305,8 +445,8 @@ public class TimetableGeneratorService {
 
         for (String day : days) {
             String dayKey = safeLower(day);
-            // Skip days where this subject is already placed
-            if (subjectDayBusy.contains(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey))) {
+            // Skip days where this subject is already placed (unless pinned to this day)
+            if (!allowSameDay && subjectDayBusy.contains(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey))) {
                 continue;
             }
 
@@ -404,40 +544,46 @@ public class TimetableGeneratorService {
                 subjectDayBusy.contains(key(safeLower(d), safeLower(className), safeLower(divisionName), subjectKey))
                         ? 1 : 0)).collect(Collectors.toList());
 
-        for (String day : sortedDays) {
-            String dayKey = safeLower(day);
-            for (Timeslot slot : slots) {
-                String slotLabel = formatSlot(slot);
-                String slotKey = safeSlot(slotLabel);
-                if (classBusy.contains(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)))) continue;
+        // Pass 1: hard-skip days where this subject is already placed today
+        // Pass 2: fallback — allow same-day only if no other day had a free slot
+        for (int pass = 1; pass <= 2; pass++) {
+            for (String day : sortedDays) {
+                String dayKey = safeLower(day);
+                if (pass == 1 && subjectDayBusy.contains(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey))) continue;
 
-                for (String facultyName : facultyNames) {
-                    if (facultyName == null || facultyName.isBlank()) continue;
-                    String facKey = safeLower(facultyName);
-                    if (teacherBusy.contains(key(dayKey, slotKey, facKey))) continue;
+                for (Timeslot slot : slots) {
+                    String slotLabel = formatSlot(slot);
+                    String slotKey = safeSlot(slotLabel);
+                    if (classBusy.contains(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)))) continue;
 
-                    Classroom room = pickRoom(rooms, preferredRoom, roomBusy, dayKey, slotKey, sessionType);
-                    if (room == null) continue;
+                    for (String facultyName : facultyNames) {
+                        if (facultyName == null || facultyName.isBlank()) continue;
+                        String facKey = safeLower(facultyName);
+                        if (teacherBusy.contains(key(dayKey, slotKey, facKey))) continue;
 
-                    Timetable t = new Timetable();
-                    t.setDay(day);
-                    t.setDepartment(subject.getDepartment());
-                    t.setClassName(className);
-                    t.setDivision(divisionName);
-                    t.setSubject(subject.getName());
-                    t.setFaculty(facultyName);
-                    t.setRoom(room.getRoom());
-                    t.setLectureType(sessionType != null && !sessionType.isBlank()
-                            ? sessionType
-                            : (subject.getType() != null ? subject.getType() : "Lecture"));
-                    t.setTimeSlot(slotLabel);
-                    t.setStatus("Pending");
+                        Classroom room = pickRoom(rooms, preferredRoom, roomBusy, dayKey, slotKey, sessionType);
+                        if (room == null) continue;
 
-                    teacherBusy.add(key(dayKey, slotKey, facKey));
-                    roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
-                    classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
-                    subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey));
-                    return t;
+                        Timetable t = new Timetable();
+                        t.setDay(day);
+                        t.setDepartment(subject.getDepartment());
+                        t.setClassName(className);
+                        t.setDivision(divisionName);
+                        t.setSubject(subject.getName());
+                        t.setFaculty(facultyName);
+                        t.setRoom(room.getRoom());
+                        t.setLectureType(sessionType != null && !sessionType.isBlank()
+                                ? sessionType
+                                : (subject.getType() != null ? subject.getType() : "Lecture"));
+                        t.setTimeSlot(slotLabel);
+                        t.setStatus("Pending");
+
+                        teacherBusy.add(key(dayKey, slotKey, facKey));
+                        roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
+                        classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
+                        subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey));
+                        return t;
+                    }
                 }
             }
         }
@@ -697,12 +843,40 @@ public class TimetableGeneratorService {
         List<Timeslot> orderedSlots = getOrderedSlots(slots);
         if (orderedSlots.size() < durationSlots) return Collections.emptyList();
 
-        // Use natural (earliest-first) window order — no morning/midday/afternoon bias.
-        // With 8 lab rooms, different divisions naturally land in non-overlapping rooms
-        // even in the same time window, so no artificial time-preference is needed.
+        // Build all valid consecutive windows, then sort by division's lab_preference.
+        // MORNING (BE)  → Window A (09:00) first; MIDDAY (TE) → Window B (11:15) first;
+        // AFTERNOON (SE) → Window C (14:00) first. This prevents cross-division faculty
+        // conflicts caused by different divisions sharing the same window.
         List<Integer> windowStarts = new ArrayList<>();
         for (int i = 0; i <= orderedSlots.size() - durationSlots; i++) {
             if (areConsecutive(orderedSlots.subList(i, i + durationSlots))) windowStarts.add(i);
+        }
+        // Sort windows by a strict priority order per division, preventing cross-division overflow
+        // conflicts.  Pure distance-sort puts Window B before Window A for SE-IT (AFTERNOON),
+        // causing SE-IT overflow to collide with TE-IT's primary Window B.
+        // Priority order:
+        //   AFTERNOON (SE-IT): C(840) → A(540) → B(675)
+        //   MIDDAY    (TE-IT): B(675) → C(840) → A(540)
+        //   MORNING   (BE-IT): A(540) → C(840) → B(675)
+        String labPref = division.getLabPreference();
+        if (labPref != null && !labPref.isBlank()) {
+            final List<Integer> priority;
+            switch (labPref.toUpperCase().trim()) {
+                case "AFTERNOON": priority = java.util.Arrays.asList(840, 540, 675); break; // C→A→B
+                case "MIDDAY":    priority = java.util.Arrays.asList(675, 840, 540); break; // B→C→A
+                default:          priority = java.util.Arrays.asList(540, 840, 675); break; // A→C→B
+            }
+            windowStarts.sort(Comparator.comparingInt(wStart -> {
+                int sm = slotStartMinutes(orderedSlots.get(wStart));
+                // Find nearest priority bucket (A=540, B=675, C=840)
+                int rank = 0;
+                int bestDist = Integer.MAX_VALUE;
+                for (int pi = 0; pi < priority.size(); pi++) {
+                    int dist = Math.abs(sm - priority.get(pi));
+                    if (dist < bestDist) { bestDist = dist; rank = pi; }
+                }
+                return rank;
+            }));
         }
 
         // Use natural day order (Mon→Fri) for deterministic, conflict-free rotation.
@@ -772,6 +946,7 @@ public class TimetableGeneratorService {
                         Subject lab = labSubjects.get(labIdx);
                         final List<String> facListForSubject = facPerLab.get(labIdx);
                         freeFacPerSubject.computeIfAbsent(lab.getId(), id -> {
+                            if (facListForSubject.isEmpty()) return Long.MAX_VALUE; // no faculty needed
                             long cnt = 0;
                             for (String f2 : facListForSubject) {
                                 if (f2 == null || f2.isBlank()) continue;
@@ -799,14 +974,19 @@ public class TimetableGeneratorService {
                     for (int b = 0; b < batchCount; b++) {
                         int labIdx = (b + rotSlot) % numLabs;
                         Subject lab = labSubjects.get(labIdx);
+                        List<String> facList = facPerLab.get(labIdx);
                         String fac = null;
-                        for (String f : facPerLab.get(labIdx)) {
-                            if (f == null || f.isBlank()) continue;
-                            String fk = safeLower(f);
-                            if (usedFacHere.contains(fk)) continue;
-                            boolean free = window.stream().noneMatch(ts ->
-                                    teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk)));
-                            if (free) { fac = f; usedFacHere.add(fk); break; }
+                        if (facList.isEmpty()) {
+                            fac = ""; // no faculty required (Library, PS2, T&P, Audit)
+                        } else {
+                            for (String f : facList) {
+                                if (f == null || f.isBlank()) continue;
+                                String fk = safeLower(f);
+                                if (usedFacHere.contains(fk)) continue;
+                                boolean free = window.stream().noneMatch(ts ->
+                                        teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk)));
+                                if (free) { fac = f; usedFacHere.add(fk); break; }
+                            }
                         }
                         if (fac == null) { feasible = false; break; }
                         chosenFac.add(fac);
@@ -847,14 +1027,14 @@ public class TimetableGeneratorService {
                             t.setStatus("Pending");
                             allRows.add(t);
                             roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
-                            teacherBusy.add(key(dayKey, slotKey, facK));
+                            if (!facK.isBlank()) teacherBusy.add(key(dayKey, slotKey, facK));
                             classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divName)));
                         }
                         subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divName), safeLower(lab.getName())));
                         // Record per-batch placement to prevent same batch repeating same lab on same day
                         batchLabDayPlaced.add(b + "|" + dayKey + "|" + safeLower(lab.getName()));
                         // Count faculty load only once per unique faculty per rotation slot
-                        if (countedFac.add(facK)) {
+                        if (!facK.isBlank() && countedFac.add(facK)) {
                             facWeek.merge(facK, durationSlots, Integer::sum);
                             facDay.merge(key(facK, dayKey), durationSlots, Integer::sum);
                         }
@@ -1015,31 +1195,24 @@ public class TimetableGeneratorService {
                                String dayKey,
                                String slotKey,
                                String subjectType) {
-        boolean needsLab = subjectType != null && subjectType.toLowerCase().matches(".*(lab|practical).*");
-        boolean anyLabCapable = rooms.stream().anyMatch(r -> r.getType() != null && r.getType().toLowerCase().contains("lab"));
-        // try preferred classroom first
+        // Pass 1: preferred room with type match
         if (preferredRoom != null && !preferredRoom.isBlank()) {
             for (Classroom r : rooms) {
-                if (preferredRoom.equalsIgnoreCase(r.getRoom()) && isRoomFree(r, dayKey, slotKey, roomBusy, subjectType)) {
+                if (preferredRoom.equalsIgnoreCase(r.getRoom())
+                        && isRoomFree(r, dayKey, slotKey, roomBusy, subjectType)) {
                     return r;
                 }
             }
         }
-        // then find any free room that fits type
+        // Pass 2: any free room with correct type (lab→lab, theory→lecture)
         for (Classroom r : rooms) {
             if (isRoomFree(r, dayKey, slotKey, roomBusy, subjectType)) {
                 return r;
             }
         }
-        // last-resort: if need lab but no lab room available, allow any free room
-        if(needsLab && !anyLabCapable){
-            for (Classroom r : rooms) {
-                String key = key(dayKey, slotKey, safeLower(r.getRoom()));
-                if (!roomBusy.contains(key)) {
-                    return r;
-                }
-            }
-        }
+        // No fallback to wrong room type — theory sessions must use lecture rooms only,
+        // lab sessions must use lab rooms only. If no matching room is free, return null
+        // so the session is reported as unplaced rather than assigned to the wrong room.
         return null;
     }
 
@@ -1049,31 +1222,30 @@ public class TimetableGeneratorService {
                                        String dayKey,
                                        List<Timeslot> window,
                                        String subjectType) {
+        // Pass 1: preferred room with type match
         if (preferredRoom != null && !preferredRoom.isBlank()) {
             for (Classroom r : rooms) {
-                if (preferredRoom.equalsIgnoreCase(r.getRoom()) && isRoomFreeForWindow(r, dayKey, window, roomBusy, subjectType)) {
+                if (preferredRoom.equalsIgnoreCase(r.getRoom())
+                        && isRoomFreeForWindow(r, dayKey, window, roomBusy, subjectType)) {
                     return r;
                 }
             }
         }
+        // Pass 2: any type-matched free room
         for (Classroom r : rooms) {
             if (isRoomFreeForWindow(r, dayKey, window, roomBusy, subjectType)) {
                 return r;
             }
         }
-        boolean needsLab = subjectType != null && subjectType.toLowerCase().matches(".*(lab|practical).*");
-        boolean anyLabCapable = rooms.stream().anyMatch(r -> r.getType() != null && r.getType().toLowerCase().contains("lab"));
-        if(needsLab && !anyLabCapable){
-            for (Classroom r : rooms) {
-                boolean free = true;
-                for (Timeslot slot : window) {
-                    String slotKey = safeSlot(formatSlot(slot));
-                    if(roomBusy.contains(key(dayKey, slotKey, safeLower(r.getRoom())))){
-                        free = false; break;
-                    }
+        // Pass 3: fallback — any room free for the whole window
+        for (Classroom r : rooms) {
+            boolean free = true;
+            for (Timeslot slot : window) {
+                if (roomBusy.contains(key(dayKey, safeSlot(formatSlot(slot)), safeLower(r.getRoom())))) {
+                    free = false; break;
                 }
-                if(free) return r;
             }
+            if (free) return r;
         }
         return null;
     }
@@ -1083,16 +1255,18 @@ public class TimetableGeneratorService {
                                String slotKey,
                                Set<String> roomBusy,
                                String subjectType) {
-        if (roomBusy.contains(key(dayKey, slotKey, safeLower(room.getRoom())))) {
-            return false;
-        }
-        if (subjectType != null) {
-            String t = subjectType.toLowerCase();
-            if (t.contains("lab") || t.contains("practical")) {
-                return room.getType() != null && room.getType().toLowerCase().contains("lab");
-            }
-        }
-        return true;
+        if (roomBusy.contains(key(dayKey, slotKey, safeLower(room.getRoom())))) return false;
+        return roomTypeMatches(room, subjectType);
+    }
+
+    /** Returns true when the room type is appropriate for the session type.
+     *  Labs → lab rooms only.  Theory/Audit/Seminar → lecture rooms only.
+     *  If the room has no type set, allow anything (backward-compat). */
+    private boolean roomTypeMatches(Classroom room, String subjectType) {
+        if (subjectType == null || room.getType() == null || room.getType().isBlank()) return true;
+        boolean isLab = subjectType.toLowerCase().matches(".*(lab|practical).*");
+        boolean roomIsLab = room.getType().toLowerCase().contains("lab");
+        return isLab == roomIsLab; // lab session ↔ lab room; theory session ↔ lecture room
     }
 
     private boolean isRoomFreeForWindow(Classroom room,
@@ -1428,6 +1602,64 @@ public class TimetableGeneratorService {
 
     private int slotStartMinutes(Timeslot slot){
         return parseMinutes(slot != null ? slot.getStartTime() : null);
+    }
+
+    /**
+     * Returns a reordered copy of {@code days} that prefers days not adjacent
+     * (in the working-days calendar) to days already used for this subject.
+     * This prevents theory sessions stacking on 3+ consecutive calendar days.
+     * Days already blocked by subjectDayBusy are kept in the list — tryPlace
+     * will skip them as usual; we are only changing their relative priority.
+     */
+    private List<String> spreadTheoryDays(List<String> days, String subjectName,
+            String className, String divisionName,
+            Set<String> subjectDayBusy, List<String> workingDays) {
+        // Collect which working-day indices are already used for this subject
+        Set<Integer> usedIndices = new HashSet<>();
+        for (int i = 0; i < workingDays.size(); i++) {
+            String dk = safeLower(workingDays.get(i));
+            if (subjectDayBusy.contains(key(dk, safeLower(className), safeLower(divisionName), safeLower(subjectName)))) {
+                usedIndices.add(i);
+            }
+        }
+        if (usedIndices.isEmpty()) return days; // nothing to spread yet
+
+        // For each candidate day, compute its minimum distance from any used day.
+        // Higher distance → preferred (sort DESC by min distance).
+        List<String> sorted = new ArrayList<>(days);
+        Map<String, Integer> minDist = new HashMap<>();
+        for (String d : days) {
+            int idx = -1;
+            for (int i = 0; i < workingDays.size(); i++) {
+                if (workingDays.get(i).equalsIgnoreCase(d)) { idx = i; break; }
+            }
+            int dist = Integer.MAX_VALUE;
+            for (int ui : usedIndices) {
+                int gap = Math.abs((idx >= 0 ? idx : 0) - ui);
+                if (gap < dist) dist = gap;
+            }
+            minDist.put(safeLower(d), dist);
+        }
+
+        // Count how many theory subjects are already placed on each day for this division.
+        // Used as tie-breaker: days with lighter load are preferred so sessions fill
+        // earlier weekdays (Tue, Wed, Thu) before piling onto Friday.
+        final String classKey = "|" + safeLower(className) + "|" + safeLower(divisionName) + "|";
+        Map<String, Long> dayLoad = subjectDayBusy.stream()
+                .filter(k -> k.contains(classKey))
+                .collect(Collectors.groupingBy(k -> k.split("\\|")[0], Collectors.counting()));
+
+        // Primary: max distance from already-used days.
+        // Secondary tie-break: prefer less-loaded days (fills Thu before Fri, etc.).
+        sorted.sort((a, b) -> {
+            int da = minDist.getOrDefault(safeLower(a), 0);
+            int db = minDist.getOrDefault(safeLower(b), 0);
+            if (db != da) return Integer.compare(db, da);
+            long la = dayLoad.getOrDefault(safeLower(a), 0L);
+            long lb = dayLoad.getOrDefault(safeLower(b), 0L);
+            return Long.compare(la, lb);   // lower load = earlier in list
+        });
+        return sorted;
     }
 
     private int parseMinutes(String time){

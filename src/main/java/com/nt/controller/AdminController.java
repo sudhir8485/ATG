@@ -40,10 +40,12 @@ import com.nt.entity.Subject;
 import com.nt.entity.Timeslot;
 import com.nt.entity.Timetable;
 import com.nt.entity.User;
+import com.nt.entity.SubjectFacultyAssignment;
 import com.nt.repository.AcademicSettingRepository;
 import com.nt.repository.ClassroomRepository;
 import com.nt.repository.DepartmentRepository;
 import com.nt.repository.DivisionRepository;
+import com.nt.repository.SubjectFacultyAssignmentRepository;
 import com.nt.repository.SubjectRepository;
 import com.nt.repository.TimeslotRepository;
 import com.nt.repository.TimetableRepository;
@@ -79,6 +81,9 @@ public class AdminController {
 
 	@Autowired
 	TimetableGeneratorService generatorService;
+
+	@Autowired
+	SubjectFacultyAssignmentRepository sfaRepo;
 
 	/*
 	 * ========================= DASHBOARD =========================
@@ -125,15 +130,21 @@ public class AdminController {
 		List<Timeslot> times = timeRepo.findAll();
 		List<String> specialTypes = java.util.Arrays.asList("INTERNSHIP", "AUDIT COURSE", "T & P", "LIBRARY",
 				"Virtual Lab/Spoken Tutorial", "SEMINAR", "OTHER");
+		List<Timetable> specialSlots = timetableRepo.findByDeletedFalse().stream()
+				.filter(t -> "Special".equals(t.getLectureType()))
+				.toList();
+		long divisionsCovered = specialSlots.stream().map(Timetable::getDivision)
+				.filter(d -> d != null && !d.isBlank()).distinct().count();
+		long typesCovered = specialSlots.stream().map(Timetable::getSubject)
+				.filter(s -> s != null && !s.isBlank()).distinct().count();
 		model.addAttribute("divisions", divisions);
 		model.addAttribute("times", times);
 		model.addAttribute("specialTypes", specialTypes);
 		model.addAttribute("workingDays", getWorkingDays());
-		List<Timetable> specialSlots = timetableRepo.findByDeletedFalse().stream()
-	            .filter(t -> "Special".equals(t.getLectureType()))
-	            .toList();
-	    model.addAttribute("specialSlots", specialSlots);
-	    return "add-special-slot";
+		model.addAttribute("specialSlots", specialSlots);
+		model.addAttribute("divisionsCovered", divisionsCovered);
+		model.addAttribute("typesCovered", typesCovered);
+		return "add-special-slot";
 	}
 
 	@PostMapping("/save-special-slot")
@@ -181,7 +192,6 @@ public class AdminController {
 
 		model.addAttribute("departments", departments);
 		model.addAttribute("hodList", hodList);
-		model.addAttribute("department", new Department());
 		model.addAttribute("isEdit", false);
 
 		return "add-department";
@@ -220,6 +230,7 @@ public class AdminController {
 		model.addAttribute("rooms", rooms);
 		model.addAttribute("divisions", divisions);
 		model.addAttribute("divisionCount", divisions.size());
+		model.addAttribute("isEdit", false);
 
 		return "add-division";
 	}
@@ -230,13 +241,11 @@ public class AdminController {
 
 	@GetMapping("/add-classroom")
 	public String addClassroom(Model model) {
-
 		List<Classroom> rooms = roomRepo.findAll();
-
 		model.addAttribute("rooms", rooms);
-		model.addAttribute("classroom", new Classroom());
+		model.addAttribute("labCount",       rooms.stream().filter(r -> "Lab".equals(r.getType())).count());
+		model.addAttribute("classroomCount", rooms.stream().filter(r -> !"Lab".equals(r.getType())).count());
 		model.addAttribute("isEdit", false);
-
 		return "add-classroom";
 	}
 
@@ -246,21 +255,22 @@ public class AdminController {
 
 	@GetMapping("/add-timeslot")
 	public String addTimeslot(Model model) {
-
 		List<Timeslot> times = timeRepo.findAll();
-
-		model.addAttribute("times", times);
-		model.addAttribute("timeslot", new Timeslot());
-		model.addAttribute("isEdit", false);
-
 		AcademicSetting setting = academicSettingRepo.findById(1).orElseGet(() -> {
 			AcademicSetting s = new AcademicSetting();
 			s.setId(1);
 			s.setWorkingDays("Monday,Tuesday,Wednesday,Thursday,Friday");
 			return academicSettingRepo.save(s);
 		});
-		model.addAttribute("workingDays", setting.getWorkingDays());
-
+		String workingDays = setting.getWorkingDays();
+		long breakCount = times.stream().filter(Timeslot::isBreak).count();
+		long workingDayCount = (workingDays == null || workingDays.isBlank()) ? 0
+				: workingDays.split(",").length;
+		model.addAttribute("times", times);
+		model.addAttribute("isEdit", false);
+		model.addAttribute("workingDays", workingDays);
+		model.addAttribute("breakCount", breakCount);
+		model.addAttribute("workingDayCount", workingDayCount);
 		return "add-timeslot";
 	}
 
@@ -276,7 +286,6 @@ public class AdminController {
 
 		model.addAttribute("departments", departments);
 		model.addAttribute("hodList", hodList);
-		model.addAttribute("hod", new User());
 		model.addAttribute("isEdit", false);
 
 		return "add-hod";
@@ -294,7 +303,6 @@ public class AdminController {
 
 		model.addAttribute("departments", departments);
 		model.addAttribute("facultyList", facultyList);
-		model.addAttribute("faculty", new User());
 		model.addAttribute("isEdit", false);
 
 		return "add-faculty";
@@ -309,18 +317,168 @@ public class AdminController {
 	public String assignSubjects(Model model) {
 		List<Subject> subjects = subRepo.findByDeletedFalse();
 		List<User> faculty = userRepo.findByRoleAndDeletedFalse("FACULTY");
-		model.addAttribute("subjects", subjects);
+		List<Division> divisions = divRepo.findAll();
+
+		// Separate theory and lab subjects
+		List<Subject> theorySubjects = subjects.stream()
+				.filter(s -> s.getPracticalHoursPerWeek() == null || s.getPracticalHoursPerWeek() == 0)
+				.collect(Collectors.toList());
+		List<Subject> labSubjects = subjects.stream()
+				.filter(s -> s.getPracticalHoursPerWeek() != null && s.getPracticalHoursPerWeek() > 0)
+				.collect(Collectors.toList());
+
+		// For each lab subject, find which divisions it belongs to (by semester match)
+		// String keys avoid Integer autoboxing issues in Thymeleaf SpEL
+		java.util.Map<String, List<Division>> divisionsBySubjectId = new java.util.LinkedHashMap<>();
+		for (Subject s : labSubjects) {
+			List<Division> matching = matchDivisionsForSubject(divisions, s);
+			if (!matching.isEmpty()) divisionsBySubjectId.put(String.valueOf(s.getId()), matching);
+		}
+
+		// For each division, compute its batch names (e.g. S1..S4, T1..T4, B1..B4)
+		// String keys for same reason
+		java.util.Map<String, List<String>> batchNamesByDivId = new java.util.LinkedHashMap<>();
+		for (Division div : divisions) {
+			int bc = div.getBatchCount() != null && div.getBatchCount() > 0 ? div.getBatchCount() : 0;
+			String prefix = div.getBatchPrefix() != null ? div.getBatchPrefix() : "";
+			List<String> batches = new java.util.ArrayList<>();
+			for (int i = 1; i <= bc; i++) batches.add(prefix + i);
+			batchNamesByDivId.put(String.valueOf(div.getId()), batches);
+		}
+
+		// Batch-faculty map for lab subjects (key: "subjectId_divisionName_batchName")
+		java.util.Map<String, String> batchFacultyMap = new java.util.LinkedHashMap<>();
+		List<Integer> labIds = labSubjects.stream().map(Subject::getId).collect(Collectors.toList());
+		if (!labIds.isEmpty()) {
+			for (SubjectFacultyAssignment a : sfaRepo.findBySubjectIdIn(labIds)) {
+				if (a.getDivisionName() != null && a.getBatch() != null) {
+					batchFacultyMap.put(a.getSubjectId() + "_" + a.getDivisionName() + "_" + a.getBatch(),
+							a.getFacultyName());
+				}
+			}
+		}
+
+		// Additional (co-teacher) faculty for theory subjects: divisionName=null, batch=null
+		// Key: subjectId → list of faculty names
+		java.util.Map<Integer, List<String>> theoryExtraFacMap = new java.util.LinkedHashMap<>();
+		List<Integer> theoryIds = theorySubjects.stream().map(Subject::getId).collect(Collectors.toList());
+		if (!theoryIds.isEmpty()) {
+			for (SubjectFacultyAssignment a : sfaRepo.findBySubjectIdIn(theoryIds)) {
+				if (a.getDivisionName() == null && a.getBatch() == null) {
+					theoryExtraFacMap.computeIfAbsent(a.getSubjectId(), k -> new java.util.ArrayList<>())
+							.add(a.getFacultyName());
+				}
+			}
+		}
+
+		model.addAttribute("theorySubjects", theorySubjects);
+		model.addAttribute("labSubjects", labSubjects);
 		model.addAttribute("faculty", faculty);
+		model.addAttribute("allDivisions", divisions);          // used for inline semester filter in template
+		model.addAttribute("divisionsBySubjectId", divisionsBySubjectId);
+		model.addAttribute("batchNamesByDivId", batchNamesByDivId);
+		model.addAttribute("batchFacultyMap", batchFacultyMap);
+		model.addAttribute("theoryExtraFacMap", theoryExtraFacMap);
 		return "assign-subjects";
 	}
 
+	/** Match divisions to a subject by semester number. */
+	private List<Division> matchDivisionsForSubject(List<Division> divisions, Subject subject) {
+		if (subject == null || subject.getSemester() == null) return new java.util.ArrayList<>();
+		return divisions.stream()
+				.filter(d -> subject.getSemester().equals(d.getSemesterNumber()))
+				.collect(Collectors.toList());
+	}
+
+	/** Save primary faculty for a theory subject. */
 	@PostMapping("/assign-subjects/{id}")
-	public String assignSubjectFaculty(@PathVariable int id, @RequestParam(required = false) String facultyName) {
+	public String assignSubjectFaculty(@PathVariable int id, @RequestParam(required = false) String facultyName,
+			RedirectAttributes redirect) {
 		Subject s = subRepo.findById(id).orElse(null);
 		if (s != null) {
-			s.setFaculty(facultyName);
+			String value = (facultyName == null || facultyName.isBlank()) ? null : facultyName.trim();
+			s.setFaculty(value);
 			subRepo.save(s);
+			String msg = (value == null)
+					? "Faculty assignment cleared for " + s.getName() + "."
+					: "Primary faculty set to \"" + value + "\" for " + s.getName() + ".";
+			redirect.addFlashAttribute("message", msg);
+			redirect.addFlashAttribute("messageType", "success");
 		}
+		return "redirect:/assign-subjects";
+	}
+
+	/** Save additional (co-teacher) faculty for a theory subject — supports multiple. */
+	@PostMapping("/assign-theory-faculty/{subjectId}")
+	public String assignTheoryExtraFaculty(@PathVariable int subjectId,
+			@RequestParam(required = false) List<Integer> facultyIds,
+			RedirectAttributes redirect) {
+
+		Subject s = subRepo.findById(subjectId).orElse(null);
+		if (s == null) return "redirect:/assign-subjects";
+
+		sfaRepo.deleteBySubjectIdAndDivisionNameIsNullAndBatchIsNull(subjectId);
+
+		if (facultyIds != null && !facultyIds.isEmpty()) {
+			List<User> allFaculty = userRepo.findByRoleAndDeletedFalse("FACULTY");
+			java.util.Map<Integer, String> facById = allFaculty.stream()
+					.collect(Collectors.toMap(User::getId, User::getName));
+			for (int fId : facultyIds) {
+				String facName = facById.get(fId);
+				if (facName != null) {
+					SubjectFacultyAssignment sfa = new SubjectFacultyAssignment();
+					sfa.setSubjectId(subjectId);
+					sfa.setDivisionName(null);
+					sfa.setBatch(null);
+					sfa.setFacultyName(facName);
+					sfaRepo.save(sfa);
+				}
+			}
+		}
+
+		redirect.addFlashAttribute("message", "Faculty updated for " + s.getName() + ".");
+		redirect.addFlashAttribute("messageType", "success");
+		return "redirect:/assign-subjects";
+	}
+
+	/** Save batch-wise faculty for a lab subject in a specific division. */
+	@PostMapping("/assign-batch-faculty/{sid}")
+	public String assignBatchFaculty(@PathVariable("sid") int subjectId,
+			@RequestParam String divisionName,
+			@RequestParam(required = false) List<String> batch,
+			@RequestParam(required = false) List<String> faculty,
+			RedirectAttributes redirect) {
+
+		Subject s = subRepo.findById(subjectId).orElse(null);
+		if (s == null) return "redirect:/assign-subjects";
+
+		// Remove old assignments for this subject+division, then insert new ones
+		sfaRepo.deleteBySubjectIdAndDivisionName(subjectId, divisionName);
+
+		int timetableUpdated = 0;
+		if (batch != null && faculty != null) {
+			int count = Math.min(batch.size(), faculty.size());
+			for (int i = 0; i < count; i++) {
+				String batchName = batch.get(i);
+				String facName = faculty.get(i);
+				if (facName != null && !facName.isBlank()) {
+					SubjectFacultyAssignment sfa = new SubjectFacultyAssignment();
+					sfa.setSubjectId(subjectId);
+					sfa.setDivisionName(divisionName);
+					sfa.setBatch(batchName);
+					sfa.setFacultyName(facName.trim());
+					sfaRepo.save(sfa);
+					// Also push change into the live timetable table
+					timetableUpdated += timetableRepo.updateFacultyBySubjectDivisionBatch(
+							facName.trim(), s.getName(), divisionName, batchName);
+				}
+			}
+		}
+
+		redirect.addFlashAttribute("message",
+				"Batch faculty saved for " + s.getName() + " — " + divisionName
+				+ ". Updated " + timetableUpdated + " timetable row(s).");
+		redirect.addFlashAttribute("messageType", "success");
 		return "redirect:/assign-subjects";
 	}
 
@@ -378,11 +536,8 @@ public class AdminController {
 
 	@PostMapping("/auto-generate/run")
 	public String runAutoGenerate(Model model) {
-		// Clear existing timetable so regenerated data reflects current entries
-		// soft-delete existing entries instead of hard delete
-		List<Timetable> all = timetableRepo.findAll();
-		all.forEach(t -> t.setDeleted(true));
-		timetableRepo.saveAll(all);
+		// Permanently wipe all timetable entries before regenerating
+		timetableRepo.deleteAllInBatch();
 		TimetableGeneratorService.GenerationResult result = generatorService.generate();
 		model.addAttribute("lastCount", result.getExistingCount());
 		model.addAttribute("errors", result.getAllMessages());
@@ -467,7 +622,9 @@ public class AdminController {
 			@RequestParam String name, @RequestParam String department, @RequestParam String year,
 			@RequestParam(required = false) Integer semesterNumber, @RequestParam(required = false) Integer capacity,
 			@RequestParam(required = false) String classroom,
-			@RequestParam(required = false) String labPreference) {
+			@RequestParam(required = false) String labPreference,
+			@RequestParam(required = false) Integer batchCount,
+			@RequestParam(required = false) String batchPrefix) {
 
 		Division d = new Division();
 		d.setName(name);
@@ -477,7 +634,49 @@ public class AdminController {
 		d.setCapacity(capacity);
 		d.setClassroom(classroom);
 		d.setLabPreference(labPreference != null ? labPreference : "AFTERNOON");
+		d.setBatchCount(batchCount != null ? batchCount : 0);
+		d.setBatchPrefix(batchPrefix != null ? batchPrefix : "");
 		divRepo.save(d);
+		return "redirect:/add-division";
+	}
+
+	@GetMapping("/edit-division/{id}")
+	public String editDivision(@PathVariable int id, Model model) {
+		Division div = divRepo.findById(id).orElse(null);
+		if (div == null) return "redirect:/add-division";
+		model.addAttribute("departments", deptRepo.findAll());
+		model.addAttribute("rooms", roomRepo.findAll());
+		model.addAttribute("divisions", divRepo.findAll());
+		model.addAttribute("divisionCount", divRepo.findAll().size());
+		model.addAttribute("division", div);
+		model.addAttribute("isEdit", true);
+		return "add-division";
+	}
+
+	@PostMapping("/update-division/{id}")
+	public String updateDivision(@PathVariable int id,
+			@RequestParam String name, @RequestParam String department, @RequestParam String year,
+			@RequestParam(required = false) Integer semesterNumber,
+			@RequestParam(required = false) String labPreference,
+			@RequestParam(required = false) Integer batchCount,
+			@RequestParam(required = false) String batchPrefix) {
+		Division d = divRepo.findById(id).orElse(null);
+		if (d != null) {
+			d.setName(name);
+			d.setDepartment(department);
+			d.setYear(year);
+			d.setSemesterNumber(semesterNumber != null ? semesterNumber : parseSemester(year));
+			d.setLabPreference(labPreference != null ? labPreference : "AFTERNOON");
+			d.setBatchCount(batchCount != null ? batchCount : 0);
+			d.setBatchPrefix(batchPrefix != null ? batchPrefix : "");
+			divRepo.save(d);
+		}
+		return "redirect:/add-division";
+	}
+
+	@GetMapping("/delete-division/{id}")
+	public String deleteDivision(@PathVariable int id) {
+		if (divRepo.existsById(id)) divRepo.deleteById(id);
 		return "redirect:/add-division";
 	}
 
@@ -491,7 +690,6 @@ public class AdminController {
 		List<Subject> subjects = subRepo.findByDeletedFalse();
 		model.addAttribute("departments", departments);
 		model.addAttribute("subjects", subjects);
-		model.addAttribute("subject", new Subject());
 		model.addAttribute("isEdit", false);
 		return "add-subject";
 	}
@@ -513,30 +711,22 @@ public class AdminController {
 
 	@PostMapping("/save-subject")
 	public String saveSubject(
-
 			@RequestParam String name, @RequestParam String code, @RequestParam(required = false) String department,
 			@RequestParam(required = false) Integer semester, @RequestParam(required = false) Integer credits,
 			@RequestParam(required = false) Integer hours, @RequestParam(required = false) Integer lectureHoursPerWeek,
 			@RequestParam(required = false) Integer practicalHoursPerWeek,
 			@RequestParam(required = false) Integer practicalSlotDuration, @RequestParam(required = false) String type,
-			@RequestParam(required = false) String description) {
+			@RequestParam(required = false) String description,
+			@RequestParam(required = false) String pinDays, @RequestParam(required = false) String pinSlot) {
 
 		Subject s = new Subject();
-
-		s.setName(name);
-		s.setCode(code);
-		s.setDepartment(department);
-		s.setSemester(semester);
-		s.setCredits(credits);
-		s.setHours(hours);
-		s.setLectureHoursPerWeek(lectureHoursPerWeek);
-		s.setPracticalHoursPerWeek(practicalHoursPerWeek);
-		s.setPracticalSlotDuration(practicalSlotDuration);
-		s.setType(type);
-		s.setDescription(description);
-
+		s.setName(name); s.setCode(code); s.setDepartment(department); s.setSemester(semester);
+		s.setCredits(credits); s.setHours(hours); s.setLectureHoursPerWeek(lectureHoursPerWeek);
+		s.setPracticalHoursPerWeek(practicalHoursPerWeek); s.setPracticalSlotDuration(practicalSlotDuration);
+		s.setType(type); s.setDescription(description);
+		s.setPinDays(pinDays != null && !pinDays.isBlank() ? pinDays.trim() : null);
+		s.setPinSlot(pinSlot != null && !pinSlot.isBlank() ? pinSlot.trim() : null);
 		subRepo.save(s);
-
 		return "redirect:/add-subject";
 	}
 
@@ -547,21 +737,17 @@ public class AdminController {
 			@RequestParam(required = false) Integer lectureHoursPerWeek,
 			@RequestParam(required = false) Integer practicalHoursPerWeek,
 			@RequestParam(required = false) Integer practicalSlotDuration, @RequestParam(required = false) String type,
-			@RequestParam(required = false) String description) {
+			@RequestParam(required = false) String description,
+			@RequestParam(required = false) String pinDays, @RequestParam(required = false) String pinSlot) {
 
 		Subject s = subRepo.findById(id).orElse(null);
 		if (s != null) {
-			s.setName(name);
-			s.setCode(code);
-			s.setDepartment(department);
-			s.setSemester(semester);
-			s.setCredits(credits);
-			s.setHours(hours);
-			s.setLectureHoursPerWeek(lectureHoursPerWeek);
-			s.setPracticalHoursPerWeek(practicalHoursPerWeek);
-			s.setPracticalSlotDuration(practicalSlotDuration);
-			s.setType(type);
-			s.setDescription(description);
+			s.setName(name); s.setCode(code); s.setDepartment(department); s.setSemester(semester);
+			s.setCredits(credits); s.setHours(hours); s.setLectureHoursPerWeek(lectureHoursPerWeek);
+			s.setPracticalHoursPerWeek(practicalHoursPerWeek); s.setPracticalSlotDuration(practicalSlotDuration);
+			s.setType(type); s.setDescription(description);
+			s.setPinDays(pinDays != null && !pinDays.isBlank() ? pinDays.trim() : null);
+			s.setPinSlot(pinSlot != null && !pinSlot.isBlank() ? pinSlot.trim() : null);
 			subRepo.save(s);
 		}
 		return "redirect:/add-subject";
@@ -598,11 +784,11 @@ public class AdminController {
 	@GetMapping("/edit-classroom/{id}")
 	public String editClassroom(@PathVariable int id, Model model) {
 		Classroom c = roomRepo.findById(id).orElse(null);
-		if (c == null) {
-			return "redirect:/add-classroom";
-		}
+		if (c == null) return "redirect:/add-classroom";
 		List<Classroom> rooms = roomRepo.findAll();
 		model.addAttribute("rooms", rooms);
+		model.addAttribute("labCount",       rooms.stream().filter(r -> "Lab".equals(r.getType())).count());
+		model.addAttribute("classroomCount", rooms.stream().filter(r -> !"Lab".equals(r.getType())).count());
 		model.addAttribute("classroom", c);
 		model.addAttribute("isEdit", true);
 		return "add-classroom";
@@ -655,12 +841,8 @@ public class AdminController {
 
 	@GetMapping("/edit-timeslot/{id}")
 	public String editTimeslot(@PathVariable int id, Model model) {
-
 		Timeslot t = timeRepo.findById(id).orElse(null);
-		if (t == null) {
-			return "redirect:/add-timeslot";
-		}
-
+		if (t == null) return "redirect:/add-timeslot";
 		List<Timeslot> times = timeRepo.findAll();
 		AcademicSetting setting = academicSettingRepo.findById(1).orElseGet(() -> {
 			AcademicSetting s = new AcademicSetting();
@@ -668,12 +850,16 @@ public class AdminController {
 			s.setWorkingDays("Monday,Tuesday,Wednesday,Thursday,Friday");
 			return academicSettingRepo.save(s);
 		});
-
+		String workingDays = setting.getWorkingDays();
+		long breakCount = times.stream().filter(Timeslot::isBreak).count();
+		long workingDayCount = (workingDays == null || workingDays.isBlank()) ? 0
+				: workingDays.split(",").length;
 		model.addAttribute("times", times);
 		model.addAttribute("timeslot", t);
 		model.addAttribute("isEdit", true);
-		model.addAttribute("workingDays", setting.getWorkingDays());
-
+		model.addAttribute("workingDays", workingDays);
+		model.addAttribute("breakCount", breakCount);
+		model.addAttribute("workingDayCount", workingDayCount);
 		return "add-timeslot";
 	}
 
@@ -722,12 +908,15 @@ public class AdminController {
 	 */
 
 	@PostMapping("/save-hod")
-	public String saveHod(@RequestParam String name, @RequestParam String department, @RequestParam String email,
+	public String saveHod(@RequestParam String name, @RequestParam String department,
+			@RequestParam(required = false) String email,
+			@RequestParam(required = false) String username,
 			@RequestParam String password, RedirectAttributes redirect) {
 
-		String desiredUsername = email != null ? email.trim() : null;
+		String desiredUsername = (username != null && !username.isBlank()) ? username.trim()
+				: (email != null ? email.trim() : name.trim().toLowerCase().replace(" ", "_"));
 		if (isUsernameTaken(desiredUsername, null)) {
-			redirect.addFlashAttribute("message", "Username already exists. Choose a different username/email.");
+			redirect.addFlashAttribute("message", "Username '" + desiredUsername + "' already exists. Choose a different one.");
 			redirect.addFlashAttribute("messageType", "error");
 			return "redirect:/add-hod";
 		}
@@ -779,14 +968,17 @@ public class AdminController {
 
 	@PostMapping("/update-hod/{id}")
 	public String updateHod(@PathVariable int id, @RequestParam String name, @RequestParam String department,
-			@RequestParam String email, @RequestParam(required = false) String password, RedirectAttributes redirect) {
+			@RequestParam(required = false) String email,
+			@RequestParam(required = false) String username,
+			@RequestParam(required = false) String password, RedirectAttributes redirect) {
 
 		User u = userRepo.findById(id).orElse(null);
 		if (u != null) {
 			u.setName(name);
-			String desiredUsername = email != null ? email.trim() : null;
-			if (isUsernameTaken(desiredUsername, u.getId())) {
-				redirect.addFlashAttribute("message", "Username already exists. Choose a different username/email.");
+			String desiredUsername = (username != null && !username.isBlank()) ? username.trim()
+					: (email != null && !email.isBlank() ? email.trim() : u.getUsername());
+			if (!desiredUsername.equals(u.getUsername()) && isUsernameTaken(desiredUsername, u.getId())) {
+				redirect.addFlashAttribute("message", "Username '" + desiredUsername + "' already exists.");
 				redirect.addFlashAttribute("messageType", "error");
 				return "redirect:/add-hod";
 			}
@@ -1116,6 +1308,15 @@ public class AdminController {
 	}
 
 	/*
+	 * ========================= HOW TO USE =========================
+	 */
+
+	@GetMapping("/how-to-use")
+	public String howToUse() {
+		return "how-to-use";
+	}
+
+	/*
 	 * ========================= RECYCLE BIN =========================
 	 */
 
@@ -1123,7 +1324,6 @@ public class AdminController {
 	public String recycleBin(Model model) {
 		model.addAttribute("deletedUsers", userRepo.findByDeletedTrue());
 		model.addAttribute("deletedSubjects", subRepo.findByDeletedTrue());
-		model.addAttribute("deletedTimetables", timetableRepo.findByDeletedTrue());
 		return "recycle-bin";
 	}
 
@@ -1145,14 +1345,6 @@ public class AdminController {
 		return "redirect:/recycle-bin";
 	}
 
-	@GetMapping("/restore-timetable/{id}")
-	public String restoreTimetable(@PathVariable int id) {
-		timetableRepo.findById(id).ifPresent(t -> {
-			t.setDeleted(false);
-			timetableRepo.save(t);
-		});
-		return "redirect:/recycle-bin";
-	}
 
 	/*
 	 * ========================= EXPORT PDF =========================
@@ -1474,21 +1666,27 @@ public class AdminController {
 							continue;
 						}
 
-						// colspan: merge consecutive slots that carry identical content (2-hr labs)
+						// colspan: merge consecutive slots that carry identical content — PRACTICALS only.
+						// Theory lectures are always 1-hour; never merge them even if the same subject
+						// appears in adjacent slots (e.g., relaxed-placed duplicates on the same day).
 						int colspan = 1;
-						for (int j = i + 1; j < slots.size() && !slots.get(j).isBreak(); j++) {
-							final String nxtLabel  = slotLabels.get(j);
-							final String nxtSlot24 = slots.get(j).start() + " - " + slots.get(j).end();
-							List<Timetable> nxtMatches = list.stream()
-									.filter(t -> normalizeKey(t.getDay()).equals(normalizeKey(day)))
-									.filter(t -> normalizeKey(t.getTimeSlot()).equals(normalizeKey(nxtLabel))
-											|| normalizeKey(t.getTimeSlot()).equals(normalizeKey(nxtSlot24)))
-									.toList();
-							if (isSameContent(matches, nxtMatches)) {
-								colspan++;
-								skipIndices.add(j);
-							} else {
-								break;
+						boolean slotHasPractical = matches.stream()
+								.anyMatch(t -> isPracticalSlot(t.getLectureType(), t.getSubject()));
+						if (slotHasPractical) {
+							for (int j = i + 1; j < slots.size() && !slots.get(j).isBreak(); j++) {
+								final String nxtLabel  = slotLabels.get(j);
+								final String nxtSlot24 = slots.get(j).start() + " - " + slots.get(j).end();
+								List<Timetable> nxtMatches = list.stream()
+										.filter(t -> normalizeKey(t.getDay()).equals(normalizeKey(day)))
+										.filter(t -> normalizeKey(t.getTimeSlot()).equals(normalizeKey(nxtLabel))
+												|| normalizeKey(t.getTimeSlot()).equals(normalizeKey(nxtSlot24)))
+										.toList();
+								if (isSameContent(matches, nxtMatches)) {
+									colspan++;
+									skipIndices.add(j);
+								} else {
+									break;
+								}
 							}
 						}
 

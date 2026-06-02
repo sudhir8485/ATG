@@ -24,6 +24,13 @@ private String description;
 private String faculty; // assigned faculty name
 private boolean deleted = false;
 
+/** Comma-separated days this subject must be pinned to (e.g. "Friday" or "Monday,Thursday").
+ *  Blank = no pin, generator places freely. Admin sets this per-semester via UI. */
+private String pinDays;
+
+/** Slot start time for the pin (HH:MM, 24-h). Must be set together with pinDays. */
+private String pinSlot;
+
 public int getId() {
 return id;
 }
@@ -134,6 +141,22 @@ return deleted;
 
 public void setDeleted(boolean deleted) {
 this.deleted = deleted;
+}
+
+public String getPinDays() {
+return pinDays;
+}
+
+public void setPinDays(String pinDays) {
+this.pinDays = pinDays;
+}
+
+public String getPinSlot() {
+return pinSlot;
+}
+
+public void setPinSlot(String pinSlot) {
+this.pinSlot = pinSlot;
 }
 
 }

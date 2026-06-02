@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin-layout :: head('How to Use · Admin', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell { display:flex; flex-direction:column; gap:20px; max-width:860px; }
+            .card { background:white; padding:28px; border-radius:14px; box-shadow:0 6px 20px rgba(0,0,0,0.08); border:1px solid #e2e8f0; }
+            .step { display:flex; gap:16px; margin-bottom:20px; align-items:flex-start; }
+            .step-num { min-width:36px; height:36px; background:#4f46e5; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; }
+            .step-body h4 { margin:0 0 4px; color:#0f172a; font-size:16px; }
+            .step-body p  { margin:0; color:#475569; font-size:14px; line-height:1.7; }
+            .step-body a  { color:#4f46e5; font-weight:600; }
+            .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+            .badge-coming { background:#fef3c7; color:#92400e; }
+            .divider { border:none; border-top:1px solid #e2e8f0; margin:8px 0 20px; }
+        </style>
+    </th:block>
+</head>
+<body th:replace="admin-layout :: shell('howto', 'How to Use', ~{::content})">
+<section th:fragment="content" class="page-shell">
+
+    <div>
+        <h2 style="margin:0;font-size:26px;color:#0f172a;"><i class="fas fa-book-open" style="color:#4f46e5;"></i> How to Use — Timetable Generator</h2>
+        <p style="color:#64748b;margin-top:6px;">A quick guide to get from empty setup to a generated timetable.</p>
+    </div>
+
+    <div class="card">
+        <h3 style="margin:0 0 18px;"><i class="fas fa-list-ol" style="color:#4f46e5;"></i> Setup Steps (do once per semester)</h3>
+        <hr class="divider">
+
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+                <h4>Add Department</h4>
+                <p>Go to <a href="/add-department">Departments</a> → fill name (e.g., <em>Information Technology</em>), code (e.g., <em>IT</em>), and HOD. Click Create Department.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+                <h4>Add Divisions (Classes)</h4>
+                <p>Go to <a href="/add-division">Divisions</a> → add each class: SE-IT (Sem 4, 4 batches, prefix S), TE-IT (Sem 6, prefix T), BE-IT (Sem 8, prefix B). Also set Lab Time Preference per division.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+                <h4>Add Classrooms &amp; Labs</h4>
+                <p>Go to <a href="/add-classroom">Classrooms</a> → add all lecture rooms (Type: Classroom) and lab rooms (Type: Lab). The generator assigns rooms automatically based on type.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+                <h4>Configure Time Slots</h4>
+                <p>Go to <a href="/add-timeslot">Time Slots</a> → add slots for the day: 09:00–10:00, 10:00–11:00, then add 11:00–11:15 as a <strong>Break</strong>, then 11:15–12:15, 12:15–13:15, add 13:15–14:00 as <strong>Break (Lunch)</strong>, then afternoon slots. Also tick working days (Mon–Fri).</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-body">
+                <h4>Add Subjects</h4>
+                <p>Go to <a href="/add-subject">Subjects</a> → for each subject set: Name, Code, Department, Semester, Type (Theory/Lab/Audit), Lecture hours/week, Practical hours/week, Practical slot duration (usually 2 for 2-hour labs).</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">6</div>
+            <div class="step-body">
+                <h4>Add Faculty &amp; Assign Subjects</h4>
+                <p>Go to <a href="/add-faculty">Add Faculty</a> → create each teacher's login. In <em>Subjects Handled</em> field, enter a comma-separated list of subject names they teach (used by the generator to assign faculty to slots).<br>
+                Then go to <a href="/assign-subjects">Assign Subjects</a> to set primary faculty per subject.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">7</div>
+            <div class="step-body">
+                <h4>Generate Timetable</h4>
+                <p>Go to <a href="/auto-generate">Generate Timetable</a> → click <strong>Generate</strong>. The system places all subjects, labs (with batch rotation), and audits automatically. Check the placement count — ideally 100%.</p>
+            </div>
+        </div>
+
+        <div class="step">
+            <div class="step-num">8</div>
+            <div class="step-body">
+                <h4>View &amp; Export</h4>
+                <p>View the result on <a href="/timetable-grid">Weekly Grid</a> or <a href="/view-timetable">Table View</a>. Use <strong>Export PDF</strong> to download the master timetable. Add any fixed slots (INTERNSHIP, AUDIT COURSE etc.) via <a href="/add-special-slot">Special Slots</a> before exporting.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin:0 0 10px;"><i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> Important Notes</h3>
+        <hr class="divider">
+        <ul style="color:#475569;font-size:14px;line-height:2;padding-left:20px;">
+            <li>Generating again clears the old timetable — do this only when needed.</li>
+            <li>Faculty are matched by <em>Subjects Handled</em> — keep those up to date.</li>
+            <li>For lab subjects with different teachers per batch, make sure each teacher has the lab name in their <em>Subjects Handled</em>.</li>
+            <li>Break/Lunch slots marked in Time Slots are never scheduled.</li>
+            <li>The generator respects faculty conflicts — no teacher is double-booked in the same time slot.</li>
+        </ul>
+    </div>
+
+    <div class="card" style="background:#f8fafc;">
+        <p style="margin:0;color:#64748b;font-size:14px;">
+            <i class="fas fa-info-circle" style="color:#4f46e5;"></i>
+            <strong>More content coming soon.</strong> This page will be expanded with screenshots, FAQs, and troubleshooting tips.
+            <span class="badge badge-coming">Work in Progress</span>
+        </p>
+    </div>
+</section>
+</body>
+</html>

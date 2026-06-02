@@ -3,172 +3,199 @@
 <head th:replace="admin-layout :: head('Time Slots · Admin', ~{::extraHead})">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell {
-                display: flex;
-                flex-direction: column;
-                gap: 18px;
-            }
+            .page-shell { display:flex; flex-direction:column; gap:20px; }
+            .two-col    { display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+            @media(max-width:800px){ .two-col { grid-template-columns:1fr; } }
 
-            .page-shell h2 {
-                margin-bottom: 6px;
-            }
+            /* Working days checkboxes */
+            .days-wrap  { display:flex; flex-wrap:wrap; gap:8px; }
+            .day-chk    { display:flex; align-items:center; gap:5px; padding:6px 12px;
+                         background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;
+                         cursor:pointer; font-size:13px; font-weight:600; color:#475569;
+                         transition:all .15s; }
+            .day-chk:has(input:checked) { background:#eef2ff; border-color:#c7d2fe; color:#4f46e5; }
+            .day-chk input { accent-color:#4f46e5; }
 
-            .grid {
-                display: grid;
-                grid-template-columns: 420px 1fr;
-                gap: 20px;
-                align-items: start;
-            }
+            /* Break badge */
+            .break-yes  { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px;
+                         font-size:11px; font-weight:700; background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+            .break-no   { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px;
+                         font-size:11px; font-weight:700; background:#f8fafc; color:#94a3b8; border:1px solid #e2e8f0; }
 
-            .card {
-                background: white;
-                padding: 20px;
-                border-radius: 14px;
-                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e2e8f0;
-            }
+            .break-chk-row { display:flex; align-items:center; gap:8px; padding:10px 12px;
+                            background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; }
+            .break-chk-row input { width:auto; }
+            .break-chk-row label { margin:0; font-size:13px; font-weight:600; color:#475569; text-transform:none; letter-spacing:0; }
 
-            .form-group {
-                margin-bottom: 14px;
-            }
-
-            .form-group label {
-                font-weight: 600;
-                display: block;
-                margin-bottom: 6px;
-            }
-
-            .btn-row {
-                display: flex;
-                gap: 10px;
-                margin-top: 12px;
-                flex-wrap: wrap;
-            }
-
-            .btn-primary {
-                background: #667eea;
-                color: white;
-            }
-
-            .btn-secondary {
-                background: #cbd5e1;
-                color: #1f2937;
-            }
-
-            .days-group {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-            }
-
-            .days-group label {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 6px 10px;
-                cursor: pointer;
-                font-weight: 600;
-            }
-
-            .tag {
-                display: inline-block;
-                padding: 6px 10px;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                background: #f8fafc;
-                margin: 3px;
-            }
+            .slot-time  { font-family:monospace; font-size:12px; background:#f8fafc;
+                         border:1px solid #e2e8f0; border-radius:5px; padding:2px 7px; white-space:nowrap; }
         </style>
     </th:block>
 </head>
 <body th:replace="admin-layout :: shell('timeslots', 'Time Slot Management', ~{::content})">
 <section th:fragment="content" class="page-shell">
-    <h2>Time Slot Management</h2>
-    <p style="color:#475569;margin-bottom:6px;">Define the lecture slots used across all departments.</p>
 
-    <div class="grid">
-        <div class="card">
-            <h3>Working Days</h3>
-            <form action="/save-working-days" method="post">
-                <div class="days-group">
-                    <label><input type="checkbox" name="days" value="Monday"
-                                  th:checked="${workingDays != null ? #strings.contains(workingDays,'Monday') : false}"> Mon</label>
-                    <label><input type="checkbox" name="days" value="Tuesday"
-                                  th:checked="${workingDays != null ? #strings.contains(workingDays,'Tuesday') : false}"> Tue</label>
-                    <label><input type="checkbox" name="days" value="Wednesday"
-                                  th:checked="${workingDays != null ? #strings.contains(workingDays,'Wednesday') : false}"> Wed</label>
-                    <label><input type="checkbox" name="days" value="Thursday"
-                                  th:checked="${workingDays != null ? #strings.contains(workingDays,'Thursday') : false}"> Thu</label>
-                    <label><input type="checkbox" name="days" value="Friday"
-                                  th:checked="${workingDays != null ? #strings.contains(workingDays,'Friday') : false}"> Fri</label>
-                    <label><input type="checkbox" name="days" value="Saturday"
-                                  th:checked="${workingDays != null ? #strings.contains(workingDays,'Saturday') : false}"> Sat</label>
+    <!-- Header -->
+    <div class="pg-head">
+        <h2><i class="fas fa-clock" style="color:#4f46e5;"></i> Time Slot Management</h2>
+        <p>Define working days and lecture slots used across all departments.</p>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${#lists.size(times)}">0</div>
+                <div class="sl">Time Slots</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-calendar-check"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${workingDayCount}">0</div>
+                <div class="sl">Working Days</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="fas fa-coffee"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${breakCount}">0</div>
+                <div class="sl">Break Slots</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="two-col">
+
+        <!-- Left: Working days + Add slot form -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            <!-- Working Days card -->
+            <div class="ds-card">
+                <div class="ds-card-head">
+                    <i class="fas fa-calendar-week" style="color:#4f46e5;"></i> Working Days
                 </div>
-                <div class="btn-row" style="margin-top:14px;">
-                    <button type="submit" class="btn btn-primary">Save Working Days</button>
+                <form action="/save-working-days" method="post">
+                    <div class="days-wrap">
+                        <label class="day-chk">
+                            <input type="checkbox" name="days" value="Monday"
+                                   th:checked="${workingDays != null ? #strings.contains(workingDays,'Monday') : false}"> Mon
+                        </label>
+                        <label class="day-chk">
+                            <input type="checkbox" name="days" value="Tuesday"
+                                   th:checked="${workingDays != null ? #strings.contains(workingDays,'Tuesday') : false}"> Tue
+                        </label>
+                        <label class="day-chk">
+                            <input type="checkbox" name="days" value="Wednesday"
+                                   th:checked="${workingDays != null ? #strings.contains(workingDays,'Wednesday') : false}"> Wed
+                        </label>
+                        <label class="day-chk">
+                            <input type="checkbox" name="days" value="Thursday"
+                                   th:checked="${workingDays != null ? #strings.contains(workingDays,'Thursday') : false}"> Thu
+                        </label>
+                        <label class="day-chk">
+                            <input type="checkbox" name="days" value="Friday"
+                                   th:checked="${workingDays != null ? #strings.contains(workingDays,'Friday') : false}"> Fri
+                        </label>
+                        <label class="day-chk">
+                            <input type="checkbox" name="days" value="Saturday"
+                                   th:checked="${workingDays != null ? #strings.contains(workingDays,'Saturday') : false}"> Sat
+                        </label>
+                    </div>
+                    <div style="margin-top:14px;display:flex;gap:8px;">
+                        <button type="submit" class="btn-pri">
+                            <i class="fas fa-save"></i> Save Working Days
+                        </button>
+                    </div>
+                    <div style="margin-top:10px;font-size:12px;color:#94a3b8;" th:if="${workingDays != null and !#strings.isEmpty(workingDays)}">
+                        Current: <strong style="color:#475569;" th:text="${workingDays}"></strong>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Add / Edit Time Slot card -->
+            <div class="ds-card">
+                <div class="ds-card-head">
+                    <i th:class="${isEdit} ? 'fas fa-edit' : 'fas fa-plus-circle'" style="color:#4f46e5;"></i>
+                    <span th:text="${isEdit} ? 'Edit Time Slot' : 'Add Time Slot'"></span>
                 </div>
-                <div style="margin-top:10px;color:#475569;font-size:14px;">
-                    Current:
-                    <span class="tag"
-                          th:each="d : ${#strings.arraySplit(workingDays != null ? workingDays : '', ',')}"
-                          th:text="${d}"></span>
+
+                <div th:if="${isEdit}" class="edit-banner">
+                    <i class="fas fa-edit"></i> Editing slot — fields pre-filled.
                 </div>
-            </form>
+
+                <form th:attr="action=${isEdit} ? '/update-timeslot/' + timeslot.id : '/save-timeslot'" method="post">
+                    <div class="fg">
+                        <label>Start Time *</label>
+                        <input type="time" name="start" required
+                               th:value="${timeslot != null ? timeslot.startTime : ''}">
+                    </div>
+                    <div class="fg">
+                        <label>End Time *</label>
+                        <input type="time" name="end" required
+                               th:value="${timeslot != null ? timeslot.endTime : ''}">
+                    </div>
+                    <div class="break-chk-row">
+                        <input type="checkbox" id="isBreak" name="isBreak" value="true"
+                               th:checked="${isEdit and timeslot != null ? timeslot.break : false}">
+                        <label for="isBreak">Mark as Break / Lunch slot</label>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+                        <button type="submit" class="btn-pri">
+                            <i class="fas fa-save"></i>
+                            <span th:text="${isEdit} ? 'Save Changes' : 'Add Slot'"></span>
+                        </button>
+                        <button type="reset" class="btn-sec" th:if="${!isEdit}">Reset</button>
+                        <a href="/add-timeslot" class="btn-sec" th:if="${isEdit}">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
 
-        <div class="card">
-            <h3 th:text="${isEdit} ? 'Edit Time Slot' : 'Add Time Slot'"></h3>
-            <form th:attr="action=${isEdit} ? '/update-timeslot/' + timeslot.id : '/save-timeslot'" method="post">
-                <div class="form-group">
-                    <label>Start Time</label>
-                    <div class="input-wrapper">
-                        <input type="time" name="start" placeholder="09:00" required
-                               th:value="${timeslot != null} ? timeslot.startTime : ''">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>End Time</label>
-                    <div class="input-wrapper">
-                        <input type="time" name="end" placeholder="10:00" required
-                               th:value="${timeslot != null} ? timeslot.endTime : ''">
-                    </div>
-                </div>
-                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-                    <input type="checkbox" id="isBreak" name="isBreak" value="true"
-                           th:checked="${timeslot != null} ? timeslot.break : false">
-                    <label for="isBreak" style="margin:0;">Mark as Break/Lunch slot</label>
-                </div>
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-primary">
-                        <span th:text="${isEdit} ? 'Save Changes' : 'Add Slot'"></span>
-                    </button>
-                    <button type="reset" class="btn btn-secondary">Reset</button>
-                </div>
-            </form>
-
-            <h4 style="margin-top:18px;">Existing Time Slots</h4>
+        <!-- Right: Slots list -->
+        <div class="ds-list">
+            <div class="ds-list-head">
+                <h4><i class="fas fa-list-ol" style="color:#4f46e5;"></i> Existing Time Slots</h4>
+                <span class="count-tag" th:text="${#lists.size(times)} + ' slots'">0</span>
+            </div>
             <table>
                 <thead>
-                <tr><th>Slot</th><th>Time</th><th>Break</th><th>Actions</th></tr>
+                <tr>
+                    <th>#</th>
+                    <th>Time Range</th>
+                    <th>Break?</th>
+                    <th>Actions</th>
+                </tr>
                 </thead>
                 <tbody>
                 <tr th:each="t, iter : ${times}">
-                    <td th:text="${iter.index + 1}"></td>
-                    <td th:text="${t.startTime + ' \u2013 ' + t.endTime}"></td>
-                    <td th:text="${t.break} ? 'Yes' : 'No'"></td>
+                    <td style="color:#94a3b8;font-size:12px;" th:text="${iter.index + 1}"></td>
                     <td>
-                        <a th:href="@{/edit-timeslot/{id}(id=${t.id})}"
-                           style="margin-right:10px;color:#3498db;text-decoration:none;">Edit</a>
-                        <a th:href="@{/delete-timeslot/{id}(id=${t.id})}"
-                           onclick="return confirm('Delete this time slot?')"
-                           style="color:#e74c3c;text-decoration:none;">Delete</a>
+                        <span class="slot-time" th:text="${t.startTime + ' – ' + t.endTime}"></span>
+                    </td>
+                    <td>
+                        <span th:if="${t.break}" class="break-yes"><i class="fas fa-coffee"></i> Break</span>
+                        <span th:if="${!t.break}" class="break-no">No</span>
+                    </td>
+                    <td>
+                        <div class="tbl-actions">
+                            <a class="tbl-edit" th:href="@{/edit-timeslot/{id}(id=${t.id})}">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a class="tbl-del" th:href="@{/delete-timeslot/{id}(id=${t.id})}"
+                               onclick="return confirm('Delete this time slot?')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(times)}">
-                    <td colspan="3" style="text-align:center;color:#6b7280;padding:12px;">No time slots yet.</td>
+                    <td colspan="4" style="text-align:center;padding:24px;color:#94a3b8;">
+                        No time slots yet. Add one using the form.
+                    </td>
                 </tr>
                 </tbody>
             </table>

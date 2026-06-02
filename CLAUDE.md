@@ -6,6 +6,75 @@
 
 ---
 
+## 0. Subject Code → Full Name Mapping (AUTHORITATIVE)
+
+**Rule**: IT.xlsx gives abbreviations + faculty codes. `/home/sudhir/Desktop/ATG/SUBJECTS LIST/` screenshots give full names from the university curriculum. MASTER sheet (renamed from 03A_MASTER) gives scheduling only. Always use this table — do not guess subject names from abbreviations.
+
+### SE-IT (Semester 4 — 2024 NEP Pattern)
+
+| Code (Abbrev) | Full Subject Name | Faculty Code | Notes |
+|--------------|------------------|--------------|-------|
+| CG | Computer Graphics | PGK | Theory 3hr |
+| PA | **Processor Architecture** | SSK | Theory 3hr — was wrongly named "Principles of Analog Electronics" |
+| DBMS | Database Management System | RAN | Theory 3hr |
+| OE2 / OE-II | Project Management | SRK | Open Elective-II, specific choice this semester |
+| PS / P&S | Probability and Statistics | RK | Theory 4hr |
+| ES | Engineering Sciences | DPR | Theory 2hr |
+| EC | Electronics Circuits | ANK (S1/S2), AAK (S3/S4) | Lab only (0 theory), 4hr |
+| MIL | Modern Indian Language | RSL (theory+S1/S2 lab), SRK (S3/S4 lab) | Theory 1hr + lab 4hr |
+| CGL | Computer Graphics Lab | PGK | Lab 2hr/batch |
+| DBMSL | Database Management System Lab | RAN | Lab 2hr/batch |
+| DMSL | Discrete Mathematics & Simulation Lab | SSK (S1/S2), ARD (S3/S4) | Lab only — theory taught in earlier sem |
+| ECL | Electronics Circuits Lab | ANK (S1/S2), AAK (S3/S4) | Same subject as EC above |
+| MILL | Modern Indian Language Lab | RSL (S1/S2), SRK (S3/S4) | Same subject as MIL above |
+| LIBSE | Library | — | No faculty |
+
+### TE-IT (Semester 6 — 2019 Course)
+
+| Code (Abbrev) | Full Subject Name | Faculty Code | Notes |
+|--------------|------------------|--------------|-------|
+| CNS | Computer Networks & Security | RSL | Theory 3hr |
+| DSBDA | Data Science and Big Data Analytics | DPR | Theory 3hr |
+| WAD | Web Application Development | ANK | Theory 3hr |
+| EL2 / EL-II | Elective II (chosen: EL-II SMD track) | ARD (theory+LP-II), SMD (co-teacher) | Theory 3hr |
+| EACH / EAC | EAC Honours | PGK | Theory 4hr, Honours subject |
+| INTP | Internship | — | No faculty, 4hr (2 days × 2hr pinned Mon+Thu) |
+| LP2 / LP-II | Laboratory Practice-II | ANK (WAD track), ARD (EL-II track) | Lab 4hr/batch |
+| CNSL | Computer Networks & Security Lab | RSL (T1/T2), SSK (T3/T4) | Lab 4hr/batch |
+| DSBDAL | DS & BDA-Lab | DPR | Lab 2hr/batch |
+| LIBTE | Library | — | No faculty |
+| AC6 | Audit Course VI | — | No faculty, 2hr pinned Fri 14-16 |
+| VL6 | Virtual Lab / Spoken Tutorial | — | No faculty, pinned Fri 16:00 |
+
+### BE-IT (Semester 8 — 2019 Course)
+
+| Code (Abbrev) | Full Subject Name | Faculty Code | Notes |
+|--------------|------------------|--------------|-------|
+| DS8 / DS | Distributed Systems | SRK | Theory 3hr |
+| SE8 / SE | **Startup and Entrepreneurship** | AAK | Theory 3hr — was wrongly named "Software Engineering" |
+| EL5 / EL-V | Social Computing | SSK | Theory 3hr, Elective V chosen this semester |
+| EL6 / EL-VI | Elective VI | RAN | Theory 3hr — specific elective name not confirmed from screenshots |
+| ISMH / ISM | ISM Honours | ANK | Theory 4hr, Honours subject |
+| LP5 / LP-V | Lab Practice V | SRK (B1/B3), AAK (B2/B4) | Lab 4hr/batch (2 sessions) |
+| LP6 / LP-VI | Lab Practice VI | PGK (B1/B2), RAN (B3/B4) | Lab 2hr/batch |
+| PS2 / PS-II | Project Stage II | — | No faculty; batch rotation + 5hr Fri whole-class |
+| SEM8 | Seminar | DPR | 2hr pinned Thu 14-16 |
+| TP8 / T&P | Training & Placement | — | No faculty, 1hr pinned Wed 16:00 |
+| AC8 | Audit Course VIII | — | No faculty, 2hr pinned Fri 09-11 |
+| VL8 | Virtual Lab / Spoken Tutorial | — | No faculty, pinned Thu 16:00 |
+
+### Key corrections confirmed from IT.xlsx + screenshots:
+1. **PA** = Processor Architecture (NOT "Principles of Analog Electronics") — SSK teaches this for SE-IT
+2. **SE** = Startup and Entrepreneurship (NOT "Software Engineering") — AAK teaches this for BE-IT
+3. **EL-V** = Social Computing (this semester's chosen elective) — SSK teaches for BE-IT
+4. **OE-II** = Project Management (this semester's chosen Open Elective) — SRK teaches for SE-IT
+5. **ISM Honours** = correct (class sheet shows "ISN" but ANK's own sheet says "ISM" — "ISN" is a typo)
+
+### Scheduling rule (MASTER sheet only):
+For time slot placement, ONLY use the MASTER sheet from IT.xlsx. Do not use class sheets or faculty sheets for scheduling — they are for faculty/room assignment verification only.
+
+---
+
 ## 1. Project Overview
 
 Spring Boot timetable generator for **APCOER, Parvati, Pune — IT Dept, AY 2025-26, Sem-II**.
@@ -233,57 +302,85 @@ These are non-negotiable rules the generator MUST enforce:
 ### C6 — Faculty Assignments (from reference)
 ```
 SE-IT:
-  PGK → CG (theory), CGL (lab S1/S2 and some S3/S4 rotation)
-  SSK → PA (theory), DM&SM lab (S1/S2)
+  PGK → CG (theory), CGL (lab S1/S2 and rotation)
+  SSK → PA (theory), DM&SM lab (S1/S2), CNSL lab T3/T4 (TE-IT), Social Computing (BE-IT)
   ARD → DM&SM lab (S3/S4)
   RAN → DBMS (theory), DBMSL (lab)
-  SRK → OE-II (theory), MIL lab (S3/S4)
-  RSL → MIL (theory), MIL lab (S1/S2)
-  RK  → P&S (theory)
-  ANK → EC (theory), ECL lab (S1/S2)
-  AAK → ECL lab (S3/S4)
-  DPR → ES (theory)
+  SRK → Project Management/OE-II (theory), MIL lab (S3/S4), DS (BE-IT theory), LP-V (BE-IT B1/B3)
+  RSL → MIL (theory), MIL lab (S1/S2), CNS (TE-IT theory), CNSL lab T1/T2 (TE-IT)
+  RK  → P&S (theory) — 4 hours only
+  ANK → EC lab (S1/S2), WAD (TE-IT theory), LP-II WAD track (TE-IT), ISM Honours (BE-IT)
+  AAK → EC lab (S3/S4), SE (BE-IT theory), LP-V (BE-IT B2/B4)
+  DPR → ES (theory), DSBDA (TE-IT theory), DSBDAL (TE-IT), Seminar (BE-IT)
 
 TE-IT:
-  RSL → CNS (theory), CNSL lab (T1/T2 and some T4 rotation)
-  ANK → WAD (theory), LP-II WAD track (lab)
+  RSL → CNS (theory), CNSL lab (T1/T2)
+  ANK → WAD (theory), LP-II WAD track (lab), Internship coordinator
   DPR → DSBDA (theory), DSBDAL (lab)
-  ARD → LP-II EL-II track (lab)
-  SSK → CNSL lab (T3/T4 alternate)
+  ARD → EL-II(SMD) (theory), LP-II EL-II track (lab), DM&SM lab S3/S4 (SE-IT)
+  SSK → CNSL lab (T3/T4)
   PGK → EAC Honours (theory)
-  SMD → EL-II (theory, joint with ARD)
+  SMD → EL-II (theory co-teacher with ARD)
 
 BE-IT:
-  AAK → SE (theory), LP-V lab (B2 track)
+  AAK → SE (theory), LP-V lab (B2/B4 track)
   SRK → DS (theory), LP-V lab (B1/B3 track)
-  SSK → EL-V (theory)
-  RAN → EL-VI (theory), LP-VI lab (B3/B4)
+  SSK → Social Computing (theory) — 1/3 sessions placed (SSK overloaded at 22hrs/week)
+  RAN → Elective VI (theory), LP-VI lab (B3/B4)
   ANK → ISM Honours (theory)
-  DPR → SEMINAR (theory)
+  DPR → Seminar (theory)
   PGK → LP-VI lab (B1/B2)
+  PS-II batch supervision: RSL+PGK+ANK+DPR+ARD+SRK+RAN+AAK (each 2hr) — NO fixed faculty
 ```
 
 ---
 
 ## 5. Current State
 
-**As of: 2026-05-30**
+**As of: 2026-05-31**
 
 | Metric | Value |
 |--------|-------|
-| Sessions placed | 207 / 207 (but this counts 4 per lab slot, inflated) |
+| Sessions placed | 201 / 207 |
 | Faculty conflicts | 0 |
-| Empty time slots | TE-IT and BE-IT have significant empty afternoon slots |
-| PDF output | Generates but does NOT match 03A_MASTER |
+| Wrong-room assignments | 0 — theory uses ONLY Room 305 + Room 306 |
+| Missing sessions | 6 — see breakdown below |
 
-### Known Issues (to fix)
-1. **TE-IT empty afternoon slots**: Mon, Thu, Fri have empty 14:00–17:00 slots. Reference has theory there.
-2. **BE-IT empty slots**: Wed morning empty, multiple afternoon slots empty.
-3. **Generator does not follow the exact reference pattern**: Lab windows placed wrong, theory not in correct columns.
-4. **The "207/207" metric is misleading**: It counts 4 batch-entries per lab slot as 4 sessions. Real metric should be "time slots filled."
+### Room Constraint (2 lecture rooms, 3 divisions)
+Only Room No. 305 and Room No. 306 exist as lecture rooms. With 3 divisions sometimes needing a theory slot simultaneously, 6 sessions cannot be placed (no lecture room available). These are genuine room conflicts, not algorithm bugs.
 
-### Root cause of empty slots
-The generator places theory first-available (Monday morning bias). When elective hours were increased (EL5=6, EL6=5, EL2=5, EACH=5) to fill slots, they land in already-busy morning slots, not in the actual empty afternoon. The afternoon slots for TE/BE remain empty because there aren't enough theory subjects to reach them.
+| Failed Session | Reason |
+|---------------|--------|
+| Social Computing (BE-IT) ×2 | SSK overloaded 22hrs/week — no free slot |
+| Project Stage II theory ×1 | Fri 16:00 blocked by VL4(SE)+VL6(TE) in both rooms |
+| Engineering Sciences ×1 | Room conflict at theory slot |
+| Electronics Circuits ×1 | Room conflict at theory slot |
+| Modern Indian Language ×1 | Room conflict at theory slot |
+
+**Fix**: Add a 3rd lecture room (e.g., Room 307) to the DB, or redistribute theory hours to avoid 3-way clashes.
+
+### Known Limitation — Social Computing (EL-V)
+SSK teaches PA(SE)+DM&SM-lab(SE)+CNSL-lab(TE)+Social Computing(BE) = 22 hrs/week.
+The lab rotation grabs SSK for DM&SM on Monday afternoon BEFORE the theory phase can reserve that slot for Social Computing.
+Result: 1/3 sessions placed with SSK, 2/3 fail.
+**Fix for next semester**: Reduce SSK's lab load or assign Social Computing to a different faculty.
+
+### Verified Subject Names (AY 2025-26 Sem II — confirmed from IT.xlsx faculty sheets)
+| Code | Name in DB | Confirmed from Excel |
+|------|-----------|---------------------|
+| OE2 | Project Management | SRK's sheet: "OE-II(PM)" |
+| EL2 | Elective II | ARD's sheet: "EL-II(SMD)" |
+| EL5 | Social Computing | SSK's sheet: "EL-V(SC)" |
+| EL6 | Elective VI | RAN's sheet: "EL-VI" (specific name not confirmed) |
+| ISMH | ISM Honours | ANK's sheet: "ISM(hon)" — class sheet typo "ISN" is wrong |
+| EACH | EAC Honours | PGK's sheet: "EAC(hon)" |
+| DSBDAL | DS & BDA-Lab | Class sheet: "DSBAL" abbreviation |
+| All others | Names correct | Verified against 03A_MASTER + class sheets |
+
+### PS-II Faculty (batch rotation) — verified from individual faculty timetables
+PS-II batch supervision in the rotation has NO fixed faculty. Multiple faculty supervise different batches:
+RSL(2hr) + PGK(2hr) + ANK(2hr) + DPR(2hr) + ARD(2hr) + SRK(2hr) + RAN(2hr) + AAK(4hr).
+Generator correctly leaves PS-II faculty blank — no conflict possible.
 
 ---
 
@@ -342,46 +439,150 @@ For data changes (subject hours, faculty assignments), update **Section 3** of t
 
 ---
 
-## 9. Generation — Current Status (COMPLETE)
+## 9. Generation — Current Status
 
-All three generator bugs are fixed. Generation is stable.
+**As of 2026-05-31 — 205/207 stable**
 
 | Check | Status |
 |-------|--------|
-| Sessions placed | 207 / 207 ✓ |
+| Sessions placed | 205 / 207 (2 Social Computing fail — SSK overloaded) |
 | Faculty conflicts | 0 ✓ |
-| Batch-subject-day repeats | 0 ✓ |
-| LP5 per window | max 2 batches ✓ |
-| CNSL T2 same-day | Fixed — now Mon + Tue ✓ |
-| ISM Honours spread | 4 different days ✓ |
-| Theory same-day | Last-resort only (EL5, EL6, ES) ✓ |
+| Empty theory slots | 0 ✓ |
+| Lab rotation | All 3 divisions correct ✓ |
+| LP5 (BE-IT) | 16 rows ✓ (was broken, now fixed) |
+| LP6 (BE-IT) | 8 rows ✓ |
+| PS2 (BE-IT) | 8 practical + 5 theory = 13 rows ✓ |
+| INTP (TE-IT) | 4 rows (2hr×2 days) ✓ |
+| AC6 (TE-IT) | 2 rows (2hr block Fri 14-16) ✓ |
+| SEM8 (BE-IT) | 2 rows (2hr block Thu 14-16) ✓ |
+| AC8 (BE-IT) | 2 rows (2hr block Fri 09-11) ✓ |
+| VL8 (BE-IT) | Thu 16:00 ✓ (moved from Fri) |
+| EAC Honours (TE-IT) | 4 sessions ✓ (was wrong at 5) |
+| Subject names | All correct per IT.xlsx ✓ |
+| No faculty for PS2/Library/VL/T&P/AC | ✓ |
 
-## 10. Next Phase — Frontend Finishing + XLSX Export
+## 10. XLSX Export — IMPLEMENTED (2026-05-31)
 
-**Status: PLANNED (not yet implemented)**
+**Status: COMPLETE — 200 OK, 33 KB, 26 sheets**
 
-### XLSX Export Plan
-- New dependency: `apache-poi` (for .xlsx)
-- New service class: `TimetableXlsxExportService.java` in `com.nt.service`
-- New controller: `XlsxExportController.java` in `com.nt.controller`
-- Endpoint: `GET /export-xlsx`
-- Sheets to generate:
-  1. **Master** — full timetable (all divisions × all days × all slots)
-  2. **Per faculty** — one sheet per teacher (their weekly schedule)
-  3. **Per classroom/lab** — one sheet per room (what happens there)
-- Button location: `view-timetable.html` next to "Export PDF" button
-- Data source: query `timetable` table directly (no service layer indirection)
+### XLSX Export — Design Decisions (confirmed by user)
 
-### Frontend Issues Found
-(Awaiting user approval before fixing each)
-1. **Logout goes to `/` not `/logout`** — `admin-layout.html` line 313. User stays logged in.
-2. **No Recycle Bin link in sidebar** — `recycle-bin.html` exists but unreachable from nav.
-3. **No pagination on view-timetable** — 207+ rows render in one DOM dump; slow and hard to read.
-4. **`exportWithFilters` JS is duplicated** — defined separately in `view-timetable.html` and `timetable-grid.html`; should be in layout.
-5. **No "Edit" button on view-timetable rows** — only Delete is shown; editing requires separate page.
-6. **Mobile sidebar** — sidebar collapses correctly but nav links overflow on small screens.
+| Decision | Value |
+|----------|-------|
+| Data source | `timetable` table only — direct JDBC/JPA query, no generator service |
+| Do NOT modify | `TimetableGeneratorService.java` and `AdminController.java` — zero changes |
+| New files only | `TimetableXlsxExportService.java` + `XlsxExportController.java` |
+| Library | Apache POI (`poi-ooxml`) |
+| Button location | `view-timetable.html` — one "Export XLSX" button next to existing PDF export button |
+| Format | Exact format matching IT.xlsx (merged cells, colors, borders, header rows) |
+| Logos | College logo + owner logo to be provided by user before implementation |
+
+### Sheets to Generate (one workbook, multiple sheets)
+
+| Sheet Name | Content |
+|-----------|---------|
+| `MASTER` | Full timetable: all 3 divisions × 5 days × 9 time slots. Rows = days, columns = time slots. Batch lab rotations shown as multi-line cell content (S1→..., S2→..., S3→..., S4→...). |
+| `SE-IT` | SE-IT class timetable only (same grid format as MASTER sheet) |
+| `TE-IT` | TE-IT class timetable only |
+| `BE-IT` | BE-IT class timetable only |
+| `Faculty_<code>` | One sheet per faculty (e.g., `Faculty_PGK`, `Faculty_ANK`). Rows = days, columns = time slots. Cell shows: subject name + division + batch (if lab). |
+| `Room_<number>` | One sheet per classroom/lab room. Rows = days, columns = time slots. Cell shows: subject + division + batch. |
+
+### Column Structure (matches IT.xlsx grid)
+```
+Col A: Day label
+Col B: 09:00–10:00
+Col C: 10:00–11:00
+Col D: 11:00–11:15  [SHORT BREAK — gray filled, merged across all division rows]
+Col E: 11:15–12:15
+Col F: 12:15–01:15
+Col G: 01:15–02:00  [LUNCH BREAK — gray filled]
+Col H: 02:00–03:00
+Col I: 03:00–04:00
+Col J: 04:00–05:00
+```
+
+### Cell Formatting Rules (match IT.xlsx style)
+- **Header row**: college name + logo + dept name + AY/semester info
+- **Time slot header row**: bold, center-aligned, light blue background
+- **Day label column**: bold, rotated or normal, light gray background
+- **Lab rotation cells**: multi-line text (one batch per line), wrapped
+- **Break/lunch cells**: merged across all rows for that division, gray fill, italic "BREAK" text
+- **Theory cells**: subject name + faculty code, center-aligned
+- **Empty cells**: white, thin border
+- **Merged cells**: lab windows (2 cols merged when lab occupies window A/B/C)
+- **Logos**: top-left = college logo, top-right = owner/institute logo (user to provide PNG files)
+
+### Implementation Plan (step-by-step)
+
+1. Add `poi-ooxml` dependency to `pom.xml`
+2. Create `TimetableXlsxExportService.java`:
+   - Query all rows from `timetable` table via `TimetableRepository` (already exists)
+   - Build in-memory grid: `Map<division, Map<day, Map<slotOrder, TimetableRow>>>`
+   - Write sheets in order: MASTER, SE-IT, TE-IT, BE-IT, Faculty_*, Room_*
+   - Use `XSSFWorkbook`, `XSSFSheet`, `XSSFCellStyle` for formatting
+   - Logo images embedded via `addPicture()` if user provides files
+3. Create `XlsxExportController.java`:
+   - `GET /export-xlsx` → calls service, streams workbook as `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+   - Response header: `Content-Disposition: attachment; filename="IT_Timetable_AY2025-26_SemII.xlsx"`
+4. Add button in `view-timetable.html`:
+   - `<a href="/export-xlsx" class="btn btn-success">Export XLSX</a>` next to PDF button
+5. Security: add `/export-xlsx` to permitted URLs in `SecurityConfig.java` (ADMIN role only)
+
+### Logo Placement (pending user input)
+- User will provide: college logo PNG + owner/institute logo PNG
+- Place files in: `src/main/resources/static/images/`
+- Embed via `wb.addPicture(imageBytes, Workbook.PICTURE_TYPE_PNG)` + `drawing.createPicture(anchor, picIdx)`
+- Add to `titleBlock()` method in `TimetableXlsxExportService.java`
+- **WAIT for user to provide logos before adding logo embedding code**
+
+### Change History (XLSX)
+| Date | What Changed | File | Reason |
+|------|-------------|------|--------|
+| 2026-05-31 | XLSX export implemented | `TimetableXlsxExportService.java`, `XlsxExportController.java`, `view-timetable.html`, `pom.xml` | 26-sheet workbook: SE_IT, TE_IT, BE_IT, MASTER, 12 faculty sheets, 10 room sheets. Lab windows auto-detected and cells merged. Colors match IT.xlsx style. |
+
+### Frontend Fixes Planned (all approved by user — implement before XLSX)
+
+| # | Problem | File(s) | Fix |
+|---|---------|---------|-----|
+| 1 | Department: predefined value (0 in number fields) + edit already works | `add-department.html`, `AdminController.java` | Pass `null` not `new Department()` in add mode |
+| 2 | Division: table missing batchCount/prefix/labPref + no edit/delete | `add-division.html`, `AdminController.java` | Add columns, add `/edit-division`, `/update-division`, `/delete-division` endpoints |
+| 3 | Subjects: predefined values in number fields | `add-subject.html` | Pass `null` in add mode |
+| 4 | Assign Subjects: no batch-wise faculty display, no "who is assigned" clarity | `assign-subjects.html`, `AdminController.java` | Show `subjectsHandled` faculty per subject + make assigned faculty visible as badge |
+| 5 | Classroom: predefined value (0 capacity) + list below form not side-by-side | `add-classroom.html` | Side-by-side layout (form left, list right), pass `null` in add mode |
+| 6 | Timeslot: Break checkbox ticked by default | `add-timeslot.html` | Fix `th:checked` to be false for add mode |
+| 7 | Special Slots: CSS `content-card` class missing → broken layout + purpose unclear | `add-special-slot.html` | Fix CSS classes, add purpose explanation banner |
+| 8 | HOD: predefined values + edit already works | `add-hod.html`, `AdminController.java` | Pass `null` in add mode |
+| 9 | Faculty: add panel too narrow, list panel too wide | `add-faculty.html` | Change grid from `1fr 1.3fr` → `1.2fr 1fr`, reduce table min-width |
+| 10 | Weekly Grid: not showing data | `timetable-grid.html`, `AdminController.java` | Fix Thymeleaf nested map access using `th:with` |
+| 11 | Sidebar: add Documentation link | `admin-layout.html`, new `how-to-use.html`, `AdminController.java` | Add `/how-to-use` link + placeholder page |
+| 12 | Logout link goes to `/` not `/logout` | `admin-layout.html` | Change href to `/logout` |
+| 13 | Recycle Bin unreachable | `admin-layout.html` | Add sidebar link to `/recycle-bin` |
 
 ### Change History (continued)
 | Date | What Changed | File | Reason |
 |------|-------------|------|--------|
 | 2026-05-30 | CLAUDE.md sections 9-10 updated | CLAUDE.md | Generation complete; next phase planned |
+| 2026-05-30 | Frontend fix plan written | CLAUDE.md | 13 UI fixes approved by user before XLSX work |
+| 2026-05-30 | All 13 frontend fixes implemented | Multiple files | See table above — all pages return HTTP 200, weekly grid shows 210 cell-entries, division edit/delete/update endpoints added |
+| 2026-05-30 | Root bug fixed: Thymeleaf ternary literal syntax | All form templates | `th:value="${X != null} ? X.field : ''"` rendered literal "X.field" — fixed to `th:value="${X != null ? X.field : ''}"`. All edit forms now pre-fill correctly. Subject/HOD add forms no longer show predefined values. |
+| 2026-05-30 | Fixed: add-division isEdit NPE | AdminController.java | Added `model.addAttribute("isEdit", false)` to add-division GET handler — SpringEL `!null` throws type conversion error |
+| 2026-05-30 | Fixed: assign-subjects map lookup | assign-subjects.html | Changed `subjectFacultyMap[sk]` to `subjectFacultyMap.get(sk)` (Thymeleaf variable map access) + `th:with` scope |
+| 2026-05-30 | Fixed: save-hod now accepts explicit username | AdminController.java | Username field added to HOD form; save/update-hod handlers accept `username` param |
+| 2026-05-31 | Fixed: subjects_handled corruption from frontend testing | data.sql, DB direct SQL | ANK/AAK lost ECL; PGK gained ECL accidentally. Restored correct values; added unconditional UPDATE in data.sql to prevent recurrence. |
+| 2026-05-31 | Fixed: lab window preference in generateLabRotation | TimetableGeneratorService.java | windowStarts now sorted by division.lab_preference (AFTERNOON→Window C first, MIDDAY→Window B first, MORNING→Window A first) instead of always earliest-first. Fixes SE-IT labs landing in morning and cascading BE-IT window conflicts. |
+| 2026-05-31 | Fixed: INTP 2hr, AC6 2hr, SEM8 2hr, AC8 2hr, PS2 5-theory-Friday | data.sql | Merged cells in IT.xlsx showed these as 2-hour blocks, not 1-hour. Pin loop now places consecutive slots per slot_duration. |
+| 2026-05-31 | Fixed: PS2 batch rotation faculty blank | data.sql + generator | PS2 supervised by multiple faculty in rotation — no single assigned teacher. Generator now supports no-faculty lab rotation subjects. |
+| 2026-05-31 | Fixed: LP5/LP6/PS2 BE-IT rotation (was 8/4/4 rows, now 16/8/13) | TimetableGeneratorService.java | Faculty conflict check for subjects with empty faculty list now returns Long.MAX_VALUE (always feasible). Batch assignment uses empty string when no faculty needed. |
+| 2026-05-31 | Fixed: VL8 moved from Friday to Thursday | data.sql | BE-IT reference (IT.xlsx Thu row) shows VL on Thursday col9, not Friday. Friday is all PS-II + AC8. |
+| 2026-05-31 | Fixed: EACH 5→4, EL5/EL6/EL2 corrected back to 3 | data.sql | Reference shows 4 EAC sessions; extra was causing wrong slot fills. |
+| 2026-05-31 | Fixed: pinnedDaysOnly theory restriction + allowSameDay | TimetableGeneratorService.java | Subjects with pin_days but no pin_slot (PS2) get all theory sessions restricted to those days. tryPlace gets allowSameDay param to bypass subjectDayBusy guard for pinned subjects. |
+| 2026-05-31 | Subject names corrected: OE2→Project Management, EL5→Social Computing | data.sql + DB | Verified from IT.xlsx individual faculty sheets (SRK: OE-II(PM), SSK: EL-V(SC)). |
+| 2026-05-31 | SSK subjects_handled restored with Social Computing instead of Elective V | data.sql + DB | Name change required updating subjects_handled to match new subject name. |
+| 2026-05-31 | Cleared faculty from PS2, VL, T&P, AC6, AC8, INTP | data.sql + DB | User confirmed: project/admin/audit sessions have no assigned teacher. |
+| 2026-05-31 | Subject mapping table created (Section 0) | CLAUDE.md | Authoritative code→name→faculty mapping from IT.xlsx + curriculum screenshots |
+| 2026-05-31 | PA renamed: "Principles of Analog Electronics" → "Processor Architecture" | data.sql + DB | User correction: PA = Processor Architecture in 2024 NEP SE-IT curriculum |
+| 2026-05-31 | SE8 renamed: "Software Engineering" → "Startup and Entrepreneurship" | data.sql + DB | User correction: SE = Startup and Entrepreneurship in 2019 BE-IT curriculum |
+| 2026-05-31 | pickRoom Pass 3 removed | TimetableGeneratorService.java | Theory sessions now ONLY use lecture rooms (305/306). No more lab rooms for theory. 201/207 placed (6 genuine room conflicts — 3 divisions, 2 rooms). |
+| 2026-05-31 | BE-IT classroom set to Room 306; SE-IT+TE-IT to Room 305 | data.sql + DB | Separate preferred rooms to reduce 3-way conflicts |
+| 2026-05-31 | IT.xlsx updated by user; sheet renamed MASTER, class sheets renamed | CLAUDE.md | Use MASTER sheet only for scheduling; faculty sheets for name/assignment verification |

@@ -21,7 +21,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
                 <h2 style="margin:0;">Recycle Bin</h2>
-                <p style="color:#64748b;margin:4px 0 0;">Restore accidentally deleted faculty, subjects, or timetable entries.</p>
+                <p style="color:#64748b;margin:4px 0 0;">Restore accidentally deleted faculty or subjects.</p>
             </div>
             <div class="pill"><i class="fas fa-undo"></i> Soft delete enabled</div>
         </div>
@@ -60,21 +60,6 @@
             </table>
         </div>
 
-        <div class="card">
-            <h3 style="margin-bottom:8px;">Timetable</h3>
-            <table>
-                <thead><tr><th>Day</th><th>Time</th><th>Class</th><th>Actions</th></tr></thead>
-                <tbody>
-                <tr th:each="t : ${deletedTimetables}">
-                    <td th:text="${t.day}">Day</td>
-                    <td th:text="${t.timeSlot}">Slot</td>
-                    <td th:text="${t.className + ' ' + t.division}">Class</td>
-                    <td class="actions"><a th:href="@{/restore-timetable/{id}(id=${t.id})}">Restore</a></td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(deletedTimetables)}"><td colspan="4" class="empty">No deleted entries</td></tr>
-                </tbody>
-            </table>
-        </div>
     </div>
 </section>
 </body>

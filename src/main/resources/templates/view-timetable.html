@@ -3,132 +3,304 @@
 <head th:replace="admin-layout :: head('View Timetable · Admin', ~{::extraHead})">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell {
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-            }
+            .page-shell { display:flex; flex-direction:column; gap:16px; }
 
-            .card {
-                background: #fff;
-                border-radius: 14px;
-                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
-                padding: 18px;
-                border: 1px solid #e2e8f0;
-            }
-
-            .card header {
+            /* ── Top bar ── */
+            .top-bar {
                 display: flex;
+                align-items: flex-start;
                 justify-content: space-between;
-                align-items: center;
-                gap: 12px;
+                gap: 14px;
                 flex-wrap: wrap;
-                margin-bottom: 10px;
+            }
+            .top-bar h2 { margin:0; font-size:22px; color:#1e293b; display:flex; align-items:center; gap:8px; }
+            .top-bar p  { margin:4px 0 0; font-size:13px; color:#64748b; }
+            .action-row {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                align-items: center;
             }
 
-            .label-pill {
-                background: #eef2ff;
-                color: #4338ca;
-                padding: 6px 12px;
+            /* ── Filter bar ── */
+            .filter-bar {
+                background: #fff;
+                border: 1px solid #e2e8f0;
                 border-radius: 12px;
+                padding: 14px 18px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                flex-wrap: wrap;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            }
+            .filter-bar label { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.3px; white-space:nowrap; }
+            .filter-bar select {
+                padding: 7px 10px;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                font-size: 13px;
+                background: #f8fafc;
+                color: #1e293b;
+                min-width: 140px;
+            }
+            .filter-bar select:focus { outline:none; border-color:#4f46e5; }
+            .divider { width:1px; height:28px; background:#e2e8f0; margin:0 4px; }
+            .count-badge {
+                margin-left:auto;
+                background: #f1f5f9;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 5px 12px;
+                font-size: 12px;
+                font-weight: 700;
+                color: #475569;
+                white-space: nowrap;
+            }
+
+            /* ── Buttons ── */
+            .btn-pdf   { padding:8px 14px; border-radius:9px; border:none; background:#dc2626; color:#fff; cursor:pointer; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+            .btn-pdf:hover { background:#b91c1c; }
+            .btn-xlsx  { padding:8px 14px; border-radius:9px; border:none; background:#217346; color:#fff; cursor:pointer; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+            .btn-xlsx:hover { background:#185c37; }
+            .btn-load  { padding:8px 14px; border-radius:9px; border:1px solid #e2e8f0; background:#fff; color:#475569; cursor:pointer; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+            .btn-load:hover { background:#f8fafc; }
+            .btn-gen   { padding:8px 14px; border-radius:9px; border:none; background:#4f46e5; color:#fff; cursor:pointer; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+            .btn-gen:hover { background:#4338ca; }
+            .btn-clear { padding:8px 14px; border-radius:9px; border:1px solid #fca5a5; background:#fef2f2; color:#dc2626; cursor:pointer; font-weight:700; font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+            .btn-clear:hover { background:#fee2e2; }
+            .btn-apply { padding:7px 14px; border-radius:8px; border:none; background:#4f46e5; color:#fff; cursor:pointer; font-weight:700; font-size:12px; }
+            .btn-reset { padding:7px 12px; border-radius:8px; border:1px solid #e2e8f0; background:#fff; color:#64748b; cursor:pointer; font-weight:600; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; }
+            .btn-delete { padding:5px 10px; border-radius:7px; border:1px solid #fecaca; background:#fef2f2; color:#dc2626; cursor:pointer; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:4px; text-decoration:none; }
+            .btn-delete:hover { background:#fee2e2; }
+
+            /* ── Flash ── */
+            .flash-ok  { padding:10px 16px; border-radius:8px; font-size:13px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+            .flash-err { padding:10px 16px; border-radius:8px; font-size:13px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+
+            /* ── Table ── */
+            .table-card {
+                background:#fff;
+                border:1px solid #e2e8f0;
+                border-radius:12px;
+                overflow:hidden;
+                box-shadow:0 2px 8px rgba(0,0,0,0.05);
+            }
+            .table-scroll { overflow-x:auto; }
+            table { width:100%; border-collapse:collapse; font-size:13px; }
+            th {
+                padding:10px 12px;
+                background:#f8fafc;
+                text-align:left;
+                font-size:11px;
+                font-weight:700;
+                text-transform:uppercase;
+                letter-spacing:0.4px;
+                color:#64748b;
+                white-space:nowrap;
+                border-bottom:2px solid #e2e8f0;
+            }
+            td {
+                padding:9px 12px;
+                border-bottom:1px solid #f1f5f9;
+                vertical-align:middle;
+                color:#1e293b;
+            }
+            tr:last-child td { border-bottom:none; }
+            tr:hover td { background:#f9fafb; }
+
+            /* Day color strips */
+            .day-cell { font-weight:700; font-size:12px; white-space:nowrap; }
+            .day-mon { color:#1d4ed8; }
+            .day-tue { color:#059669; }
+            .day-wed { color:#d97706; }
+            .day-thu { color:#7c3aed; }
+            .day-fri { color:#dc2626; }
+            .day-sat { color:#0891b2; }
+
+            /* Type pills */
+            .type-pill { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+            .type-theory   { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+            .type-practical{ background:#fdf4ff; color:#7e22ce; border:1px solid #e9d5ff; }
+            .type-lab      { background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe; }
+            .type-special  { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+            .type-audit    { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+            .type-default  { background:#f8fafc; color:#475569; border:1px solid #e2e8f0; }
+
+            /* Subject / batch */
+            .subject-name { font-weight:600; }
+            .batch-label  { font-size:11px; color:#94a3b8; margin-top:2px; }
+            .room-badge   { font-size:11px; font-family:monospace; background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; border-radius:5px; padding:2px 6px; }
+
+            /* Day group header row */
+            .day-group-row td {
+                background: #f8fafc;
                 font-weight: 700;
                 font-size: 12px;
+                color: #475569;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding: 7px 12px;
+                border-bottom: 1px solid #e2e8f0;
+                border-top: 2px solid #e2e8f0;
             }
         </style>
     </th:block>
 </head>
 <body th:replace="admin-layout :: shell('view', 'View Timetable', ~{::content})">
 <section th:fragment="content" class="page-shell">
-    <div class="card">
-        <header>
-            <div>
-                <h2 style="margin:0;">All Timetable Entries</h2>
-                <p style="color:#64748b;margin:4px 0 0;">Manage and prune generated or manual slots.</p>
-            </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <form method="get" action="/view-timetable" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    <select name="department" style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;">
-                        <option value="">All Departments</option>
-                        <option th:each="d : ${deptList}" th:value="${d}" th:text="${d}" th:selected="${selectedDept != null} ? (d == selectedDept) : false"></option>
-                    </select>
-                    <select name="className" style="padding:8px 10px;border:1px solid #e2e8f0;border-radius:10px;">
-                        <option value="">All Classes</option>
-                        <option th:each="c : ${classList}" th:value="${c}" th:text="${c}" th:selected="${selectedClass != null} ? (c == selectedClass) : false"></option>
-                    </select>
-                    <button class="btn secondary" type="submit">Apply</button>
-                    <a class="btn secondary" href="/view-timetable" style="text-decoration:none;">Clear</a>
-                </form>
-                <a class="btn" href="#" onclick="exportWithFilters('/export-pdf');return false;" style="text-decoration:none;">
-                    <i class="fas fa-file-pdf"></i> Export PDF
-                </a>
-                <a class="btn secondary" href="#" onclick="exportWithFilters('/export-load-distribution');return false;" style="text-decoration:none;">
-                    <i class="fas fa-file-alt"></i> Load Distribution PDF
-                </a>
-                <a class="btn secondary" href="/auto-generate" style="text-decoration:none;"><i class="fas fa-magic"></i> Auto Generate</a>
-                <form action="/clear-timetable" method="post" style="display:inline;">
-                    <button class="btn secondary" type="submit" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;">Clear Timetable</button>
-                </form>
-            </div>
-        </header>
 
-        <div th:if="${message}" th:text="${message}"
-             th:classappend="${messageType}=='success' ? 'alert-success' : 'alert-error'"
-             style="margin-bottom:12px;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;background:#f8fafc;color:#0f172a;font-weight:600;">
+    <!-- ── Top bar ── -->
+    <div class="top-bar">
+        <div>
+            <h2><i class="fas fa-calendar-alt" style="color:#4f46e5;"></i> Timetable Entries</h2>
+            <p>All generated and manual slots — filter, export or clear.</p>
         </div>
+        <div class="action-row">
+            <a class="btn-pdf" href="#" onclick="exportWithFilters('/export-pdf');return false;">
+                <i class="fas fa-file-pdf"></i> Export PDF
+            </a>
+            <a class="btn-xlsx" href="/export-xlsx">
+                <i class="fas fa-file-excel"></i> Export XLSX
+            </a>
+            <a class="btn-load" href="#" onclick="exportWithFilters('/export-load-distribution');return false;">
+                <i class="fas fa-file-alt"></i> Load Distribution
+            </a>
+            <a class="btn-gen" href="/auto-generate">
+                <i class="fas fa-magic"></i> Auto Generate
+            </a>
+            <form action="/clear-timetable" method="post" style="display:inline;"
+                  onsubmit="return confirm('This will delete ALL timetable entries. Are you sure?')">
+                <button class="btn-clear" type="submit">
+                    <i class="fas fa-trash-alt"></i> Clear All
+                </button>
+            </form>
+        </div>
+    </div>
 
-        <div style="overflow-x:auto;">
+    <!-- Flash -->
+    <div th:if="${message}"
+         th:class="${messageType == 'success'} ? 'flash-ok' : 'flash-err'"
+         th:text="${message}"></div>
+
+    <!-- ── Filter bar ── -->
+    <div class="filter-bar">
+        <form method="get" action="/view-timetable" style="display:contents;">
+            <label>Department</label>
+            <select name="department">
+                <option value="">All Departments</option>
+                <option th:each="d : ${deptList}" th:value="${d}" th:text="${d}"
+                        th:selected="${selectedDept != null and d == selectedDept}"></option>
+            </select>
+            <label>Class</label>
+            <select name="className">
+                <option value="">All Classes</option>
+                <option th:each="c : ${classList}" th:value="${c}" th:text="${c}"
+                        th:selected="${selectedClass != null and c == selectedClass}"></option>
+            </select>
+            <button class="btn-apply" type="submit">Filter</button>
+            <a class="btn-reset" href="/view-timetable">Reset</a>
+        </form>
+        <div class="divider"></div>
+        <span class="count-badge">
+            <i class="fas fa-list-ul" style="margin-right:5px;"></i>
+            <span th:text="${timetableList.size()} + ' entries'">0 entries</span>
+        </span>
+    </div>
+
+    <!-- ── Table ── -->
+    <div class="table-card">
+        <div class="table-scroll">
             <table>
                 <thead>
                 <tr>
                     <th>Day</th>
-                    <th>Time</th>
-                    <th>Class</th>
-                    <th>Division</th>
+                    <th>Time Slot</th>
+                    <th>Class / Division</th>
                     <th>Subject</th>
                     <th>Faculty</th>
                     <th>Room</th>
                     <th>Type</th>
-                    <th>Break/Note</th>
-                    <th>Actions</th>
+                    <th style="width:80px;">Actions</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="t : ${timetableList}">
-                    <td th:text="${t.day}"></td>
-                    <td th:text="${t.timeSlot}"></td>
-                    <td th:text="${t.className}"></td>
-                    <td th:text="${t.division}"></td>
-                    <td th:text="${t.subject}"></td>
-                    <td th:text="${t.faculty}"></td>
-                    <td th:text="${t.room}"></td>
-                    <td><span class="label-pill" th:text="${t.lectureType}"></span></td>
-                    <td th:text="${t.breakTime}"></td>
-                    <td>
-                        <a th:href="@{/delete-timetable/{id}(id=${t.id})}"
-                           onclick="return confirm('Delete this timetable entry?')"
-                           style="color:#e11d48;text-decoration:none;font-weight:700;">
-                            <i class="fas fa-trash"></i> Delete
-                        </a>
-                    </td>
-                </tr>
+                <th:block th:if="${!#lists.isEmpty(timetableList)}">
+                    <th:block th:each="t,iter : ${timetableList}">
+                        <!-- Day group header: show when day changes -->
+                        <tr class="day-group-row"
+                            th:if="${iter.first or (timetableList[__${iter.index - 1}__].day != t.day)}">
+                            <td colspan="8">
+                                <span th:text="${t.day}"></span>
+                            </td>
+                        </tr>
+                        <!-- Data row -->
+                        <tr>
+                            <td>
+                                <span class="day-cell"
+                                      th:classappend="${#strings.containsIgnoreCase(t.day,'mon')} ? ' day-mon'
+                                                    : (${#strings.containsIgnoreCase(t.day,'tue')} ? ' day-tue'
+                                                    : (${#strings.containsIgnoreCase(t.day,'wed')} ? ' day-wed'
+                                                    : (${#strings.containsIgnoreCase(t.day,'thu')} ? ' day-thu'
+                                                    : (${#strings.containsIgnoreCase(t.day,'fri')} ? ' day-fri'
+                                                    : ' day-sat'))))"
+                                      th:text="${t.day}"></span>
+                            </td>
+                            <td style="white-space:nowrap;font-family:monospace;font-size:12px;"
+                                th:text="${t.timeSlot}"></td>
+                            <td>
+                                <div style="font-weight:600;font-size:13px;" th:text="${t.className}"></div>
+                                <div class="batch-label" th:if="${t.division != null and !#strings.isEmpty(t.division)}"
+                                     th:text="${t.division} + (${t.batch != null and !#strings.isEmpty(t.batch)} ? ' · ' + t.batch : '')"></div>
+                            </td>
+                            <td>
+                                <div class="subject-name" th:text="${t.subject}"></div>
+                            </td>
+                            <td style="font-size:12px;color:#475569;" th:text="${t.faculty}"></td>
+                            <td>
+                                <span class="room-badge" th:if="${t.room != null and !#strings.isEmpty(t.room)}"
+                                      th:text="${t.room}"></span>
+                                <span style="color:#94a3b8;" th:if="${t.room == null or #strings.isEmpty(t.room)}">—</span>
+                            </td>
+                            <td>
+                                <span class="type-pill"
+                                      th:classappend="${#strings.containsIgnoreCase(t.lectureType,'theory') or #strings.containsIgnoreCase(t.lectureType,'lecture')} ? ' type-theory'
+                                                    : (${#strings.containsIgnoreCase(t.lectureType,'practical') or #strings.containsIgnoreCase(t.lectureType,'prac')} ? ' type-practical'
+                                                    : (${#strings.containsIgnoreCase(t.lectureType,'lab')} ? ' type-lab'
+                                                    : (${#strings.containsIgnoreCase(t.lectureType,'special')} ? ' type-special'
+                                                    : (${#strings.containsIgnoreCase(t.lectureType,'audit')} ? ' type-audit'
+                                                    : ' type-default'))))"
+                                      th:text="${t.lectureType}"></span>
+                            </td>
+                            <td>
+                                <a class="btn-delete"
+                                   th:href="@{/delete-timetable/{id}(id=${t.id})}"
+                                   onclick="return confirm('Delete this entry?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    </th:block>
+                </th:block>
                 <tr th:if="${#lists.isEmpty(timetableList)}">
-                    <td colspan="10" style="text-align:center;padding:14px;color:#6b7280;">No timetable entries yet.</td>
+                    <td colspan="8" style="text-align:center;padding:28px;color:#94a3b8;">
+                        <i class="fas fa-calendar-times" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                        No timetable entries yet. Click <strong>Auto Generate</strong> to create one.
+                    </td>
                 </tr>
                 </tbody>
             </table>
         </div>
     </div>
+
     <script>
-        function exportWithFilters(baseUrl){
-            const deptSelect = document.querySelector('select[name=\"department\"]');
-            const classSelect = document.querySelector('select[name=\"className\"]');
-            const dept = deptSelect ? deptSelect.value : '';
-            const cls = classSelect ? classSelect.value : '';
+        function exportWithFilters(baseUrl) {
+            const dept = document.querySelector('select[name="department"]').value;
+            const cls  = document.querySelector('select[name="className"]').value;
             const params = new URLSearchParams();
-            if(dept) params.append('department', dept);
-            if(cls) params.append('className', cls);
-            const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
-            window.open(url, '_blank');
+            if (dept) params.append('department', dept);
+            if (cls)  params.append('className', cls);
+            window.open(baseUrl + (params.toString() ? '?' + params.toString() : ''), '_blank');
         }
     </script>
 </section>

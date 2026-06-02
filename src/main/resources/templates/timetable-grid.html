@@ -60,21 +60,21 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="slot : ${slotLabels}">
+                <tr th:each="slot : ${slotLabels}" th:with="slotMap=${grid.get(slot)}">
                     <td class="time-col" th:text="${slot}"></td>
-                    <td th:each="d : ${days}">
-                        <div th:if="${grid[slot] != null and !#lists.isEmpty(grid[slot][d])}" >
-                            <div class="cell-entry" th:each="t : ${grid[slot][d]}">
-                                <div class="subject" th:text="${t.subject}">Subject</div>
-                                <div class="meta" th:text="${t.className} + ' ' + ${t.division}"></div>
+                    <td th:each="d : ${days}" th:with="entries=${slotMap != null ? slotMap.get(d) : null}">
+                        <div th:if="${entries != null and !#lists.isEmpty(entries)}">
+                            <div class="cell-entry" th:each="t : ${entries}">
+                                <div class="subject" th:text="${t.subject}"></div>
+                                <div class="meta" th:text="${t.className + (t.division != null and !t.division.isEmpty() ? ' · ' + t.division : '')}"></div>
                                 <div class="meta">
-                                    <span th:text="${t.faculty}">Faculty</span>
-                                    <span th:text="${' · ' + t.room}"> · Room</span>
-                                    <span th:text="${' · ' + t.lectureType}"> · Type</span>
+                                    <span th:text="${t.faculty != null ? t.faculty : ''}"></span>
+                                    <span th:if="${t.room != null}" th:text="${' · ' + t.room}"></span>
+                                    <span th:if="${t.batch != null and !t.batch.isEmpty()}" th:text="${' · Batch ' + t.batch}"></span>
                                 </div>
                             </div>
                         </div>
-                        <div class="empty" th:if="${grid[slot] == null || #lists.isEmpty(grid[slot][d])}">—</div>
+                        <div class="empty" th:if="${entries == null or #lists.isEmpty(entries)}">—</div>
                     </td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(slotLabels)}">

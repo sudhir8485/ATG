@@ -1,3 +1,12 @@
+-- Purge soft-deleted timetable rows left over from the old soft-delete approach.
+DELETE FROM timetable WHERE deleted = true;
+
+-- Remove old-format room names so they are replaced by IT.xlsx names below.
+DELETE FROM classroom WHERE room IN (
+  'Room IT-305','Lab WET-1','Lab WET-2',
+  'Lab IT-201','Lab IT-202','Lab IT-203','Lab IT-204','Lab IT-205','Lab IT-206'
+);
+
 -- ============================================================
 -- ATG Project — Seed Data
 -- Source: Master Timetable ACA/R/003A  (IT.xlsx → 03A_MASTER)
@@ -38,7 +47,7 @@ WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'ran');
 -- SSK: PA + DM&SM Lab (SE, T3/T4 batches), CNS Lab T3,T4 (TE), Elective V (BE)
 INSERT INTO users (name, username, password, role, department, subjects_handled, deleted)
 SELECT 'Prof. S. S. Khote', 'ssk', 'fac123', 'FACULTY', 'Information Technology',
-       'Principles of Analog Electronics,Discrete Mathematics & Simulation Lab,Computer Networks & Security Lab,Elective V', false
+       'Principles of Analog Electronics,Discrete Mathematics & Simulation,Discrete Mathematics & Simulation Lab,Computer Networks & Security Lab,Social Computing', false
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'ssk');
 
 -- ARD: DM&SM Lab S1,S2 (SE), Elective II + LP-II(EL-II) (TE)
@@ -80,7 +89,7 @@ WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'ank');
 -- AAK: EC + EC Lab S3,S4 (SE), Software Engineering + LP-V B2,B4 (BE)
 INSERT INTO users (name, username, password, role, department, subjects_handled, deleted)
 SELECT 'Dr. A. A. Kadam', 'aak', 'fac123', 'FACULTY', 'Information Technology',
-       'Electronics Circuits,Electronics Circuits Lab,Software Engineering,Lab Practice V', false
+       'Electronics Circuits,Electronics Circuits Lab,Startup and Entrepreneurship,Lab Practice V', false
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'aak');
 
 -- SMD: Elective II (TE)
@@ -94,31 +103,38 @@ INSERT INTO users (name, username, password, role, department, subjects_handled,
 SELECT 'Library Coordinator', 'lib_coord', 'lib123', 'FACULTY', 'Information Technology',
        'Library', false
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'lib_coord');
-UPDATE users SET subjects_handled='Library' WHERE username='lib_coord';
-
--- Force-refresh subjects_handled for all faculty
+-- Seed subjects_handled only on first run (when value is null/empty). UI changes are preserved across restarts.
+UPDATE users SET subjects_handled='Library' WHERE username='lib_coord' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Computer Graphics,Computer Graphics Lab,EAC Honours,Lab Practice VI'
-    WHERE username = 'pgk';
+    WHERE username = 'pgk' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Database Management System,Database Management System Lab,Elective VI,Lab Practice VI'
-    WHERE username = 'ran';
+    WHERE username = 'ran' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Principles of Analog Electronics,Discrete Mathematics & Simulation,Discrete Mathematics & Simulation Lab,Computer Networks & Security Lab,Elective V'
-    WHERE username = 'ssk';
+    WHERE username = 'ssk' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Discrete Mathematics & Simulation,Discrete Mathematics & Simulation Lab,Elective II,Laboratory Practice-II'
-    WHERE username = 'ard';
+    WHERE username = 'ard' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Modern Indian Language,Modern Indian Language Lab,Computer Networks & Security,Computer Networks & Security Lab'
-    WHERE username = 'rsl';
+    WHERE username = 'rsl' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Open Elective-II,Modern Indian Language Lab,Distributed Systems,Lab Practice V'
-    WHERE username = 'srk';
+    WHERE username = 'srk' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Probability & Statistics'
-    WHERE username = 'rk';
+    WHERE username = 'rk' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Engineering Sciences,Data Science and Big Data Analytics,DS & BDA-Lab,Seminar,Internship'
-    WHERE username = 'dpr';
+    WHERE username = 'dpr' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Electronics Circuits,Electronics Circuits Lab,Web Application Development,Laboratory Practice-II,Internship,ISM Honours'
-    WHERE username = 'ank';
+    WHERE username = 'ank' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Electronics Circuits,Electronics Circuits Lab,Software Engineering,Lab Practice V'
-    WHERE username = 'aak';
+    WHERE username = 'aak' AND (subjects_handled IS NULL OR subjects_handled = '');
 UPDATE users SET subjects_handled = 'Elective II,Laboratory Practice-II'
-    WHERE username = 'smd';
+    WHERE username = 'smd' AND (subjects_handled IS NULL OR subjects_handled = '');
+-- Authoritative reset for faculty who had subjects_handled corrupted during frontend testing.
+-- ECL was accidentally moved from ANK/AAK to PGK. These always-run updates restore correct values.
+UPDATE users SET subjects_handled = 'Computer Graphics,Computer Graphics Lab,EAC Honours,Lab Practice VI' WHERE username = 'pgk';
+UPDATE users SET subjects_handled = 'Electronics Circuits,Electronics Circuits Lab,Web Application Development,Laboratory Practice-II,Internship,ISM Honours' WHERE username = 'ank';
+UPDATE users SET subjects_handled = 'Electronics Circuits,Electronics Circuits Lab,Software Engineering,Lab Practice V' WHERE username = 'aak';
+
+-- Fix any stale empty-string faculty assignments left by old controller
+UPDATE subject SET faculty = NULL WHERE faculty = '';
 
 -- ============================================================
 -- 5. DIVISIONS
@@ -142,47 +158,71 @@ UPDATE division SET lab_preference = 'MIDDAY'    WHERE name = 'TE-IT';
 UPDATE division SET lab_preference = 'MORNING'   WHERE name = 'BE-IT';
 
 -- ============================================================
--- 6. CLASSROOMS
--- Reference timetable uses 6 distinct lab rooms (Distributed Lab, Network Lab,
--- WET Lab, Software Testing Lab, Multimedia Lab, OS Lab). We map these to 8
--- lab rooms so multiple divisions can run simultaneous labs without room conflicts.
--- (17 rotation slots across SE/TE/BE require up to 2 divisions sharing a window.)
+-- 6. CLASSROOMS  (names exactly from IT.xlsx 03C sheets)
+-- SE-IT → Room No. 305, TE-IT → Room No. 306, BE-IT → Room No. 305
+-- (SE-IT and BE-IT share Room 305 — no clash because their lab windows are staggered)
+-- 6 lab rooms using short names from 03B_CLASS_* sheets.
 -- ============================================================
+
+-- Remove non-existent Room No. 307 if it was added previously
+DELETE FROM classroom WHERE room = 'Room No. 307';
+-- Remove old long-form lab names if they exist
+DELETE FROM classroom WHERE room IN (
+  'Network Laboratory','Computer Center Laboratory','Distributed System Laboratory',
+  'Web Engineering and Technology Laboratory','Project Laboratory',
+  'Software Design and Testing Laboratory'
+);
+
+-- Lecture rooms (from 03C_CLASS ROOM sheets in IT.xlsx)
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Room IT-305', 'IT Block', 75, 'Lecture'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Room IT-305');
+SELECT 'Room No. 305', 'IT Block', 75, 'Lecture'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Room No. 305');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab WET-1', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab WET-1');
+SELECT 'Room No. 306', 'IT Block', 75, 'Lecture'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Room No. 306');
+
+-- Lab rooms (short names from 03B_CLASS_* sheets in IT.xlsx)
+INSERT INTO classroom (room, building, capacity, type)
+SELECT 'Network Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Network Lab');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab WET-2', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab WET-2');
+SELECT 'Distributed Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Distributed Lab');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab IT-201', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab IT-201');
+SELECT 'Web Engineering & Technology Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Web Engineering & Technology Lab');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab IT-202', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab IT-202');
+SELECT 'Software Testing And Design Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Software Testing And Design Lab');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab IT-203', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab IT-203');
+SELECT 'Multimedia Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Multimedia Lab');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab IT-204', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab IT-204');
+SELECT 'Operating System Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Operating System Lab');
+
+-- 2 more labs from CC new (2) and Project LAb sheets in IT.xlsx
+INSERT INTO classroom (room, building, capacity, type)
+SELECT 'Computer Center Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Computer Center Lab');
 
 INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab IT-205', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab IT-205');
+SELECT 'Project Lab', 'IT Block', 30, 'Lab'
+WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Project Lab');
 
-INSERT INTO classroom (room, building, capacity, type)
-SELECT 'Lab IT-206', 'IT Block', 20, 'Lab'
-WHERE NOT EXISTS (SELECT 1 FROM classroom WHERE room = 'Lab IT-206');
+-- Division → classroom mapping (from IT.xlsx 03C sheets)
+-- SE-IT and BE-IT both use Room 305; TE-IT uses Room 306.
+-- Their lab windows are staggered (BE Window A, TE Window B, SE Window C)
+-- so 305 is never double-booked for theory.
+UPDATE division SET classroom = 'Room No. 305' WHERE name = 'SE-IT';
+UPDATE division SET classroom = 'Room No. 306' WHERE name = 'TE-IT';
+UPDATE division SET classroom = 'Room No. 305' WHERE name = 'BE-IT';
 
 -- ============================================================
 -- 7. TIMESLOTS (from 03A_MASTER column headers)
@@ -243,7 +283,7 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='CG' AND semester=4);
 
 -- PA: Mon 10-11, Tue 10-11, Wed 9-10 = 3 sessions
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
-SELECT 'Principles of Analog Electronics', 'PAE', 'Information Technology', 4, 3, 3, 0, 0, 'Theory', false
+SELECT 'Processor Architecture', 'PAE', 'Information Technology', 4, 3, 3, 0, 0, 'Theory', false
 WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='PAE' AND semester=4);
 
 -- DBMS: Tue 9-10, Wed 12:15, Thu 12:15 = 3 sessions
@@ -275,7 +315,7 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='EC' AND semester=4);
 
 -- OE-II: Mon 11:15, Tue 12:15, Fri 11:15 = 3 sessions
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
-SELECT 'Open Elective-II', 'OE2', 'Information Technology', 4, 2, 3, 0, 0, 'Elective', false
+SELECT 'Project Management', 'OE2', 'Information Technology', 4, 2, 3, 0, 0, 'Elective', false
 WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='OE2' AND semester=4);
 
 -- MIL: Mon 4-5 = 1 session
@@ -401,7 +441,7 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='VL6' AND semester=6);
 
 -- SE (Software Engineering): Mon 11:15, Tue 2-3, Wed 2-3 = 3 sessions
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
-SELECT 'Software Engineering', 'SE8', 'Information Technology', 8, 3, 3, 0, 0, 'Theory', false
+SELECT 'Startup and Entrepreneurship', 'SE8', 'Information Technology', 8, 3, 3, 0, 0, 'Theory', false
 WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='SE8' AND semester=8);
 
 -- DS (Distributed Systems): Tue 3-4, Wed 11:15, Thu 12:15 = 3 sessions
@@ -411,7 +451,7 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='DS8' AND semester=8);
 
 -- Elective V: Mon 2-3, Tue 4-5, Wed 12:15 = 3 sessions
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
-SELECT 'Elective V', 'EL5', 'Information Technology', 8, 3, 3, 0, 0, 'Elective', false
+SELECT 'Social Computing', 'EL5', 'Information Technology', 8, 3, 3, 0, 0, 'Elective', false
 WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='EL5' AND semester=8);
 
 -- Elective VI: Mon 12:15, Tue 12:15, Thu 11:15 = 3 sessions
@@ -486,8 +526,8 @@ UPDATE subject SET practical_hours_per_week=4, practical_slot_duration=2 WHERE c
 -- Fix LP2: each TE batch does LP-II twice (WAD track + EL-II track) per reference timetable
 UPDATE subject SET practical_hours_per_week=4, practical_slot_duration=2 WHERE code='LP2' AND semester=6;
 
--- Fix PS2: lecture was 5 (wrong), now 2 (Friday whole-class sessions only)
-UPDATE subject SET lecture_hours_per_week=2, practical_hours_per_week=2, practical_slot_duration=2 WHERE code='PS2' AND semester=8;
+-- PS2: 5 whole-class theory sessions on Friday (project day) + 1 batch practical in rotation
+UPDATE subject SET lecture_hours_per_week=5, practical_hours_per_week=2, practical_slot_duration=2 WHERE code='PS2' AND semester=8;
 
 -- Reset any stale values from previous attempts, then set final correct hours:
 UPDATE subject SET lecture_hours_per_week=3 WHERE code='SE8'   AND semester=8;
@@ -499,28 +539,28 @@ UPDATE subject SET lecture_hours_per_week=3 WHERE code='DSBDA' AND semester=6;
 UPDATE subject SET lecture_hours_per_week=3 WHERE code='EL5'   AND semester=8;
 UPDATE subject SET lecture_hours_per_week=3 WHERE code='EL6'   AND semester=8;
 UPDATE subject SET lecture_hours_per_week=3 WHERE code='EL2'   AND semester=6;
+-- EAC Honours: 4 sessions per reference (Mon/Tue/Wed col9 + Thu col1)
+UPDATE subject SET lecture_hours_per_week=4 WHERE code='EACH'  AND semester=6;
 
--- Fill remaining empty slots so every class has a full week:
--- BE-IT: 30/35 → need 5 more. EL5 (+3 via SSK) + EL6 (+2 via RAN).
-UPDATE subject SET lecture_hours_per_week=6 WHERE code='EL5' AND semester=8;
-UPDATE subject SET lecture_hours_per_week=5 WHERE code='EL6' AND semester=8;
--- TE-IT: 32/35 → need 3 more. EL2 (+2 via SMD) + EACH (+1 via PGK).
--- Split across two subjects avoids overloading SMD and leaves ANK free for INTP.
-UPDATE subject SET lecture_hours_per_week=5 WHERE code='EL2'  AND semester=6;
-UPDATE subject SET lecture_hours_per_week=5 WHERE code='EACH' AND semester=6;
+-- EL5, EL6, EL2, EACH: keep at reference values (3/3/3/4 hrs).
+-- Inflated values (6/5/5/5) caused 3+ consecutive same-day lectures — overload for faculty.
 
 -- Fix all audit/filler subjects: remove lecture hours, set as practical blocks
-UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=2, practical_slot_duration=1 WHERE code='INTP' AND semester=6;
-UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='AC6'  AND semester=6;
-UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='AC8'  AND semester=8;
+-- INTP: 2 blocks of 2hr each (Mon 14-16 + Thu 14-16 per reference)
+UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=4, practical_slot_duration=2 WHERE code='INTP' AND semester=6;
+-- AC6: 1 block of 2hr (Fri 14-16 per reference)
+UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=2, practical_slot_duration=2 WHERE code='AC6'  AND semester=6;
+-- AC8: 1 block of 2hr (Fri 09-11 per reference)
+UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=2, practical_slot_duration=2 WHERE code='AC8'  AND semester=8;
 UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='VL4'  AND semester=4;
 UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='VL6'  AND semester=6;
-UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='VL8'  AND semester=8;
+UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='VL8'  AND semester=8;  -- VL stays 1hr
 UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='TP8'  AND semester=8;
-UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='SEM8' AND semester=8;
+-- SEM8: 1 block of 2hr (Thu 14-16 per reference)
+UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=2, practical_slot_duration=2 WHERE code='SEM8' AND semester=8;
 
 -- Fix Seminar type (was set with lecture=1; change to practical block)
-UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=1, practical_slot_duration=1 WHERE code='SEM8';
+UPDATE subject SET lecture_hours_per_week=0, practical_hours_per_week=2, practical_slot_duration=2 WHERE code='SEM8';
 
 -- ============================================================
 -- 12. ASSIGN FACULTY TO SUBJECTS
@@ -557,7 +597,7 @@ UPDATE subject SET faculty = 'Prof. D. P. Rankhambe' WHERE code = 'DSBDAL' AND s
 UPDATE subject SET faculty = 'Prof. A. N. Kalal'     WHERE code = 'LP2'    AND semester = 6;
 UPDATE subject SET faculty = 'Library Coordinator'  WHERE code = 'LIBTE'  AND semester = 6;
 UPDATE subject SET faculty = 'Prof. A. N. Kalal'     WHERE code = 'INTP'   AND semester = 6;
-UPDATE subject SET faculty = 'Dr. A. A. Kadam'       WHERE code = 'AC6'    AND semester = 6;
+UPDATE subject SET faculty = ''                       WHERE code = 'AC6'    AND semester = 6;
 UPDATE subject SET faculty = 'Dr. A. A. Kadam'       WHERE code = 'VL6'    AND semester = 6;
 
 -- BE (Semester 8)
@@ -570,7 +610,69 @@ UPDATE subject SET faculty = 'Prof. D. P. Rankhambe' WHERE code = 'SEM8'  AND se
 -- BE Labs
 UPDATE subject SET faculty = 'Dr. S. R. Kokane'      WHERE code = 'LP5'   AND semester = 8;
 UPDATE subject SET faculty = 'Prof. P. G. Khaire'    WHERE code = 'LP6'   AND semester = 8;
-UPDATE subject SET faculty = 'Prof. P. G. Khaire'    WHERE code = 'PS2'   AND semester = 8;
-UPDATE subject SET faculty = 'Dr. A. A. Kadam'       WHERE code = 'TP8'   AND semester = 8;
-UPDATE subject SET faculty = 'Dr. A. A. Kadam'       WHERE code = 'AC8'   AND semester = 8;
-UPDATE subject SET faculty = 'Dr. A. A. Kadam'       WHERE code = 'VL8'   AND semester = 8;
+UPDATE subject SET faculty = ''                       WHERE code = 'PS2'   AND semester = 8;
+UPDATE subject SET faculty = ''                       WHERE code = 'TP8'   AND semester = 8;
+UPDATE subject SET faculty = ''                       WHERE code = 'AC8'   AND semester = 8;
+UPDATE subject SET faculty = ''                       WHERE code = 'VL8'   AND semester = 8;
+
+-- ============================================================
+-- PIN CONFIGURATION (data-driven, editable via Subject form)
+-- These replace the old hardcoded subject-code logic in Java.
+-- To change next semester: update via UI or change these lines.
+-- pin_days = comma-separated day names, pin_slot = HH:MM (24h)
+-- ============================================================
+
+-- VL / Spoken Tutorial: always last slot on Friday (institute policy)
+UPDATE subject SET pin_days='Friday', pin_slot='16:00' WHERE code='VL4';
+UPDATE subject SET pin_days='Friday', pin_slot='16:00' WHERE code='VL6';
+UPDATE subject SET pin_days='Thursday', pin_slot='16:00' WHERE code='VL8';
+
+-- Internship (TE-IT): Monday + Thursday 14:00
+UPDATE subject SET pin_days='Monday,Thursday', pin_slot='14:00' WHERE code='INTP';
+
+-- Audit Course VI (TE-IT): Friday 14:00
+UPDATE subject SET pin_days='Friday', pin_slot='14:00' WHERE code='AC6';
+
+-- Audit Course VIII (BE-IT): Friday 09:00 (whole-class)
+UPDATE subject SET pin_days='Friday', pin_slot='09:00' WHERE code='AC8';
+
+-- Seminar (BE-IT): Thursday 14:00
+UPDATE subject SET pin_days='Thursday', pin_slot='14:00' WHERE code='SEM8';
+
+-- Training & Placement (BE-IT): Wednesday 16:00
+UPDATE subject SET pin_days='Wednesday', pin_slot='16:00' WHERE code='TP8';
+
+-- Project Stage II (BE-IT): restrict theory (whole-class project day) to Friday only.
+-- pin_slot intentionally blank — only day-restriction applies, no forced time slot.
+UPDATE subject SET pin_days='Friday' WHERE code='PS2' AND semester=8;
+
+-- ============================================================
+-- CORRECT SUBJECT NAMES (AY 2025-26 Sem II specific electives)
+-- ============================================================
+UPDATE subject SET name='Project Management' WHERE code='OE2'  AND semester=4;
+UPDATE subject SET name='Social Computing'   WHERE code='EL5'  AND semester=8;
+
+-- Correct SSK subjects_handled to include Social Computing (EL-V) and DM&SM theory
+UPDATE users SET subjects_handled=
+  'Principles of Analog Electronics,Discrete Mathematics & Simulation,Discrete Mathematics & Simulation Lab,Computer Networks & Security Lab,Social Computing'
+WHERE username='ssk';
+
+-- EL5 pin cleared (theory placement handles it; pin caused double-counting)
+UPDATE subject SET pin_days=NULL, pin_slot=NULL WHERE code='EL5' AND semester=8;
+
+-- ============================================================
+-- SUBJECT NAME CORRECTIONS (AY 2025-26 Sem II)
+-- Verified from SUBJECTS LIST screenshots + IT.xlsx faculty sheets
+-- ============================================================
+UPDATE subject SET name='Processor Architecture'       WHERE code='PAE'  AND semester=4;
+UPDATE subject SET name='Startup and Entrepreneurship' WHERE code='SE8'  AND semester=8;
+
+-- AAK subjects_handled: SE8 now named "Startup and Entrepreneurship"
+UPDATE users SET subjects_handled=
+  'Electronics Circuits,Electronics Circuits Lab,Startup and Entrepreneurship,Lab Practice V'
+WHERE username='aak';
+
+-- Division room assignments: 2 lecture rooms (305, 306) for 3 divisions
+UPDATE division SET classroom='Room No. 305' WHERE name='SE-IT';
+UPDATE division SET classroom='Room No. 305' WHERE name='TE-IT';
+UPDATE division SET classroom='Room No. 306' WHERE name='BE-IT';

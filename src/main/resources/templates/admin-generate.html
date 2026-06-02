@@ -1,154 +1,320 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="admin-layout :: head('Auto Generate · Admin', ~{::extraHead})">
+<head th:replace="admin-layout :: head('Generate Timetable · Admin', ~{::extraHead})">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell {
-                display: flex;
-                flex-direction: column;
-                gap: 18px;
-            }
+            .page-shell { display:flex; flex-direction:column; gap:18px; }
 
-            .card {
-                background: #fff;
-                border-radius: 14px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-                padding: 20px;
-                border: 1px solid #e2e8f0;
-            }
-
-            .card h3 {
-                font-size: 18px;
-                color: #111827;
-                margin-bottom: 10px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .pill {
-                background: #eef2ff;
-                color: #4338ca;
-                padding: 8px 14px;
-                border-radius: 999px;
-                font-weight: 700;
-                font-size: 12px;
-            }
-
-            .alert {
-                padding: 12px 14px;
+            /* ── Run Generator card ── */
+            .gen-card {
+                background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
                 border-radius: 12px;
-                margin-bottom: 12px;
-                font-weight: 600;
-            }
-
-            .alert.info { background:#eef2ff; color:#4338ca; }
-            .alert.success { background:#ecfdf3; color:#15803d; }
-            .alert.error { background:#fef2f2; color:#b91c1c; }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 10px;
-            }
-
-            th, td {
-                padding: 10px 12px;
-                text-align: left;
-            }
-
-            th {
-                background: #f0f2f7;
-                color: #475569;
-                font-size: 13px;
-                text-transform: uppercase;
-            }
-
-            tr {
-                background: #fff;
-                border-bottom: 1px solid #e5e7eb;
-            }
-
-            tr:hover {
-                background: #f9fafb;
-            }
-
-            .badge {
-                display: inline-flex;
+                padding: 22px 26px;
+                color: #fff;
+                display: flex;
                 align-items: center;
-                gap: 6px;
-                padding: 6px 10px;
-                border-radius: 999px;
-                font-weight: 600;
-                font-size: 12px;
+                justify-content: space-between;
+                gap: 20px;
+                flex-wrap: wrap;
+                box-shadow: 0 6px 20px rgba(79,70,229,0.3);
+            }
+            .gen-card-text h3 { margin:0 0 4px; font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px; }
+            .gen-card-text p  { margin:0; font-size:12px; opacity:.82; max-width:460px; line-height:1.5; }
+            .gen-card-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+            .btn-generate {
+                padding: 9px 22px; border-radius:8px; border:2px solid rgba(255,255,255,.5);
+                background: rgba(255,255,255,.15); color:#fff; cursor:pointer;
+                font-weight:800; font-size:13px; display:inline-flex; align-items:center; gap:7px;
+                backdrop-filter:blur(4px); transition:all .15s; white-space:nowrap;
+            }
+            .btn-generate:hover { background:rgba(255,255,255,.28); border-color:rgba(255,255,255,.85); }
+            .btn-view {
+                padding: 9px 20px; border-radius:8px; border:none;
+                background:#fff; color:#4f46e5; cursor:pointer;
+                font-weight:700; font-size:13px; display:inline-flex; align-items:center; gap:6px;
+                text-decoration:none; white-space:nowrap;
+            }
+            .btn-view:hover { background:#f5f3ff; }
+
+            /* ── Result banner ── */
+            .result-banner {
+                background:#f0fdf4; border:1px solid #bbf7d0; border-left:4px solid #059669;
+                border-radius:10px; padding:12px 18px; display:flex; align-items:center;
+                gap:10px; font-weight:700; color:#166534; font-size:14px;
             }
 
-            .badge.day { background:#ecfdf3; color:#15803d; }
-            .badge.slot { background:#eef2ff; color:#4338ca; }
-            .badge.room { background:#eff6ff; color:#1d4ed8; }
+            /* ── Warnings ── */
+            .warn-card {
+                background:#fff; border:1px solid #fde68a; border-left:4px solid #f59e0b;
+                border-radius:10px; padding:16px 18px;
+            }
+            .warn-card h3 { color:#92400e; font-size:13px; font-weight:700; margin:0 0 10px;
+                           display:flex; align-items:center; gap:6px; }
+            .warn-card ul { margin:0; padding-left:18px; }
+            .warn-card li { color:#78350f; font-size:12px; margin-bottom:5px; line-height:1.5; }
+
+            /* ── Table card ── */
+            .table-head-bar {
+                padding:12px 16px; border-bottom:1px solid #e2e8f0;
+                display:flex; align-items:center; justify-content:space-between;
+                background:#f8fafc; flex-wrap:wrap; gap:10px;
+            }
+            .table-head-bar h3 { margin:0; font-size:13px; font-weight:700; color:#1e293b;
+                                 display:flex; align-items:center; gap:6px; }
+            .table-scroll { overflow-x:auto; }
+            table { width:100%; border-collapse:collapse; font-size:13px; }
+            th { padding:10px 12px; background:#f8fafc; text-align:left; font-size:11px;
+                 font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:#64748b;
+                 white-space:nowrap; border-bottom:1px solid #e2e8f0; }
+            td { padding:9px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+            tr:last-child td { border-bottom:none; }
+            tr:hover td { background:#f9fafb; }
+
+            /* Day badges */
+            .day-b { display:inline-flex; align-items:center; padding:3px 9px;
+                     border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+            .d-mon { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+            .d-tue { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+            .d-wed { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+            .d-thu { background:#fdf4ff; color:#7e22ce; border:1px solid #e9d5ff; }
+            .d-fri { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+            .d-sat { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
+
+            /* Other pills */
+            .slot-b  { font-family:monospace; font-size:11px; background:#f8fafc;
+                       border:1px solid #e2e8f0; border-radius:5px; padding:2px 7px; white-space:nowrap; }
+            .room-b  { font-family:monospace; font-size:11px; background:#f0f9ff;
+                       color:#0369a1; border:1px solid #bae6fd; border-radius:5px; padding:2px 7px; white-space:nowrap; }
+            .tp      { display:inline-flex; align-items:center; padding:3px 8px;
+                       border-radius:999px; font-size:11px; font-weight:700; }
+            .tp-theory    { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+            .tp-practical { background:#fdf4ff; color:#7e22ce; border:1px solid #e9d5ff; }
+            .tp-lab       { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+            .tp-special   { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+            .tp-default   { background:#f8fafc; color:#475569; border:1px solid #e2e8f0; }
+
+            /* Group row */
+            .grp-row td { background:#f1f5f9; font-weight:700; font-size:11px;
+                          text-transform:uppercase; letter-spacing:0.5px; color:#475569;
+                          padding:6px 12px; border-bottom:1px solid #e2e8f0; border-top:2px solid #e2e8f0; }
+
+            /* Filter strip */
+            .filter-strip { display:flex; align-items:center; gap:8px; }
+            .filter-strip label { font-size:11px; font-weight:700; color:#64748b;
+                                  text-transform:uppercase; letter-spacing:0.3px; }
+            .filter-strip select { padding:5px 9px; border:1px solid #e2e8f0;
+                                   border-radius:7px; font-size:12px; background:#fff;
+                                   width:auto; }
         </style>
     </th:block>
 </head>
-<body th:replace="admin-layout :: shell('generate', 'Automatic Timetable', ~{::content})">
+<body th:replace="admin-layout :: shell('generate', 'Generate Timetable', ~{::content})">
 <section th:fragment="content" class="page-shell">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-        <div>
-            <h2 style="margin:0;display:flex;align-items:center;gap:10px;">
-                <i class="fas fa-wand-magic-sparkles" style="color:#6366f1;"></i> Automatic Timetable
-            </h2>
-            <p class="helper">Clash free · one click</p>
-        </div>
-        <span class="pill">Generator</span>
+
+    <!-- Page header -->
+    <div class="pg-head">
+        <h2><i class="fas fa-magic" style="color:#4f46e5;"></i> Generate Timetable</h2>
+        <p>One-click generation — assigns subjects, faculty and rooms while preventing all conflicts.</p>
     </div>
 
-    <div class="card">
-        <h3><i class="fas fa-play-circle"></i> Run Generator</h3>
-        <p style="color:#4b5563;margin-bottom:12px;">Assigns every subject to a free teacher, room and timeslot while preventing teacher, room, and subject clashes.</p>
-        <form action="/auto-generate/run" method="post" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <button class="btn" type="submit"><i class="fas fa-wand-magic-sparkles"></i> Generate Now</button>
-            <a class="btn secondary" href="/view-timetable" style="text-decoration:none;"><i class="fas fa-table"></i> View Timetable</a>
-        </form>
-        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
-            <div class="alert info" th:if="${lastCount != null}" th:text="'Existing entries before run: ' + ${lastCount}"></div>
-            <div class="alert success" th:if="${placedCount != null}" th:text="'Placed ' + ${placedCount} + ' of ' + ${requestedCount} + ' sessions'"></div>
+    <!-- Stat cards — use global design system -->
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-database"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${lastCount != null ? lastCount : 0}">0</div>
+                <div class="sl">Entries in DB</div>
+            </div>
+        </div>
+        <div class="stat-card" th:if="${placedCount != null}">
+            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${placedCount}">0</div>
+                <div class="sl" th:text="'of ' + ${requestedCount} + ' placed'">placed</div>
+            </div>
+        </div>
+        <div class="stat-card" th:if="${errors != null}">
+            <div class="stat-icon amber"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${errors.size()}">0</div>
+                <div class="sl">Warnings</div>
+            </div>
+        </div>
+        <div class="stat-card" th:if="${timetableList != null}">
+            <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${timetableList.size()}">0</div>
+                <div class="sl">Total Entries</div>
+            </div>
         </div>
     </div>
 
-    <div th:if="${errors != null && !errors.isEmpty()}" class="card" style="border:1px solid #fecaca;background:#fff1f2;">
-        <h3 style="color:#b91c1c;"><i class="fas fa-triangle-exclamation"></i> Issues / Warnings</h3>
-        <ul style="margin-left:18px;color:#7f1d1d;font-weight:600;">
-            <li th:each="e : ${errors}" th:text="${e}">Issue</li>
+    <!-- Run Generator card -->
+    <div class="gen-card">
+        <div class="gen-card-text">
+            <h3><i class="fas fa-play-circle"></i> Run Generator</h3>
+            <p>Reads all subjects, faculty, rooms and time slots from the database and places
+               sessions without any faculty, room or class conflicts.
+               Existing entries are cleared before generating.</p>
+        </div>
+        <div class="gen-card-actions">
+            <form action="/auto-generate/run" method="post"
+                  onsubmit="return confirm('This will clear all existing entries and generate a fresh timetable. Continue?')">
+                <button class="btn-generate" type="submit">
+                    <i class="fas fa-magic"></i> Generate Now
+                </button>
+            </form>
+            <a class="btn-view" href="/view-timetable">
+                <i class="fas fa-table"></i> View Timetable
+            </a>
+        </div>
+    </div>
+
+    <!-- Success result banner -->
+    <div class="result-banner" th:if="${placedCount != null}">
+        <i class="fas fa-check-circle" style="font-size:18px;"></i>
+        <span>Generation complete — placed <strong th:text="${placedCount}"></strong>
+              of <strong th:text="${requestedCount}"></strong> requested sessions.</span>
+    </div>
+
+    <!-- Warnings -->
+    <div class="warn-card" th:if="${errors != null and !errors.isEmpty()}">
+        <h3><i class="fas fa-exclamation-triangle"></i>
+            Placement Warnings (<span th:text="${errors.size()}"></span>)
+        </h3>
+        <ul>
+            <li th:each="e : ${errors}" th:text="${e}"></li>
         </ul>
     </div>
 
-    <div class="card">
-        <h3><i class="fas fa-list"></i> Latest Generated Entries</h3>
-        <table>
-            <thead>
-            <tr>
-                <th>Day</th>
-                <th>Time</th>
-                <th>Subject</th>
-                <th>Faculty</th>
-                <th>Room</th>
-                <th>Class</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="t : ${timetableList}">
-                <td><span class="badge day" th:text="${t.day}">Monday</span></td>
-                <td><span class="badge slot" th:text="${t.timeSlot}">09:00 - 10:00</span></td>
-                <td th:text="${t.subject}">Java</td>
-                <td th:text="${t.faculty}">Prof Patil</td>
-                <td><span class="badge room" th:text="${t.room}">R101</span></td>
-                <td th:text="${t.className}">SEM 3</td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(timetableList)}">
-                <td colspan="6" style="text-align:center;padding:20px;color:#6b7280;">No timetable generated yet.</td>
-            </tr>
-            </tbody>
-        </table>
+    <!-- Generated entries table -->
+    <div class="ds-list" th:if="${timetableList != null}">
+        <div class="table-head-bar">
+            <h3><i class="fas fa-list" style="color:#4f46e5;"></i>
+                Generated Entries
+                <span style="font-weight:400;color:#64748b;font-size:12px;margin-left:4px;"
+                      th:text="'(' + ${timetableList.size()} + ')'"></span>
+            </h3>
+            <div class="filter-strip">
+                <label>Filter:</label>
+                <select id="classFilter" onchange="filterTable()">
+                    <option value="">All Classes</option>
+                </select>
+                <select id="dayFilter" onchange="filterTable()">
+                    <option value="">All Days</option>
+                    <option>Monday</option>
+                    <option>Tuesday</option>
+                    <option>Wednesday</option>
+                    <option>Thursday</option>
+                    <option>Friday</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table id="resultTable">
+                <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Time</th>
+                    <th>Subject</th>
+                    <th>Faculty</th>
+                    <th>Room</th>
+                    <th>Class / Div</th>
+                    <th>Type</th>
+                </tr>
+                </thead>
+                <tbody>
+                <th:block th:each="t,iter : ${timetableList}">
+                    <!-- Day group header when day changes -->
+                    <tr class="grp-row"
+                        th:if="${iter.first or (timetableList[__${iter.index - 1}__].day != t.day)}">
+                        <td colspan="7" th:text="${t.day}"></td>
+                    </tr>
+                    <tr th:attr="data-class=${t.className}, data-day=${t.day}">
+                        <td>
+                            <span class="day-b"
+                                  th:classappend="${#strings.containsIgnoreCase(t.day,'mon')} ? ' d-mon'
+                                              : (${#strings.containsIgnoreCase(t.day,'tue')} ? ' d-tue'
+                                              : (${#strings.containsIgnoreCase(t.day,'wed')} ? ' d-wed'
+                                              : (${#strings.containsIgnoreCase(t.day,'thu')} ? ' d-thu'
+                                              : (${#strings.containsIgnoreCase(t.day,'fri')} ? ' d-fri'
+                                              : ' d-sat'))))"
+                                  th:text="${t.day}"></span>
+                        </td>
+                        <td><span class="slot-b" th:text="${t.timeSlot}"></span></td>
+                        <td style="font-weight:600;max-width:180px;white-space:normal;font-size:12px;"
+                            th:text="${t.subject}"></td>
+                        <td style="font-size:12px;color:#475569;max-width:140px;white-space:normal;"
+                            th:text="${t.faculty}"></td>
+                        <td>
+                            <span class="room-b"
+                                  th:if="${t.room != null and !#strings.isEmpty(t.room)}"
+                                  th:text="${t.room}"></span>
+                            <span style="color:#94a3b8;"
+                                  th:if="${t.room == null or #strings.isEmpty(t.room)}">—</span>
+                        </td>
+                        <td>
+                            <span style="font-weight:600;font-size:12px;" th:text="${t.className}"></span>
+                            <span style="color:#94a3b8;font-size:11px;"
+                                  th:if="${t.division != null and !#strings.isEmpty(t.division)}"
+                                  th:text="' · ' + t.division"></span>
+                        </td>
+                        <td>
+                            <span class="tp"
+                                  th:classappend="${#strings.containsIgnoreCase(t.lectureType,'theory') or #strings.containsIgnoreCase(t.lectureType,'lecture')} ? ' tp-theory'
+                                              : (${#strings.containsIgnoreCase(t.lectureType,'practical') or #strings.containsIgnoreCase(t.lectureType,'prac')} ? ' tp-practical'
+                                              : (${#strings.containsIgnoreCase(t.lectureType,'lab')} ? ' tp-lab'
+                                              : (${#strings.containsIgnoreCase(t.lectureType,'special')} ? ' tp-special'
+                                              : ' tp-default')))"
+                                  th:text="${t.lectureType}"></span>
+                        </td>
+                    </tr>
+                </th:block>
+                <tr th:if="${#lists.isEmpty(timetableList)}">
+                    <td colspan="7" style="text-align:center;padding:28px;color:#94a3b8;">
+                        <i class="fas fa-magic" style="font-size:22px;display:block;margin-bottom:8px;opacity:.3;"></i>
+                        No entries generated yet. Click <strong>Generate Now</strong> above.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <script>
+        (function buildClassFilter() {
+            const sel = document.getElementById('classFilter');
+            if (!sel) return;
+            const rows = document.querySelectorAll('#resultTable tbody tr[data-class]');
+            const classes = [...new Set([...rows].map(r => r.dataset.class).filter(Boolean))].sort();
+            classes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                sel.appendChild(opt);
+            });
+        })();
+
+        function filterTable() {
+            const classVal = (document.getElementById('classFilter').value || '').toLowerCase();
+            const dayVal   = (document.getElementById('dayFilter').value  || '').toLowerCase();
+            const rows = document.querySelectorAll('#resultTable tbody tr');
+            let lastGrp = null, visAfterGrp = 0;
+            rows.forEach(row => {
+                if (row.classList.contains('grp-row')) {
+                    if (lastGrp && visAfterGrp === 0) lastGrp.style.display = 'none';
+                    lastGrp = row; visAfterGrp = 0;
+                    row.style.display = '';
+                    return;
+                }
+                const cls = (row.dataset.class || '').toLowerCase();
+                const day = (row.dataset.day  || '').toLowerCase();
+                const show = (!classVal || cls.includes(classVal)) && (!dayVal || day.includes(dayVal));
+                row.style.display = show ? '' : 'none';
+                if (show) visAfterGrp++;
+            });
+            if (lastGrp && visAfterGrp === 0) lastGrp.style.display = 'none';
+        }
+    </script>
 </section>
 </body>
 </html>

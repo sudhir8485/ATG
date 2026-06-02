@@ -3,58 +3,288 @@
 <head th:replace="admin-layout :: head('Assign Subjects · Admin', ~{::extraHead})">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell{display:flex;flex-direction:column;gap:18px;}
-            .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);padding:18px;}
-            table{width:100%;border-collapse:collapse;}
-            th,td{padding:12px 10px;border-bottom:1px solid #e2e8f0;text-align:left;}
-            th{background:#f8fafc;text-transform:uppercase;font-size:12px;letter-spacing:0.4px;color:#475569;}
-            .btn{padding:8px 12px;border-radius:10px;border:none;background:#4f46e5;color:#fff;cursor:pointer;font-weight:700;}
-            select{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;}
+            .page-shell { display:flex; flex-direction:column; gap:22px; }
+            .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.07); padding:20px; }
+            table { width:100%; border-collapse:collapse; }
+            th, td { padding:10px 12px; border-bottom:1px solid #e2e8f0; text-align:left; vertical-align:top; }
+            th { background:#f8fafc; text-transform:uppercase; font-size:11px; letter-spacing:0.5px; color:#64748b; font-weight:700; }
+
+            /* Buttons */
+            .btn        { padding:6px 14px; border-radius:8px; border:none; background:#4f46e5; color:#fff; cursor:pointer; font-weight:700; font-size:12px; }
+            .btn:hover  { background:#4338ca; }
+            .btn-green  { padding:6px 14px; border-radius:8px; border:none; background:#059669; color:#fff; cursor:pointer; font-weight:700; font-size:12px; }
+            .btn-green:hover { background:#047857; }
+            .btn-clear  { padding:5px 11px; font-size:12px; border-radius:8px; border:1px solid #fca5a5; background:#fef2f2; color:#dc2626; cursor:pointer; font-weight:700; }
+            .btn-clear:hover { background:#fee2e2; }
+
+            /* Pills */
+            .pill       { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; margin:2px; }
+            .pill-none  { background:#f8fafc; color:#94a3b8; border:1px solid #e2e8f0; }
+            .pill-fac   { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+            .pill-lab   { background:#fdf4ff; color:#7e22ce; }
+
+            /* Section head */
+            .section-head { font-size:11px; text-transform:uppercase; letter-spacing:0.6px; color:#94a3b8; font-weight:700;
+                            padding:10px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;
+                            border-radius:12px 12px 0 0; margin:-20px -20px 0; }
+            .desc-note  { font-size:13px; color:#475569; padding:10px 0 14px; line-height:1.6; }
+
+            /* Flash messages */
+            .flash-ok   { padding:10px 16px; border-radius:8px; font-size:13px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+            .flash-err  { padding:10px 16px; border-radius:8px; font-size:13px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+
+            /* Multi-faculty checkboxes */
+            .fac-check-list { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px; }
+            .fac-chk-label  { display:flex; align-items:center; gap:5px; padding:4px 10px; border:1px solid #e2e8f0;
+                              border-radius:8px; font-size:12px; cursor:pointer; background:#f8fafc; transition:all .15s; }
+            .fac-chk-label:hover { background:#eff6ff; border-color:#93c5fd; }
+            .fac-chk-label.selected { background:#f0fdf4; border-color:#86efac; color:#166534; font-weight:600; }
+            .fac-chk-label input { accent-color:#4f46e5; cursor:pointer; }
+
+            /* Lab batch cards */
+            .lab-card        { border:1px solid #e2e8f0; border-radius:10px; margin-bottom:14px; overflow:hidden; }
+            .lab-card-head   { background:#f8fafc; padding:10px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid #e2e8f0; }
+            .lab-card-head strong { font-size:14px; }
+            .lab-card-head .meta  { font-size:12px; color:#64748b; }
+            .div-block       { padding:14px 16px; border-bottom:1px solid #f1f5f9; }
+            .div-block:last-child { border-bottom:none; }
+            .div-label       { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;
+                              color:#7c3aed; background:#f5f3ff; border:1px solid #ddd6fe;
+                              border-radius:6px; padding:3px 10px; display:inline-block; margin-bottom:12px; }
+            .batch-grid      { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; margin-bottom:10px; }
+            .batch-row       { display:flex; align-items:center; gap:8px; background:#f9fafb;
+                              border:1px solid #e2e8f0; border-radius:8px; padding:7px 10px; }
+            .batch-badge     { font-size:12px; font-weight:700; color:#fff; background:#4f46e5;
+                              border-radius:6px; padding:2px 8px; min-width:30px; text-align:center; flex-shrink:0; }
+            .batch-row select { flex:1; padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; }
+            .assigned-tag    { font-size:11px; color:#166534; background:#f0fdf4; border:1px solid #bbf7d0;
+                              border-radius:6px; padding:2px 7px; white-space:nowrap; flex-shrink:0; }
+            select           { padding:7px 10px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; }
+
+            /* Quick-assign bar */
+            .quick-assign-bar { display:flex; align-items:center; gap:8px; padding:8px 12px;
+                                background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;
+                                margin-bottom:12px; flex-wrap:wrap; }
+            .quick-assign-bar span { font-size:12px; font-weight:700; color:#1e40af; white-space:nowrap; }
+            .quick-assign-bar select { flex:1; min-width:160px; padding:5px 8px; font-size:12px;
+                                       border:1px solid #93c5fd; border-radius:6px; }
+            .btn-apply-all { padding:5px 12px; border-radius:7px; border:none; background:#2563eb;
+                             color:#fff; cursor:pointer; font-weight:700; font-size:12px; white-space:nowrap; }
+            .btn-apply-all:hover { background:#1d4ed8; }
         </style>
     </th:block>
 </head>
 <body th:replace="admin-layout :: shell('assign-subjects', 'Assign Subjects', ~{::content})">
 <section th:fragment="content" class="page-shell">
+
     <div class="page-header">
         <h2><i class="fas fa-link"></i> Assign Subjects to Faculty</h2>
-        <p>Pick a faculty member for each subject.</p>
     </div>
 
+    <!-- Flash -->
+    <div th:if="${message}" th:class="${messageType == 'error'} ? 'flash-err' : 'flash-ok'">
+        <span th:text="${message}"></span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECTION 1 — THEORY / LECTURE SUBJECTS
+         ═══════════════════════════════════════════════════════════════ -->
     <div class="card">
+        <div class="section-head">📖 Theory / Lecture Subjects</div>
+        <p class="desc-note">
+            Set a <strong>primary faculty</strong> (dropdown) and optionally add <strong>multiple co-teachers</strong>
+            (checkboxes) for each theory subject.
+        </p>
         <table>
             <thead>
             <tr>
                 <th>Subject</th>
-                <th>Code</th>
-                <th>Department</th>
-                <th>Assigned Faculty</th>
-                <th style="width:140px;">Action</th>
+                <th>Code / Sem</th>
+                <th>Primary Faculty</th>
+                <th>Additional Faculty <span style="font-weight:400;text-transform:none;">(check all co-teachers)</span></th>
             </tr>
             </thead>
             <tbody>
-            <tr th:each="s : ${subjects}">
-                <td th:text="${s.name}"></td>
-                <td th:text="${s.code}"></td>
-                <td th:text="${s.department}"></td>
+            <tr th:each="s : ${theorySubjects}">
+                <!-- Subject name -->
                 <td>
-                    <form th:action="@{/assign-subjects/{id}(id=${s.id})}" method="post" style="display:flex;gap:8px;align-items:center;">
-                        <select name="facultyName">
-                            <option value="">-- Select --</option>
-                            <option th:each="f : ${faculty}"
-                                    th:value="${f.name}"
-                                    th:text="${f.name}"
-                                    th:selected="${s.faculty} != null ? (s.faculty == f.name) : false"></option>
-                        </select>
-                        <button type="submit" class="btn">Save</button>
+                    <strong th:text="${s.name}"></strong>
+                    <div style="font-size:12px;color:#64748b;margin-top:3px;"
+                         th:text="${s.lectureHoursPerWeek != null ? s.lectureHoursPerWeek + ' hrs/wk' : ''}"></div>
+                </td>
+
+                <!-- Code / Sem -->
+                <td style="white-space:nowrap;">
+                    <span th:text="${s.code}"></span>
+                    <div style="font-size:12px;color:#94a3b8;" th:text="'Sem ' + ${s.semester}"></div>
+                </td>
+
+                <!-- Primary faculty: dropdown + Save + Clear -->
+                <td>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <!-- Current primary -->
+                        <span class="pill pill-fac" th:if="${s.faculty != null and !#strings.isEmpty(s.faculty)}"
+                              th:text="${s.faculty}"></span>
+                        <span class="pill pill-none" th:if="${s.faculty == null or #strings.isEmpty(s.faculty)}">Not set</span>
+
+                        <!-- Save form -->
+                        <form th:action="@{/assign-subjects/{id}(id=${s.id})}" method="post"
+                              style="display:flex;gap:6px;align-items:center;margin-top:4px;">
+                            <select name="facultyName" style="font-size:12px;padding:5px 8px;">
+                                <option value="">-- select --</option>
+                                <option th:each="f : ${faculty}" th:value="${f.name}" th:text="${f.name}"
+                                        th:selected="${s.faculty != null and s.faculty == f.name}"></option>
+                            </select>
+                            <button type="submit" class="btn">Save</button>
+                        </form>
+
+                        <!-- Clear form (separate) -->
+                        <form th:if="${s.faculty != null and !#strings.isEmpty(s.faculty)}"
+                              th:action="@{/assign-subjects/{id}(id=${s.id})}" method="post">
+                            <input type="hidden" name="facultyName" value=""/>
+                            <button type="submit" class="btn-clear">&#10005; Clear</button>
+                        </form>
+                    </div>
+                </td>
+
+                <!-- Additional / Co-teacher faculty (multi-select via checkboxes) -->
+                <td>
+                    <!-- Currently assigned extra faculty -->
+                    <th:block th:if="${theoryExtraFacMap.containsKey(s.id)}">
+                        <span class="pill pill-fac" th:each="fn : ${theoryExtraFacMap.get(s.id)}"
+                              th:text="${fn}"></span>
+                    </th:block>
+                    <span class="pill pill-none"
+                          th:if="${!theoryExtraFacMap.containsKey(s.id)}">None</span>
+
+                    <!-- Checkbox form -->
+                    <form th:action="@{/assign-theory-faculty/{id}(id=${s.id})}" method="post"
+                          style="margin-top:8px;">
+                        <div class="fac-check-list">
+                            <th:block th:each="f : ${faculty}">
+                                <th:block th:with="isChk=${theoryExtraFacMap.containsKey(s.id) and #lists.contains(theoryExtraFacMap.get(s.id), f.name)}">
+                                    <label th:class="${isChk} ? 'fac-chk-label selected' : 'fac-chk-label'">
+                                        <input type="checkbox" name="facultyIds"
+                                               th:value="${f.id}"
+                                               th:checked="${isChk}"/>
+                                        <span th:text="${f.name}"></span>
+                                    </label>
+                                </th:block>
+                            </th:block>
+                        </div>
+                        <button type="submit" class="btn-green">Save Co-Teachers</button>
                     </form>
                 </td>
             </tr>
-            <tr th:if="${#lists.isEmpty(subjects)}">
-                <td colspan="5" style="text-align:center;padding:12px;color:#6b7280;">No subjects found.</td>
+            <tr th:if="${#lists.isEmpty(theorySubjects)}">
+                <td colspan="4" style="text-align:center;padding:20px;color:#94a3b8;">No theory subjects found.</td>
             </tr>
             </tbody>
         </table>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SECTION 2 — LAB / PRACTICAL SUBJECTS — BATCH-WISE FACULTY
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="card">
+        <div class="section-head">🔬 Lab / Practical Subjects — Batch-wise Faculty Assignment</div>
+        <p class="desc-note">
+            Assign a <strong>different faculty per batch</strong> for each lab subject.
+            Batches are derived from the Division setup (e.g. S1–S4 for SE-IT, T1–T4 for TE-IT, B1–B4 for BE-IT).
+            <span style="color:#059669;font-weight:600;">Green tag</span> = currently saved faculty.
+        </p>
+
+        <div th:if="${#lists.isEmpty(labSubjects)}"
+             style="text-align:center;padding:20px;color:#94a3b8;">No lab/practical subjects found.</div>
+
+        <!-- One card per lab subject -->
+        <div th:each="s : ${labSubjects}" class="lab-card">
+
+            <!-- Subject header row -->
+            <div class="lab-card-head">
+                <strong th:text="${s.name}"></strong>
+                <span class="pill pill-lab" style="margin:0;">Lab</span>
+                <span class="meta" th:text="'Code: ' + ${s.code}"></span>
+                <span class="meta" th:text="'Sem ' + ${s.semester}"></span>
+                <span class="meta" th:text="${s.practicalHoursPerWeek} + ' prac hrs/wk'"></span>
+            </div>
+
+            <!-- Per-division batch dropdowns -->
+            <div th:each="division : ${allDivisions}"
+                 th:if="${s.semester != null and division.semesterNumber != null and s.semester.equals(division.semesterNumber)}"
+                 class="div-block">
+
+                <span class="div-label" th:text="${division.name}"></span>
+
+                <form th:action="@{/assign-batch-faculty/{sid}(sid=${s.id})}" method="post">
+                    <input type="hidden" name="divisionName" th:value="${division.name}"/>
+
+                    <!-- Quick Assign All: one pick fills every batch dropdown -->
+                    <div class="quick-assign-bar"
+                         th:if="${batchNamesByDivId.get('' + division.id) != null and !#lists.isEmpty(batchNamesByDivId.get('' + division.id))}">
+                        <span>&#9889; Quick assign all batches:</span>
+                        <select class="qa-select"
+                                th:attr="data-group=${'' + s.id + '_' + division.name}">
+                            <option value="">-- Pick a faculty --</option>
+                            <option th:each="f : ${faculty}"
+                                    th:value="${f.name}"
+                                    th:text="${f.name}"></option>
+                        </select>
+                        <button type="button" class="btn-apply-all"
+                                th:attr="data-group=${'' + s.id + '_' + division.name}"
+                                onclick="applyToAll(this)">Apply to all batches</button>
+                    </div>
+
+                    <!-- Per-batch rows -->
+                    <div class="batch-grid">
+                        <div th:each="batchName : ${batchNamesByDivId.get('' + division.id)}"
+                             class="batch-row">
+                            <span class="batch-badge" th:text="${batchName}"></span>
+                            <input type="hidden" name="batch" th:value="${batchName}"/>
+                            <select name="faculty"
+                                    th:attr="data-group=${'' + s.id + '_' + division.name}">
+                                <option value="">-- No faculty --</option>
+                                <option th:each="f : ${faculty}"
+                                        th:value="${f.name}"
+                                        th:text="${f.name}"
+                                        th:selected="${batchFacultyMap.get('' + s.id + '_' + division.name + '_' + batchName) != null
+                                                      and batchFacultyMap.get('' + s.id + '_' + division.name + '_' + batchName) == f.name}">
+                                </option>
+                            </select>
+                            <span class="assigned-tag"
+                                  th:if="${batchFacultyMap.get('' + s.id + '_' + division.name + '_' + batchName) != null}"
+                                  th:text="${batchFacultyMap.get('' + s.id + '_' + division.name + '_' + batchName)}"></span>
+                        </div>
+                    </div>
+
+                    <div th:if="${batchNamesByDivId.get('' + division.id) == null or #lists.isEmpty(batchNamesByDivId.get('' + division.id))}"
+                         style="font-size:12px;color:#94a3b8;padding:4px 0;">
+                        No batches configured — set <em>Batch Count</em> + <em>Batch Prefix</em> on the
+                        <a href="/add-division" style="color:#4f46e5;">Division page</a>.
+                    </div>
+                    <button type="submit" class="btn-green" style="margin-top:10px;">
+                        &#10003; Save <span th:text="${division.name}"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<script>
+    function applyToAll(btn) {
+        const group = btn.dataset.group;
+        // Find the quick-select for this group
+        const quickSelect = document.querySelector('select.qa-select[data-group="' + group + '"]');
+        if (!quickSelect || !quickSelect.value) {
+            quickSelect && quickSelect.focus();
+            return;
+        }
+        const value = quickSelect.value;
+        // Apply to all batch selects in this group (name="faculty")
+        document.querySelectorAll('select[name="faculty"][data-group="' + group + '"]')
+            .forEach(function(sel) { sel.value = value; });
+    }
+</script>
 </section>
 </body>
 </html>

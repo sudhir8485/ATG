@@ -3,214 +3,137 @@
 <head th:replace="admin-layout :: head('Department Management · Admin', ~{::extraHead})">
     <th:block th:fragment="extraHead">
         <style>
-            .page-shell {
-                display: flex;
-                flex-direction: column;
-                gap: 20px;
-            }
-
-            .page-header h2 {
-                font-size: 26px;
-                color: #1a2639;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            .alert-success{
-                background:#ecfdf3;
-                color:#15803d;
-                border:1px solid #bbf7d0;
-            }
-            .alert-error{
-                background:#fef2f2;
-                color:#b91c1c;
-                border:1px solid #fecdd3;
-            }
-
-            .card {
-                background: white;
-                padding: 26px;
-                max-width: 520px;
-                border-radius: 16px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e2e8f0;
-            }
-
-            .card-header {
-                margin-bottom: 20px;
-            }
-
-            .card-header h3 {
-                color: #1a2639;
-                font-size: 20px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin: 0;
-            }
-
-            .form-group {
-                margin-bottom: 16px;
-            }
-
-            .form-group label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-            }
-
-            .input-wrapper {
-                position: relative;
-            }
-
-            .input-wrapper i {
-                position: absolute;
-                left: 15px;
-                top: 12px;
-                color: #9aa1b5;
-            }
-
-            .page-shell input {
-                padding-left: 42px;
-            }
-
-            .form-actions {
-                display: flex;
-                gap: 14px;
-                margin-top: 10px;
-                flex-wrap: wrap;
-            }
-
-            .btn-secondary {
-                background: #7f8c8d;
-                color: #fff;
-            }
-
-            .departments-list {
-                background: white;
-                border-radius: 16px;
-                padding: 18px;
-                border: 1px solid #e2e8f0;
-            }
-
-            .list-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 12px;
-            }
-
-            .action-link {
-                margin-right: 10px;
-                color: #3498db;
-                text-decoration: none;
-                font-weight: 600;
-            }
-
-            .action-delete {
-                color: #e74c3c;
-            }
+            .page-shell { display:flex; flex-direction:column; gap:20px; }
         </style>
     </th:block>
 </head>
 <body th:replace="admin-layout :: shell('departments', 'Department Management', ~{::content})">
 <section th:fragment="content" class="page-shell">
-    <div class="page-header">
-        <h2><i class="fas fa-building"></i> Department Management</h2>
+
+    <!-- Header -->
+    <div class="pg-head">
+        <h2><i class="fas fa-building" style="color:#4f46e5;"></i> Department Management</h2>
+        <p>Create and manage departments for all divisions.</p>
     </div>
 
-    <div th:if="${message}" style="padding:12px 14px;border-radius:12px;font-weight:600;margin-top:-6px;"
-         th:classappend="${messageType}=='success' ? ' alert-success' : ' alert-error'">
+    <!-- Flash -->
+    <div th:if="${message}" th:class="${messageType == 'error'} ? 'flash-err' : 'flash-ok'">
         <span th:text="${message}"></span>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h3>
-                <i class="fas fa-plus-circle" th:if="${!isEdit}"></i>
-                <i class="fas fa-edit" th:if="${isEdit}"></i>
-                <span th:text="${isEdit} ? 'Edit Department' : 'Add New Department'"></span>
-            </h3>
-            <p th:text="${isEdit} ? 'Update and save changes' : 'Create a new department by filling the form'"></p>
+    <!-- Stat cards -->
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-building"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${#lists.size(departments)}">0</div>
+                <div class="sl">Departments</div>
+            </div>
         </div>
-
-        <form th:action="${isEdit} ? @{/update-department/{id}(id=${department.id})} : @{/save-department}" method="post">
-            <div class="form-group">
-                <label><i class="fas fa-building"></i> Department Name</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-university"></i>
-                    <input type="text" name="name" placeholder="Enter Department Name" required
-                           th:value="${department != null} ? department.name : ''">
-                </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-user-tie"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${#lists.size(hodList)}">0</div>
+                <div class="sl">HODs Assigned</div>
             </div>
-
-            <div class="form-group">
-                <label><i class="fas fa-code"></i> Department Code</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-tag"></i>
-                    <input type="text" name="code" placeholder="Enter Department Code"
-                           th:value="${department != null} ? department.code : ''">
-                </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="fas fa-hourglass-half"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${#lists.size(departments) - #lists.size(hodList)}">0</div>
+                <div class="sl">Vacant Positions</div>
             </div>
-
-            <div class="form-group">
-                <label><i class="fas fa-user-tie"></i> Head of Department</label>
-                <div class="input-wrapper">
-                    <i class="fas fa-user"></i>
-                    <input list="hodList" name="hod" placeholder="Select or type HOD"
-                           th:value="${department != null} ? department.hod : ''">
-                    <datalist id="hodList">
-                        <option th:each="h : ${hodList}" th:value="${h.name}"></option>
-                    </datalist>
-                </div>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="btn">
-                    <i class="fas fa-save"></i>
-                    <span th:text="${isEdit} ? 'Save Changes' : 'Create Department'"></span>
-                </button>
-
-                <button type="reset" class="btn btn-secondary">
-                    Reset
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
 
-    <div class="departments-list">
-        <div class="list-header">
-            <h4><i class="fas fa-list"></i> Existing Departments</h4>
+    <!-- Two-column layout -->
+    <div class="pg-grid">
+
+        <!-- Form -->
+        <div class="ds-card">
+            <div class="ds-card-head">
+                <i th:class="${isEdit} ? 'fas fa-edit' : 'fas fa-plus-circle'" style="color:#4f46e5;"></i>
+                <span th:text="${isEdit} ? 'Edit Department' : 'Add New Department'"></span>
+            </div>
+
+            <div th:if="${isEdit}" class="edit-banner">
+                <i class="fas fa-edit"></i> Editing existing department — fields pre-filled.
+            </div>
+
+            <form th:action="${isEdit and department != null} ? @{/update-department/{id}(id=${department.id})} : @{/save-department}" method="post">
+                <div class="fg">
+                    <label>Department Name *</label>
+                    <input type="text" name="name" placeholder="e.g., Information Technology" required
+                           th:value="${department != null ? department.name : ''}">
+                </div>
+                <div class="fg">
+                    <label>Department Code</label>
+                    <input type="text" name="code" placeholder="e.g., IT, CS"
+                           th:value="${department != null ? department.code : ''}">
+                </div>
+                <div class="fg">
+                    <label>Head of Department</label>
+                    <input list="hodDatalist" name="hod" placeholder="Select or type HOD name"
+                           th:value="${department != null ? department.hod : ''}">
+                    <datalist id="hodDatalist">
+                        <option th:each="h : ${hodList}" th:value="${h.name}"></option>
+                    </datalist>
+                    <div class="hint">Type to search from existing HOD list.</div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+                    <button type="submit" class="btn-pri">
+                        <i class="fas fa-save"></i>
+                        <span th:text="${isEdit} ? 'Save Changes' : 'Create Department'"></span>
+                    </button>
+                    <button type="reset" class="btn-sec" th:if="${!isEdit}">Reset</button>
+                    <a href="/add-department" class="btn-sec" th:if="${isEdit}">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
         </div>
 
-        <table>
-            <thead>
-            <tr>
-                <th>Department</th>
-                <th>Code</th>
-                <th>HOD</th>
-                <th style="width:160px;">Actions</th>
-            </tr>
-            </thead>
-
-            <tbody>
-            <tr th:each="d : ${departments}">
-                <td th:text="${d.name}"></td>
-                <td th:text="${d.code}"></td>
-                <td th:text="${d.hod}"></td>
-                <td>
-                    <a class="action-link" th:href="@{/edit-department/{id}(id=${d.id})}">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                    <a class="action-link action-delete" th:href="@{/delete-department/{id}(id=${d.id})}"
-                       onclick="return confirm('Delete this department?')">
-                        <i class="fas fa-trash"></i> Delete
-                    </a>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <!-- List -->
+        <div class="ds-list">
+            <div class="ds-list-head">
+                <h4><i class="fas fa-list" style="color:#4f46e5;"></i> Existing Departments</h4>
+                <span class="count-tag" th:text="${#lists.size(departments)} + ' total'">0</span>
+            </div>
+            <table>
+                <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Code</th>
+                    <th>HOD</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="d : ${departments}">
+                    <td style="font-weight:600;" th:text="${d.name}"></td>
+                    <td>
+                        <span style="font-family:monospace;font-size:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;padding:2px 7px;"
+                              th:text="${d.code}"></span>
+                    </td>
+                    <td style="font-size:12px;color:#475569;" th:text="${d.hod != null ? d.hod : '—'}"></td>
+                    <td>
+                        <div class="tbl-actions">
+                            <a class="tbl-edit" th:href="@{/edit-department/{id}(id=${d.id})}">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a class="tbl-del" th:href="@{/delete-department/{id}(id=${d.id})}"
+                               onclick="return confirm('Delete this department?')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(departments)}">
+                    <td colspan="4" style="text-align:center;padding:24px;color:#94a3b8;">No departments yet.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </section>
 </body>

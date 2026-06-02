@@ -1,136 +1,233 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin-layout :: head('Special Slots · Admin', ~{::extraHead})">
+    <th:block th:fragment="extraHead">
+        <style>
+            .page-shell { display:flex; flex-direction:column; gap:20px; }
 
-<head th:replace="~{admin-layout :: head('Special Slots', ~{})}"></head>
-<body th:replace="~{admin-layout :: shell('specialslots', 'Special Slots', ~{::section})}">
-<section>
-    <div class="content-card">
-        <h2 style="margin-bottom:6px;">Special Slots</h2>
-        <p style="color:var(--muted); margin-bottom:18px;">
-            Manually add fixed entries like INTERNSHIP, AUDIT COURSE, T&amp;P, LIBRARY etc.
-        </p>
+            /* Page-specific two-column: form narrower, list wider */
+            .sp-grid { display:grid; grid-template-columns:360px 1fr; gap:20px; align-items:start; }
+            @media(max-width:900px) { .sp-grid { grid-template-columns:1fr; } }
 
-        <!-- Flash message -->
-        <div th:if="${message}"
-             th:style="${messageType == 'error'} ? 'padding:12px;border-radius:10px;background:#fee2e2;color:#991b1b;margin-bottom:14px;' : 'padding:12px;border-radius:10px;background:#dcfce7;color:#166534;margin-bottom:14px;'"
-             th:text="${message}"></div>
+            /* Info banner */
+            .info-banner {
+                background:#f0f9ff; border:1px solid #bae6fd;
+                border-left:4px solid #0284c7;
+                border-radius:10px; padding:14px 18px; color:#0369a1;
+            }
+            .info-banner h4 { margin:0 0 8px; font-size:14px; font-weight:700; display:flex; align-items:center; gap:7px; }
+            .info-banner ul { margin:0; padding-left:18px; font-size:12px; line-height:1.9; color:#0c4a6e; }
 
-        <form method="post" th:action="@{/save-special-slot}"
-              style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            /* Form two-column grid inside the card */
+            .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+            .full-col   { grid-column:1/-1; }
 
-            <div class="form-group">
-                <label>Day</label>
-                <select name="day" required>
-                    <option value="">-- Select Day --</option>
-                    <option th:each="d : ${workingDays}" th:value="${d}" th:text="${d}"></option>
-                </select>
-            </div>
+            /* Type label pill in table */
+            .label-pill {
+                background:#fef3c7; color:#92400e;
+                border:1px solid #fde68a; border-radius:999px;
+                padding:3px 10px; font-size:11px; font-weight:700;
+                display:inline-block; white-space:nowrap;
+            }
 
-            <div class="form-group">
-                <label>Division</label>
-                <select name="division" id="divSelect" required onchange="updateClassName(this)">
-                    <option value="">-- Select Division --</option>
-                    <option th:each="div : ${divisions}"
-                            th:value="${div.name}"
-                            th:text="${div.year + ' - ' + div.name}"
-                            th:attr="data-year=${div.year}, data-dept=${div.department}">
-                    </option>
-                </select>
-            </div>
+            /* Day colour in table */
+            .d-mon { color:#1d4ed8; font-weight:700; }
+            .d-tue { color:#059669; font-weight:700; }
+            .d-wed { color:#d97706; font-weight:700; }
+            .d-thu { color:#7c3aed; font-weight:700; }
+            .d-fri { color:#dc2626; font-weight:700; }
+            .d-sat { color:#0891b2; font-weight:700; }
+        </style>
+    </th:block>
+</head>
+<body th:replace="admin-layout :: shell('specialslots', 'Special Slots', ~{::content})">
+<section th:fragment="content" class="page-shell">
 
-            <input type="hidden" name="className" id="className"/>
-            <input type="hidden" name="department" id="department"/>
-
-            <div class="form-group">
-                <label>Batch <span style="font-weight:400;color:var(--muted)">(optional — blank = whole division)</span></label>
-                <input type="text" name="batch" placeholder="e.g. T1, S2, B3"/>
-            </div>
-
-            <div class="form-group">
-                <label>Special Slot Type</label>
-                <select name="label" required onchange="toggleCustom(this)">
-                    <option value="">-- Select Type --</option>
-                    <option th:each="st : ${specialTypes}" th:value="${st}" th:text="${st}"></option>
-                </select>
-            </div>
-
-            <div class="form-group" id="customLabelDiv" style="display:none;">
-                <label>Custom Label</label>
-                <input type="text" name="customLabel" placeholder="e.g. SEMINAR, SPORTS DAY"/>
-            </div>
-
-            <div class="form-group">
-                <label>Start Time</label>
-                <select name="startTime" required>
-                    <option value="">-- Start --</option>
-                    <option th:each="ts : ${times}"
-                            th:value="${ts.startTime}"
-                            th:text="${ts.startTime}">
-                    </option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>End Time</label>
-                <select name="endTime" required>
-                    <option value="">-- End --</option>
-                    <option th:each="ts : ${times}"
-                            th:value="${ts.endTime}"
-                            th:text="${ts.endTime}">
-                    </option>
-                </select>
-            </div>
-
-            <div style="grid-column:1/-1;">
-                <button type="submit" class="btn">
-                    <i class="fas fa-plus"></i> Add Special Slot
-                </button>
-            </div>
-        </form>
+    <!-- Page header -->
+    <div class="pg-head">
+        <h2><i class="fas fa-star" style="color:#4f46e5;"></i> Special Slots</h2>
+        <p>Pin fixed recurring entries that the auto-generator does not schedule.</p>
     </div>
 
-    <!-- Existing special slots table -->
-    <div class="content-card" style="margin-top:18px;">
-        <h4 style="margin-bottom:14px;">Existing Special Slots</h4>
-        <table>
-            <thead>
-                <tr>
-                    <th>Day</th>
-                    <th>Class</th>
-                    <th>Division</th>
-                    <th>Batch</th>
-                    <th>Time Slot</th>
-                    <th>Label</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:if="${#lists.isEmpty(specialSlots)}">
-                    <td colspan="7" style="text-align:center;color:var(--muted);padding:20px;">
-                        No special slots added yet.
-                    </td>
-                </tr>
-                <tr th:each="t : ${specialSlots}">
-                    <td th:text="${t.day}"></td>
-                    <td th:text="${t.className}"></td>
-                    <td th:text="${t.division}"></td>
-                    <td th:text="${t.batch ?: '-'}"></td>
-                    <td th:text="${t.timeSlot}"></td>
-                    <td>
-                        <span style="background:#fef3c7;color:#92400e;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:600;"
-                              th:text="${t.subject}"></span>
-                    </td>
-                    <td>
-                        <a th:href="@{/delete-timetable/{id}(id=${t.id})}"
-                           class="btn secondary"
-                           style="padding:6px 12px;font-size:13px;background:#fee2e2;color:#991b1b;box-shadow:none;"
-                           onclick="return confirm('Delete this special slot?')">
-                            <i class="fas fa-trash"></i> Delete
-                        </a>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- Flash message -->
+    <div th:if="${message}" th:class="${messageType == 'error'} ? 'flash-err' : 'flash-ok'">
+        <span th:text="${message}"></span>
+    </div>
+
+    <!-- Stat cards -->
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="fas fa-star"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${#lists.size(specialSlots)}">0</div>
+                <div class="sl">Total Special Slots</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-layer-group"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${divisionsCovered}">0</div>
+                <div class="sl">Divisions Covered</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="fas fa-tags"></i></div>
+            <div class="stat-info">
+                <div class="sv" th:text="${typesCovered}">0</div>
+                <div class="sl">Unique Types</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info banner -->
+    <div class="info-banner">
+        <h4><i class="fas fa-info-circle"></i> What are Special Slots?</h4>
+        <ul>
+            <li><strong>Use after Auto Generate</strong> to pin fixed entries like INTERNSHIP, AUDIT COURSE, T&amp;P, LIBRARY, SEMINAR.</li>
+            <li><strong>Batch field</strong> is optional — leave blank for the whole division, or enter e.g. <em>T1</em>, <em>S2</em> for a specific batch.</li>
+            <li>These entries appear in the timetable grid and PDF export alongside auto-generated slots.</li>
+        </ul>
+    </div>
+
+    <!-- Two-column: form | list -->
+    <div class="sp-grid">
+
+        <!-- ── Add Special Slot form ── -->
+        <div class="ds-card">
+            <div class="ds-card-head">
+                <i class="fas fa-plus-circle" style="color:#4f46e5;"></i> Add Special Slot
+            </div>
+
+            <form method="post" th:action="@{/save-special-slot}">
+                <div class="form-2col">
+
+                    <div class="fg">
+                        <label>Day *</label>
+                        <select name="day" required>
+                            <option value="">-- Select Day --</option>
+                            <option th:each="d : ${workingDays}" th:value="${d}" th:text="${d}"></option>
+                        </select>
+                    </div>
+
+                    <div class="fg">
+                        <label>Division *</label>
+                        <select name="division" id="divSelect" required onchange="updateClassName(this)">
+                            <option value="">-- Select Division --</option>
+                            <option th:each="div : ${divisions}"
+                                    th:value="${div.name}"
+                                    th:text="${div.year + ' — ' + div.name}"
+                                    th:attr="data-year=${div.year}, data-dept=${div.department}"></option>
+                        </select>
+                    </div>
+
+                    <input type="hidden" name="className"  id="className"/>
+                    <input type="hidden" name="department" id="department"/>
+
+                    <div class="fg">
+                        <label>Slot Type *</label>
+                        <select name="label" required onchange="toggleCustom(this)">
+                            <option value="">-- Select Type --</option>
+                            <option th:each="st : ${specialTypes}" th:value="${st}" th:text="${st}"></option>
+                        </select>
+                    </div>
+
+                    <div class="fg">
+                        <label>Batch <span style="text-transform:none;letter-spacing:0;font-weight:400;">(optional)</span></label>
+                        <input type="text" name="batch" placeholder="e.g. T1, S2, B3">
+                    </div>
+
+                    <div class="fg full-col" id="customLabelDiv" style="display:none;">
+                        <label>Custom Label *</label>
+                        <input type="text" name="customLabel" placeholder="e.g. SEMINAR, SPORTS DAY">
+                    </div>
+
+                    <div class="fg">
+                        <label>Start Time *</label>
+                        <select name="startTime" required>
+                            <option value="">-- Start --</option>
+                            <option th:each="ts : ${times}"
+                                    th:value="${ts.startTime}"
+                                    th:text="${ts.startTime}"></option>
+                        </select>
+                    </div>
+
+                    <div class="fg">
+                        <label>End Time *</label>
+                        <select name="endTime" required>
+                            <option value="">-- End --</option>
+                            <option th:each="ts : ${times}"
+                                    th:value="${ts.endTime}"
+                                    th:text="${ts.endTime}"></option>
+                        </select>
+                    </div>
+
+                    <div class="full-col" style="margin-top:4px;">
+                        <button type="submit" class="btn-pri">
+                            <i class="fas fa-plus"></i> Add Special Slot
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- ── Existing Special Slots list ── -->
+        <div class="ds-list">
+            <div class="ds-list-head">
+                <h4><i class="fas fa-list" style="color:#4f46e5;"></i> Existing Special Slots</h4>
+                <span class="count-tag" th:text="${#lists.size(specialSlots)} + ' entries'">0</span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Division</th>
+                        <th>Batch</th>
+                        <th>Time Slot</th>
+                        <th>Type / Label</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(specialSlots)}">
+                        <td colspan="6" style="text-align:center;padding:28px;color:#94a3b8;">
+                            <i class="fas fa-star" style="font-size:22px;display:block;margin-bottom:8px;opacity:.3;"></i>
+                            No special slots added yet.
+                        </td>
+                    </tr>
+                    <tr th:each="t : ${specialSlots}">
+                        <td>
+                            <span th:text="${t.day}"
+                                  th:classappend="${#strings.containsIgnoreCase(t.day,'mon')} ? ' d-mon'
+                                               : (${#strings.containsIgnoreCase(t.day,'tue')} ? ' d-tue'
+                                               : (${#strings.containsIgnoreCase(t.day,'wed')} ? ' d-wed'
+                                               : (${#strings.containsIgnoreCase(t.day,'thu')} ? ' d-thu'
+                                               : (${#strings.containsIgnoreCase(t.day,'fri')} ? ' d-fri'
+                                               : ' d-sat'))))"></span>
+                        </td>
+                        <td>
+                            <span style="font-weight:600;font-size:13px;" th:text="${t.division}"></span>
+                            <div style="font-size:11px;color:#94a3b8;" th:if="${t.className != null}" th:text="${t.className}"></div>
+                        </td>
+                        <td style="font-size:12px;color:#64748b;" th:text="${t.batch != null and !#strings.isEmpty(t.batch) ? t.batch : '—'}"></td>
+                        <td style="font-family:monospace;font-size:12px;white-space:nowrap;" th:text="${t.timeSlot}"></td>
+                        <td>
+                            <span class="label-pill" th:text="${t.subject}"></span>
+                        </td>
+                        <td>
+                            <div class="tbl-actions">
+                                <a class="tbl-del"
+                                   th:href="@{/delete-timetable/{id}(id=${t.id})}"
+                                   onclick="return confirm('Delete this special slot?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>

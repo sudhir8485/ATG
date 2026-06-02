@@ -204,11 +204,19 @@ a {
 
 input, select, textarea {
 	width: 100%;
-	padding: 12px 14px;
-	border: 2px solid var(--border);
-	border-radius: 10px;
-	font-size: 15px;
+	padding: 8px 12px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	font-size: 13px;
 	background: #fff;
+	color: #1e293b;
+	transition: border-color .15s, box-shadow .15s;
+}
+
+input:focus, select:focus, textarea:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(79,70,229,0.08);
 }
 
 label {
@@ -222,26 +230,116 @@ table {
 }
 
 th, td {
-	padding: 12px 14px;
+	padding: 10px 12px;
 	text-align: left;
 }
 
 th {
-	background: #f7f9fc;
-	color: #475569;
+	background: #f8fafc;
+	color: #64748b;
 	text-transform: uppercase;
-	font-size: 13px;
-	letter-spacing: 0.4px;
-}
-
-tr {
-	background: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
 	border-bottom: 1px solid var(--border);
+	white-space: nowrap;
 }
 
-tr:hover {
-	background: #f9fafb;
+td {
+	border-bottom: 1px solid #f1f5f9;
+	vertical-align: middle;
+	font-size: 13px;
 }
+
+tr { background: #fff; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f9fafb; }
+
+/* ═══ GLOBAL DESIGN SYSTEM ═══════════════════════════════════════ */
+
+/* Page header */
+.pg-head       { display:flex; flex-direction:column; gap:2px; }
+.pg-head h2    { margin:0; font-size:22px; font-weight:800; color:#1e293b; display:flex; align-items:center; gap:10px; }
+.pg-head p     { margin:0; font-size:13px; color:#64748b; }
+
+/* Stat cards */
+.stat-row      { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; }
+.stat-card     { background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px;
+                 box-shadow:0 2px 6px rgba(0,0,0,0.05); display:flex; align-items:center; gap:14px; }
+.stat-icon     { width:44px; height:44px; background:#eef2ff; border-radius:10px;
+                 display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:18px; flex-shrink:0; }
+.stat-icon.green  { background:#f0fdf4; color:#059669; }
+.stat-icon.amber  { background:#fffbeb; color:#d97706; }
+.stat-icon.red    { background:#fef2f2; color:#dc2626; }
+.stat-info .sv { font-size:26px; font-weight:800; color:#1e293b; line-height:1; }
+.stat-info .sl { font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.4px; margin-top:4px; }
+
+/* Consistent card */
+.ds-card       { background:#fff; border:1px solid var(--border); border-radius:12px;
+                 box-shadow:0 2px 8px rgba(0,0,0,0.06); padding:20px; }
+.ds-card-head  { font-size:14px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:8px;
+                 padding-bottom:14px; margin-bottom:16px; border-bottom:1px solid #f1f5f9; }
+.ds-list       { background:#fff; border:1px solid var(--border); border-radius:12px;
+                 box-shadow:0 2px 8px rgba(0,0,0,0.06); overflow:hidden; }
+.ds-list-head  { padding:14px 16px; border-bottom:1px solid var(--border); display:flex;
+                 align-items:center; justify-content:space-between; background:#f8fafc; }
+.ds-list-head h4 { margin:0; font-size:13px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:6px; }
+.count-tag     { background:var(--primary); color:#fff; border-radius:999px; font-size:11px; font-weight:700; padding:2px 8px; }
+
+/* Form group */
+.fg            { margin-bottom:14px; }
+.fg label, .fl { display:block; font-size:11px; font-weight:700; color:#64748b;
+                 text-transform:uppercase; letter-spacing:0.3px; margin-bottom:5px; }
+.fg .hint      { font-size:11px; color:#94a3b8; margin-top:3px; }
+
+/* Buttons — primary */
+.btn-pri { padding:8px 18px; border-radius:8px; border:none; background:var(--primary); color:#fff;
+           cursor:pointer; font-weight:700; font-size:13px; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
+.btn-pri:hover { background:#4338ca; }
+
+/* Buttons — secondary / cancel */
+.btn-sec { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:#f8fafc;
+           color:#475569; cursor:pointer; font-weight:600; font-size:13px;
+           display:inline-flex; align-items:center; gap:6px; text-decoration:none; transition:background .15s; }
+.btn-sec:hover { background:#f1f5f9; }
+
+/* Buttons — small table actions */
+.tbl-edit { padding:5px 10px; border-radius:6px; border:1px solid #e0e7ff; background:#eef2ff;
+            color:#4338ca; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:4px; text-decoration:none; }
+.tbl-edit:hover { background:#e0e7ff; }
+.tbl-del  { padding:5px 10px; border-radius:6px; border:1px solid #fecaca; background:#fef2f2;
+            color:#dc2626; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:4px; text-decoration:none; }
+.tbl-del:hover  { background:#fee2e2; }
+.tbl-actions { display:flex; gap:6px; align-items:center; }
+
+/* Flash messages */
+.flash-ok   { padding:10px 16px; border-radius:8px; font-size:13px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.flash-err  { padding:10px 16px; border-radius:8px; font-size:13px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+.flash-warn { padding:10px 16px; border-radius:8px; font-size:13px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+
+/* Edit banner */
+.edit-banner { background:#fffbeb; border:1px solid #fcd34d; border-left:3px solid #f59e0b;
+               border-radius:8px; padding:10px 14px; margin-bottom:14px; color:#92400e; font-size:13px; font-weight:600; }
+
+/* Content two-column grid */
+.pg-grid     { display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start; }
+@media(max-width:900px) { .pg-grid { grid-template-columns:1fr; } }
+
+/* Day pills for tables */
+.day-mon { color:#1d4ed8; font-weight:700; }
+.day-tue { color:#059669; font-weight:700; }
+.day-wed { color:#d97706; font-weight:700; }
+.day-thu { color:#7c3aed; font-weight:700; }
+.day-fri { color:#dc2626; font-weight:700; }
+
+/* Type pills */
+.tp { display:inline-flex; align-items:center; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+.tp-theory     { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+.tp-practical  { background:#fdf4ff; color:#7e22ce; border:1px solid #e9d5ff; }
+.tp-lab        { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+.tp-special    { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+.tp-audit      { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.tp-default    { background:#f8fafc; color:#475569; border:1px solid var(--border); }
 
 @media ( max-width : 960px) {
 	body {
@@ -310,7 +408,13 @@ tr:hover {
 			</a> <a href="/timetable-grid"
 				th:classappend="${activePage}=='grid' ? 'active'"> <i
 				class="fas fa-table"></i> Weekly Grid
-			</a> <a href="/"><i class="fas fa-sign-out-alt"></i> Logout</a>
+			</a> <a href="/recycle-bin"
+				th:classappend="${activePage}=='recycle' ? 'active'"> <i
+				class="fas fa-trash-restore"></i> Recycle Bin
+			</a> <a href="/how-to-use"
+				th:classappend="${activePage}=='howto' ? 'active'"> <i
+				class="fas fa-book-open"></i> How to Use
+			</a> <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
 		</nav>
 	</aside>
 
