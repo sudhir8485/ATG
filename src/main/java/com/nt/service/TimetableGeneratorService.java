@@ -561,6 +561,23 @@ public class TimetableGeneratorService {
                     String slotKey = safeSlot(slotLabel);
                     if (classBusy.contains(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)))) continue;
 
+                    if (facultyNames.isEmpty()) {
+                        // No faculty required (Project, PS2) — place without teacher constraint
+                        Classroom room = pickRoom(rooms, preferredRoom, roomBusy, dayKey, slotKey, sessionType);
+                        if (room == null) continue;
+                        Timetable t = new Timetable();
+                        t.setDay(day); t.setDepartment(subject.getDepartment());
+                        t.setClassName(className); t.setDivision(divisionName);
+                        t.setSubject(subject.getName()); t.setFaculty("");
+                        t.setRoom(room.getRoom());
+                        t.setLectureType(sessionType != null && !sessionType.isBlank() ? sessionType : (subject.getType() != null ? subject.getType() : "Lecture"));
+                        t.setTimeSlot(slotLabel); t.setStatus("Pending");
+                        roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
+                        classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
+                        subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey));
+                        return t;
+                    }
+
                     for (String facultyName : facultyNames) {
                         if (facultyName == null || facultyName.isBlank()) continue;
                         String facKey = safeLower(facultyName);
@@ -852,9 +869,17 @@ public class TimetableGeneratorService {
             }
         }
 
-        // Pre-build faculty candidate list per lab
+        // Pre-build faculty candidate list per lab.
+        // Project-type subjects (PS2) and Library subjects need no faculty — return empty list
+        // so the rotation places them with a blank faculty entry (no teacher blocked).
         List<List<String>> facPerLab = new ArrayList<>();
-        for (Subject lab : labSubjects) facPerLab.add(buildFacultyList(lab, allFaculty));
+        for (Subject lab : labSubjects) {
+            String labType = lab.getType() != null ? lab.getType().toLowerCase() : "";
+            String labCode = lab.getCode() != null ? lab.getCode().toUpperCase() : "";
+            boolean noFacNeeded = labType.equals("project")
+                    || labCode.startsWith("LIB");
+            facPerLab.add(noFacNeeded ? Collections.emptyList() : buildFacultyList(lab, allFaculty));
+        }
 
         List<Timeslot> orderedSlots = getOrderedSlots(slots);
         if (orderedSlots.size() < durationSlots) return Collections.emptyList();
@@ -1335,6 +1360,12 @@ public class TimetableGeneratorService {
         if (subject.getFaculty() != null && !subject.getFaculty().isBlank()) {
             ordered.add(subject.getFaculty().trim());
             return new ArrayList<>(ordered);
+        }
+
+        // Project-type subjects (PS2, project work) have no assigned teacher — return empty
+        // so their theory/practical slots are placed with a blank faculty entry.
+        if ("project".equalsIgnoreCase(subject.getType())) {
+            return new ArrayList<>();
         }
 
         // current load per faculty (existing timetable rows)
