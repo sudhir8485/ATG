@@ -145,21 +145,40 @@ public class TimetableGeneratorService {
         List<Timetable> generated = new ArrayList<>();
 
         // ── LAB ROTATION PHASE ──
-        // Build rotation list with consecutive duplicates so multi-block subjects
-        // appear adjacent in the list. This ensures paired batches (e.g. B1+B2 on LP5)
-        // match the reference pattern: [LP5,LP5,LP6,PS2] not [LP5,LP6,PS2,LP5].
-        // Each lab subject is repeated blocks times in sequence.
+        // Build rotation list. Multi-block subjects are spread using round-robin interleaving
+        // so they never land at consecutive indices. Consecutive identical subjects cause
+        // same-faculty batches to collide in the same rotation window (e.g. DMSML S3+S4 both
+        // need ARD simultaneously, CNSL T1+T2 both need RSL simultaneously).
         Map<Integer, List<Subject>> labsByDivId = new LinkedHashMap<>();
+        // Collect subjects and their block counts first
+        Map<Integer, List<Object[]>> divPendingLabs = new LinkedHashMap<>(); // divId → [(subj,blocks)]
         for (Subject subj : subjects) {
-            if (isWholeClassActivity(subj)) continue; // Audit/Seminar placed separately
+            if (isWholeClassActivity(subj)) continue;
             int _phpw = resolvePracticalHours(subj);
             int _pd   = _phpw > 0 ? practicalDuration(subj) : 0;
             if (_phpw > 0 && _pd > 0) {
                 int _blocks = Math.max(1, (int) Math.ceil(_phpw / (double) _pd));
                 for (Division div : findMatchingDivisions(divisions, subj)) {
-                    List<Subject> divList = labsByDivId.computeIfAbsent(div.getId(), k -> new ArrayList<>());
-                    for (int _e = 0; _e < _blocks; _e++) {
-                        divList.add(subj);
+                    divPendingLabs.computeIfAbsent(div.getId(), k -> new ArrayList<>())
+                                  .add(new Object[]{subj, _blocks});
+                }
+            }
+        }
+        // Round-robin interleaving: add one slot per subject per round until all blocks placed.
+        // This spaces multi-block subjects (DMSML×2, CNSL×2, LP5×2) apart in the rotation
+        // so same-faculty batches never share a rotation window.
+        for (Map.Entry<Integer, List<Object[]>> pe : divPendingLabs.entrySet()) {
+            List<Object[]> pending = pe.getValue();
+            List<Subject> divList = labsByDivId.computeIfAbsent(pe.getKey(), k -> new ArrayList<>());
+            int[] remaining = pending.stream().mapToInt(ob -> (Integer)ob[1]).toArray();
+            boolean anyLeft = true;
+            while (anyLeft) {
+                anyLeft = false;
+                for (int i = 0; i < pending.size(); i++) {
+                    if (remaining[i] > 0) {
+                        divList.add((Subject) pending.get(i)[0]);
+                        remaining[i]--;
+                        if (remaining[i] > 0) anyLeft = true;
                     }
                 }
             }
