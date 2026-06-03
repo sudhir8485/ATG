@@ -869,6 +869,7 @@ public class TimetableGeneratorService {
             }
         }
 
+
         // Pre-build faculty candidate list per lab.
         // Project-type subjects (PS2) and Library subjects need no faculty — return empty list
         // so the rotation places them with a blank faculty entry (no teacher blocked).
@@ -978,48 +979,45 @@ public class TimetableGeneratorService {
                     Set<String> usedFacHere = new HashSet<>();
                     boolean feasible = true;
 
-                    // Pre-check: count free distinct faculty per subject in this window.
-                    // If a subject is assigned to N batches, it needs N distinct free faculty.
-                    // This prevents > N batches sharing a subject when only N faculty exist.
-                    // Candidate pool = facPerLab union all batchPinned entries for this subject,
-                    // so that batch-pinned faculty (e.g. AAK for B2/B4 of LP-V) are counted
-                    // even when facPerLab only contains subject.faculty (e.g. SRK for LP-V).
-                    Map<Integer, Long> freeFacPerSubject = new HashMap<>();
-                    for (int b = 0; b < batchCount; b++) {
+                    // Per-batch faculty pre-check: for each batch, verify the required faculty
+                    // (batchPinned → facList → blank) is available in this window.
+                    // noFacNeeded subjects (Library, Project) always pass — they use blank faculty.
+                    // This replaces the old aggregate "count free faculty per subject" check.
+                    Set<String> preCheckUsed = new HashSet<>();
+                    for (int b = 0; b < batchCount && feasible; b++) {
                         int labIdx = (b + rotSlot) % numLabs;
                         Subject lab = labSubjects.get(labIdx);
-                        final List<String> facListForSubject = facPerLab.get(labIdx);
-                        final int subjectId = lab.getId();
-                        freeFacPerSubject.computeIfAbsent(subjectId, id -> {
-                            if (facListForSubject.isEmpty()) return Long.MAX_VALUE; // no faculty needed
-                            // Build full candidate set: facList + all batchPinned for this subject
-                            Set<String> allCandidates = new LinkedHashSet<>(facListForSubject);
-                            for (int b2 = 0; b2 < batchCount; b2++) {
-                                String bl2 = batchCount > 1 ? batchPrefix + (b2 + 1) : "";
-                                String p = batchPinned.get(subjectId + "_" + bl2);
-                                if (p != null && !p.isBlank()) allCandidates.add(p.trim());
+                        String labType2 = lab.getType() != null ? lab.getType().toLowerCase() : "";
+                        String labCode2 = lab.getCode() != null ? lab.getCode().toUpperCase() : "";
+                        boolean labNoFac = labType2.equals("project") || labCode2.startsWith("LIB");
+                        if (labNoFac) continue; // no faculty needed — always OK
+                        String bl = batchCount > 1 ? batchPrefix + (b + 1) : "";
+                        String pinned = batchPinned.get(lab.getId() + "_" + bl);
+                        if (pinned != null && !pinned.isBlank()) {
+                            // This batch has a specific faculty assigned — must be free
+                            String pk = safeLower(pinned);
+                            if (preCheckUsed.contains(pk)) { feasible = false; break; }
+                            boolean free = window.stream().noneMatch(ts ->
+                                    teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), pk)));
+                            if (!free) { feasible = false; break; }
+                            preCheckUsed.add(pk);
+                        } else {
+                            // No batch-specific pin — check facList (from subject.faculty)
+                            List<String> fl = facPerLab.get(labIdx);
+                            if (!fl.isEmpty()) {
+                                boolean found = false;
+                                for (String f2 : fl) {
+                                    if (f2 == null || f2.isBlank()) continue;
+                                    String fk2 = safeLower(f2);
+                                    if (preCheckUsed.contains(fk2)) continue;
+                                    boolean free = window.stream().noneMatch(ts ->
+                                            teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk2)));
+                                    if (free) { preCheckUsed.add(fk2); found = true; break; }
+                                }
+                                if (!found) { feasible = false; break; }
                             }
-                            long cnt = 0;
-                            for (String f2 : allCandidates) {
-                                if (f2 == null || f2.isBlank()) continue;
-                                String fk2 = safeLower(f2);
-                                boolean isFree = window.stream().noneMatch(ts ->
-                                        teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk2)));
-                                if (isFree) cnt++;
-                            }
-                            return cnt;
-                        });
-                    }
-                    // Count how many batches each subject is assigned in this rotation slot
-                    Map<Integer, Integer> batchesPerSubject = new HashMap<>();
-                    for (int b = 0; b < batchCount; b++) {
-                        int labIdx = (b + rotSlot) % numLabs;
-                        batchesPerSubject.merge(labSubjects.get(labIdx).getId(), 1, Integer::sum);
-                    }
-                    // Reject this window if any subject needs more faculty than are available
-                    for (Map.Entry<Integer, Integer> e : batchesPerSubject.entrySet()) {
-                        long available = freeFacPerSubject.getOrDefault(e.getKey(), 0L);
-                        if (e.getValue() > available) { feasible = false; break; }
+                            // facList empty + no pinned → blank faculty, no constraint → OK
+                        }
                     }
                     if (!feasible) continue;
 
@@ -1028,11 +1026,15 @@ public class TimetableGeneratorService {
                         Subject lab = labSubjects.get(labIdx);
                         List<String> facList = facPerLab.get(labIdx);
                         String batchLabel = batchCount > 1 ? batchPrefix + (b + 1) : "";
+                        String labType2 = lab.getType() != null ? lab.getType().toLowerCase() : "";
+                        String labCode2 = lab.getCode() != null ? lab.getCode().toUpperCase() : "";
+                        boolean labNoFac = labType2.equals("project") || labCode2.startsWith("LIB");
                         String fac = null;
-                        if (facList.isEmpty()) {
-                            fac = ""; // no faculty required (Library, PS2, T&P, Audit)
+
+                        if (labNoFac) {
+                            fac = ""; // Library / PS2: blank faculty, no conflict
                         } else {
-                            // Try batch-pinned faculty first (set via assign-subjects UI)
+                            // 1. batchPinned: explicit per-batch assignment from subject_faculty_assignment
                             String pinned = batchPinned.get(lab.getId() + "_" + batchLabel);
                             if (pinned != null && !pinned.isBlank()) {
                                 String pk = safeLower(pinned);
@@ -1041,9 +1043,9 @@ public class TimetableGeneratorService {
                                             teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), pk)));
                                     if (free) { fac = pinned; usedFacHere.add(pk); }
                                 }
-                            }
-                            // Fall back to load-balanced pick if no pin or pin is busy/already used
-                            if (fac == null) {
+                                // pinned faculty not assignable → feasible=false (enforced below)
+                            } else if (!facList.isEmpty()) {
+                                // 2. facList: from subject.faculty (theory-style assignment for labs)
                                 for (String f : facList) {
                                     if (f == null || f.isBlank()) continue;
                                     String fk = safeLower(f);
@@ -1052,6 +1054,9 @@ public class TimetableGeneratorService {
                                             teacherBusy.contains(key(dayKey, safeSlot(formatSlot(ts)), fk)));
                                     if (free) { fac = f; usedFacHere.add(fk); break; }
                                 }
+                            } else {
+                                // 3. No assignment at all → blank faculty, place freely
+                                fac = "";
                             }
                         }
                         if (fac == null) { feasible = false; break; }
@@ -1350,68 +1355,30 @@ public class TimetableGeneratorService {
     }
 
     private List<String> buildFacultyList(Subject subject, List<User> faculty) {
-        Set<String> ordered = new LinkedHashSet<>();
-        String department = subject.getDepartment();
-        String normTargetDept = normalizeDept(department);
-        String targetSubject = safeLower(subject.getName());
-
-        // 0) If admin explicitly assigned a faculty to this subject via the UI, use that first.
-        //    This is the primary path when subjects_handled is not populated.
+        // 1. Explicitly assigned via UI (subject.faculty field) — highest priority.
         if (subject.getFaculty() != null && !subject.getFaculty().isBlank()) {
-            ordered.add(subject.getFaculty().trim());
-            return new ArrayList<>(ordered);
+            return List.of(subject.getFaculty().trim());
         }
 
-        // Project-type subjects (PS2, project work) have no assigned teacher — return empty
-        // so their theory/practical slots are placed with a blank faculty entry.
-        if ("project".equalsIgnoreCase(subject.getType())) {
-            return new ArrayList<>();
-        }
-
-        // current load per faculty (existing timetable rows)
+        // 2. subjects_handled match (legacy path, for backwards compatibility).
+        String targetSubject = safeLower(subject.getName());
         Map<String, Long> loadMap = timetableRepo.findByDeletedFalse().stream()
                 .filter(t -> t.getFaculty() != null)
                 .collect(Collectors.groupingBy(t -> t.getFaculty().toLowerCase().trim(), Collectors.counting()));
-
         Comparator<User> byLoad = Comparator.comparingLong(u ->
                 loadMap.getOrDefault(u.getName().toLowerCase().trim(), 0L));
-
-        // 1) Prioritize faculty who explicitly handle this subject (subjects_handled field)
-        List<User> subjectSpecialists = faculty.stream()
+        List<User> specialists = faculty.stream()
                 .filter(u -> u.getName() != null && !u.getName().isBlank())
                 .filter(u -> handlesSubject(u, targetSubject))
-                .sorted(byLoad)
-                .toList();
-        if(!subjectSpecialists.isEmpty()){
-            subjectSpecialists.forEach(u -> ordered.add(u.getName()));
-            return new ArrayList<>(ordered); // strict specialist-only when available
+                .sorted(byLoad).toList();
+        if (!specialists.isEmpty()) {
+            return specialists.stream().map(User::getName).collect(Collectors.toList());
         }
 
-        // 2) Then faculty from the same department, ordered by current load (lighter first)
-        List<User> sameDept = faculty.stream()
-                .filter(u -> u.getName() != null && !u.getName().isBlank())
-                .filter(u -> {
-                    if (normTargetDept.isEmpty()) return true;
-                    String facDept = normalizeDept(u.getDepartment());
-                    return !facDept.isEmpty() && facDept.equals(normTargetDept);
-                })
-                .sorted(byLoad)
-                .toList();
-        sameDept.forEach(u -> ordered.add(u.getName()));
-
-        // If nothing matched but we have faculty, allow any as a last resort
-        if (ordered.isEmpty()) {
-            for (User u : faculty) {
-                if (u.getName() != null && !u.getName().isBlank()) {
-                    ordered.add(u.getName());
-                }
-            }
-        }
-        // If still empty (no faculty configured), use a synthetic placeholder to unblock generation
-        if (ordered.isEmpty()) {
-            ordered.add("Auto Faculty");
-        }
-        return new ArrayList<>(ordered);
+        // 3. No explicit assignment — return empty list.
+        //    Theory sessions placed with blank faculty; lab rotation uses batchPinned directly.
+        //    NEVER fall through to department-wide random assignment.
+        return new ArrayList<>();
     }
 
     private List<Division> findMatchingDivisions(List<Division> divisions, Subject subject) {
