@@ -128,26 +128,49 @@ public class FacultyController {
     }
 
     private String resolveFacultyKey(String param){
-        String fac = (param != null && !param.isBlank()) ? param : null;
+        // Explicit param takes highest priority (e.g. admin viewing a faculty's timetable)
+        if(param != null && !param.isBlank()){
+            session.setAttribute("currentFacultyKey", param.trim());
+            return param.trim();
+        }
+        // Return cached key if already resolved this session
+        Object cached = session.getAttribute("currentFacultyKey");
+        if(cached != null && !cached.toString().isBlank()) return cached.toString();
+
+        // Derive from logged-in user — try each identifier against actual timetable data
         if(session.getAttribute("currentUserId") != null){
             try{
                 Integer uid = Integer.parseInt(session.getAttribute("currentUserId").toString());
                 com.nt.entity.User u = userRepo.findById(uid).orElse(null);
                 if(u != null){
-                    if(fac == null && u.getName()!=null && !u.getName().isBlank()) fac = u.getName();
-                    if(fac == null && u.getUsername()!=null && !u.getUsername().isBlank()) fac = u.getUsername();
-                    if(fac == null && u.getEmail()!=null && !u.getEmail().isBlank()) fac = u.getEmail();
+                    String fac = bestFacultyMatch(u);
+                    if(fac != null) session.setAttribute("currentFacultyKey", fac);
+                    return fac;
                 }
             }catch(Exception ignored){}
         }
-        if(fac == null){
-            Object key = session.getAttribute("currentFacultyKey");
-            if(key != null) fac = key.toString();
+        return null;
+    }
+
+    private String bestFacultyMatch(com.nt.entity.User u){
+        // Build candidate list: username first (most likely to match the stored faculty code)
+        List<String> candidates = new java.util.ArrayList<>();
+        if(u.getUsername() != null && !u.getUsername().isBlank()) candidates.add(u.getUsername().trim());
+        if(u.getName()     != null && !u.getName().isBlank())     candidates.add(u.getName().trim());
+        if(u.getEmail()    != null && !u.getEmail().isBlank())     candidates.add(u.getEmail().trim());
+
+        // Load all distinct faculty codes present in the timetable once
+        java.util.Set<String> timetableKeys = timetableRepo.findAll().stream()
+                .map(t -> norm(t.getFaculty()))
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toSet());
+
+        // Return first candidate that actually has timetable rows
+        for(String c : candidates){
+            if(timetableKeys.contains(norm(c))) return c;
         }
-        if(fac != null){
-            session.setAttribute("currentFacultyKey", fac);
-        }
-        return fac;
+        // Nothing matched — fall back to username so the UI shows something meaningful
+        return candidates.isEmpty() ? null : candidates.get(0);
     }
 
     private List<Timetable> filterByFaculty(String fac){
