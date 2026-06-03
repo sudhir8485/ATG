@@ -2,10 +2,10 @@
 -- TRUNCATE ALL TABLES — clean slate on every restart
 -- CASCADE handles foreign key dependencies automatically
 -- ============================================================
-TRUNCATE TABLE timetable, subject_faculty_assignment, change_request,
-               subject, timeslot, classroom, division, department,
-               academic_setting, users
-RESTART IDENTITY CASCADE;
+-- TRUNCATE TABLE timetable, subject_faculty_assignment, change_request,
+--                subject, timeslot, classroom, division, department,
+--                academic_setting, users
+-- RESTART IDENTITY CASCADE;
 
 
 

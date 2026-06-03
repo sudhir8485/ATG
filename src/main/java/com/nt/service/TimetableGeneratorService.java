@@ -956,15 +956,26 @@ public class TimetableGeneratorService {
                     // Pre-check: count free distinct faculty per subject in this window.
                     // If a subject is assigned to N batches, it needs N distinct free faculty.
                     // This prevents > N batches sharing a subject when only N faculty exist.
+                    // Candidate pool = facPerLab union all batchPinned entries for this subject,
+                    // so that batch-pinned faculty (e.g. AAK for B2/B4 of LP-V) are counted
+                    // even when facPerLab only contains subject.faculty (e.g. SRK for LP-V).
                     Map<Integer, Long> freeFacPerSubject = new HashMap<>();
                     for (int b = 0; b < batchCount; b++) {
                         int labIdx = (b + rotSlot) % numLabs;
                         Subject lab = labSubjects.get(labIdx);
                         final List<String> facListForSubject = facPerLab.get(labIdx);
-                        freeFacPerSubject.computeIfAbsent(lab.getId(), id -> {
+                        final int subjectId = lab.getId();
+                        freeFacPerSubject.computeIfAbsent(subjectId, id -> {
                             if (facListForSubject.isEmpty()) return Long.MAX_VALUE; // no faculty needed
+                            // Build full candidate set: facList + all batchPinned for this subject
+                            Set<String> allCandidates = new LinkedHashSet<>(facListForSubject);
+                            for (int b2 = 0; b2 < batchCount; b2++) {
+                                String bl2 = batchCount > 1 ? batchPrefix + (b2 + 1) : "";
+                                String p = batchPinned.get(subjectId + "_" + bl2);
+                                if (p != null && !p.isBlank()) allCandidates.add(p.trim());
+                            }
                             long cnt = 0;
-                            for (String f2 : facListForSubject) {
+                            for (String f2 : allCandidates) {
                                 if (f2 == null || f2.isBlank()) continue;
                                 String fk2 = safeLower(f2);
                                 boolean isFree = window.stream().noneMatch(ts ->
@@ -1319,6 +1330,13 @@ public class TimetableGeneratorService {
         String normTargetDept = normalizeDept(department);
         String targetSubject = safeLower(subject.getName());
 
+        // 0) If admin explicitly assigned a faculty to this subject via the UI, use that first.
+        //    This is the primary path when subjects_handled is not populated.
+        if (subject.getFaculty() != null && !subject.getFaculty().isBlank()) {
+            ordered.add(subject.getFaculty().trim());
+            return new ArrayList<>(ordered);
+        }
+
         // current load per faculty (existing timetable rows)
         Map<String, Long> loadMap = timetableRepo.findByDeletedFalse().stream()
                 .filter(t -> t.getFaculty() != null)
@@ -1327,7 +1345,7 @@ public class TimetableGeneratorService {
         Comparator<User> byLoad = Comparator.comparingLong(u ->
                 loadMap.getOrDefault(u.getName().toLowerCase().trim(), 0L));
 
-        // 1) Prioritize faculty who explicitly handle this subject
+        // 1) Prioritize faculty who explicitly handle this subject (subjects_handled field)
         List<User> subjectSpecialists = faculty.stream()
                 .filter(u -> u.getName() != null && !u.getName().isBlank())
                 .filter(u -> handlesSubject(u, targetSubject))
