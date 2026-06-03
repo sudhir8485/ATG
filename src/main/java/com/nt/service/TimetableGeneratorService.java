@@ -856,6 +856,79 @@ public class TimetableGeneratorService {
     }
 
     /**
+     * Re-orders a lab rotation list so no two occurrences of the same subject are spaced
+     * such that same-faculty batches would collide in the same rotation window.
+     * Conflict condition: spacing (j-i) % n equals (B2-B1) % n for a same-faculty batch pair.
+     * Fix: move extra occurrences to spacing = nearest value to n/2 that avoids all bad spacings.
+     */
+    private List<Subject> resolveLabRotationConflicts(List<Subject> labs, int batchCount,
+            String batchPrefix, Map<String, String> batchPinned) {
+        List<Subject> result = new ArrayList<>(labs);
+        Set<Integer> processed = new HashSet<>();
+        // Iterate over subjects; for each multi-occurrence subject, reposition extras
+        int scan = 0;
+        while (scan < result.size()) {
+            Subject s = result.get(scan);
+            if (!processed.add(s.getId())) { scan++; continue; }
+            // Find ALL positions of this subject in the current list
+            List<Integer> positions = new ArrayList<>();
+            for (int k = 0; k < result.size(); k++) {
+                if (result.get(k).getId() == s.getId()) positions.add(k);
+            }
+            if (positions.size() < 2) { scan++; continue; }
+            // Re-position each extra occurrence (index 1+) for optimal spacing
+            for (int extra = 1; extra < positions.size(); extra++) {
+                int extraPos = positions.get(extra);
+                result.remove(extraPos);
+                int firstPos = -1;
+                for (int k = 0; k < result.size(); k++) {
+                    if (result.get(k).getId() == s.getId()) { firstPos = k; break; }
+                }
+                int newN = result.size() + 1;
+                int spacing = findOptimalSpacing(s, batchCount, batchPrefix, batchPinned, newN);
+                int insertAt = (firstPos + spacing) % newN;
+                result.add(insertAt, s);
+                // Refresh positions for any remaining extras
+                positions = new ArrayList<>();
+                for (int k = 0; k < result.size(); k++) {
+                    if (result.get(k).getId() == s.getId()) positions.add(k);
+                }
+            }
+            scan++;
+        }
+        return result;
+    }
+
+    /** Returns spacing S (1 ≤ S < n) that avoids same-faculty batch conflicts for subject s. */
+    private int findOptimalSpacing(Subject s, int batchCount, String batchPrefix,
+            Map<String, String> batchPinned, int n) {
+        Set<Integer> bad = new HashSet<>();
+        for (int b1 = 0; b1 < batchCount; b1++) {
+            String bl1 = batchCount > 1 ? batchPrefix + (b1 + 1) : "";
+            String f1 = batchPinned.get(s.getId() + "_" + bl1);
+            if (f1 == null || f1.isBlank()) continue;
+            for (int b2 = b1 + 1; b2 < batchCount; b2++) {
+                String bl2 = batchCount > 1 ? batchPrefix + (b2 + 1) : "";
+                String f2 = batchPinned.get(s.getId() + "_" + bl2);
+                if (f2 == null || f2.isBlank()) continue;
+                if (safeLower(f1).equals(safeLower(f2))) {
+                    int diff = (b2 - b1 + n) % n;
+                    bad.add(diff);
+                    bad.add((n - diff) % n); // symmetric
+                }
+            }
+        }
+        int target = n / 2;
+        for (int delta = 0; delta < n; delta++) {
+            int s1 = (target + delta) % n;
+            if (s1 > 0 && !bad.contains(s1)) return s1;
+            int s2 = ((target - delta) % n + n) % n;
+            if (s2 > 0 && s2 != s1 && !bad.contains(s2)) return s2;
+        }
+        return target > 0 ? target : 1;
+    }
+
+    /**
      * Rotation schedule: numLabs days, each day all batches are in different labs simultaneously.
      * On rotation day R, batch B does labSubjects[(B + R) % numLabs].
      * This produces the same layout as the reference master timetable.
@@ -888,6 +961,12 @@ public class TimetableGeneratorService {
             }
         }
 
+
+        // Re-order labSubjects so same-subject duplicates have non-conflicting spacing.
+        // A duplicate at adjacent indices causes same-faculty batches to collide in the same
+        // rotation window (e.g. DMSML S3+S4 both need ARD when DMSML is at indices 5 and 6).
+        labSubjects = resolveLabRotationConflicts(new ArrayList<>(labSubjects), batchCount, batchPrefix, batchPinned);
+        numLabs = labSubjects.size(); // re-derive in case list was rebuilt
 
         // Pre-build faculty candidate list per lab.
         // Project-type subjects (PS2) and Library subjects need no faculty — return empty list
