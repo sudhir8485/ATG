@@ -48,26 +48,6 @@
                 display: inline-block;
             }
 
-            .charts {
-                margin-top: 2rem;
-                display: grid;
-                grid-template-columns: 1.1fr 0.9fr;
-                gap: 20px;
-            }
-
-            .chart-card {
-                background: white;
-                padding: 1.2rem 1rem;
-                border-radius: 22px;
-                box-shadow: 0 16px 28px -12px rgba(0, 0, 0, 0.15);
-                border: 1px solid #e2e8f0;
-            }
-
-            .chart-card h3 {
-                margin-bottom: 10px;
-                color: #0f172a;
-            }
-
             .foot-note {
                 margin-top: 1.8rem;
                 text-align: right;
@@ -181,85 +161,13 @@
         </div>
     </div>
 
-    <div class="charts">
-        <div class="chart-card">
-            <h3>Faculty by Department</h3>
-            <canvas id="deptChart" height="220"></canvas>
-        </div>
-        <div class="chart-card">
-            <h3>Resource Snapshot</h3>
-            <canvas id="radarChart" height="220"></canvas>
-        </div>
-    </div>
-
     <div class="foot-note">
         <i class="fas fa-bolt" style="color:#fbbf24;"></i>
         Intelligent scheduling · <span id="year"></span>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script th:inline="javascript">
-        (function () {
-            const date = new Date();
-            document.getElementById('year').innerText = date.getFullYear();
-
-            const deptLabels = /*[[${deptLabels}]]*/ [];
-            const facultyCounts = /*[[${facultyCounts}]]*/ [];
-
-            const deptCtx = document.getElementById('deptChart');
-            if (deptCtx) {
-                new Chart(deptCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: deptLabels,
-                        datasets: [{
-                            data: facultyCounts,
-                            backgroundColor: '#667eea',
-                            borderRadius: 8
-                        }]
-                    },
-                    options: {
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                    }
-                });
-            }
-
-            const radarCtx = document.getElementById('radarChart');
-            if (radarCtx) {
-                new Chart(radarCtx, {
-                    type: 'radar',
-                    data: {
-                        labels: ['Departments', 'Divisions', 'Subjects', 'Classrooms', 'Time Slots', 'Timetables'],
-                        datasets: [{
-                            label: 'Totals',
-                            data: [
-                                /*[[${deptCount}]]*/0,
-                                /*[[${divisionCount}]]*/0,
-                                /*[[${subjectCount}]]*/0,
-                                /*[[${roomCount}]]*/0,
-                                /*[[${timeslotCount}]]*/0,
-                                /*[[${timetableCount}]]*/0
-                            ],
-                            backgroundColor: 'rgba(102,126,234,0.2)',
-                            borderColor: '#667eea',
-                            borderWidth: 2,
-                            pointBackgroundColor: '#4f46e5'
-                        }]
-                    },
-                    options: {
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                grid: { color: '#e2e8f0' },
-                                angleLines: { color: '#e2e8f0' }
-                            }
-                        }
-                    }
-                });
-            }
-        })();
+    <script>
+        document.getElementById('year').innerText = new Date().getFullYear();
     </script>
 </section>
 </body>

@@ -101,11 +101,6 @@ public class AdminController {
 		long facultyCount = userRepo.countByRole("FACULTY");
 		long timetableCount = timetableRepo.findByDeletedFalse().size();
 
-		// faculty per department for chart
-		List<User> faculty = userRepo.findByRoleAndDeletedFalse("FACULTY");
-		java.util.Map<String, Long> facultyByDept = faculty.stream().filter(f -> f.getDepartment() != null).collect(
-				java.util.stream.Collectors.groupingBy(User::getDepartment, java.util.stream.Collectors.counting()));
-
 		model.addAttribute("deptCount", deptCount);
 		model.addAttribute("divisionCount", divisionCount);
 		model.addAttribute("subjectCount", subjectCount);
@@ -114,70 +109,8 @@ public class AdminController {
 		model.addAttribute("hodCount", hodCount);
 		model.addAttribute("facultyCount", facultyCount);
 		model.addAttribute("timetableCount", timetableCount);
-		model.addAttribute("deptLabels", facultyByDept.keySet());
-		model.addAttribute("facultyCounts", facultyByDept.values());
 
 		return "admin-dashboard";
-	}
-
-	/*
-	 * ========================= SPECIAL SLOTS =========================
-	 */
-
-	@GetMapping("/add-special-slot")
-	public String addSpecialSlot(Model model) {
-		List<Division> divisions = divRepo.findAll();
-		List<Timeslot> times = timeRepo.findAll();
-		List<String> specialTypes = java.util.Arrays.asList("INTERNSHIP", "AUDIT COURSE", "T & P", "LIBRARY",
-				"Virtual Lab/Spoken Tutorial", "SEMINAR", "OTHER");
-		List<Timetable> specialSlots = timetableRepo.findByDeletedFalse().stream()
-				.filter(t -> "Special".equals(t.getLectureType()))
-				.toList();
-		long divisionsCovered = specialSlots.stream().map(Timetable::getDivision)
-				.filter(d -> d != null && !d.isBlank()).distinct().count();
-		long typesCovered = specialSlots.stream().map(Timetable::getSubject)
-				.filter(s -> s != null && !s.isBlank()).distinct().count();
-		model.addAttribute("divisions", divisions);
-		model.addAttribute("times", times);
-		model.addAttribute("specialTypes", specialTypes);
-		model.addAttribute("workingDays", getWorkingDays());
-		model.addAttribute("specialSlots", specialSlots);
-		model.addAttribute("divisionsCovered", divisionsCovered);
-		model.addAttribute("typesCovered", typesCovered);
-		return "add-special-slot";
-	}
-
-	@PostMapping("/save-special-slot")
-	public String saveSpecialSlot(@RequestParam String day, @RequestParam String className,
-			@RequestParam String division, @RequestParam(required = false) String batch, @RequestParam String label,
-			@RequestParam(required = false) String customLabel, @RequestParam String startTime,
-			@RequestParam String endTime, @RequestParam(required = false) String department,
-			RedirectAttributes redirect) {
-
-		String finalLabel = "OTHER".equals(label) ? customLabel : label;
-		if (finalLabel == null || finalLabel.isBlank()) {
-			redirect.addFlashAttribute("message", "Label is required.");
-			redirect.addFlashAttribute("messageType", "error");
-			return "redirect:/add-special-slot";
-		}
-
-		Timetable t = new Timetable();
-		t.setDay(day);
-		t.setClassName(className);
-		t.setDivision(division);
-		t.setBatch(batch);
-		t.setSubject(finalLabel);
-		t.setFaculty("");
-		t.setRoom("");
-		t.setLectureType("Special");
-		t.setTimeSlot(startTime + " - " + endTime);
-		t.setDepartment(department);
-		t.setStatus("Fixed");
-
-		timetableRepo.save(t);
-		redirect.addFlashAttribute("message", "Special slot added: " + finalLabel);
-		redirect.addFlashAttribute("messageType", "success");
-		return "redirect:/add-special-slot";
 	}
 
 	/*
@@ -1849,11 +1782,13 @@ public class AdminController {
 	}
 
 	private String buildClassLabel(Timetable t) {
-		String base = (t.getClassName() != null && !t.getClassName().isBlank()) ? t.getClassName().trim() : "Class";
 		if (t.getDivision() != null && !t.getDivision().isBlank()) {
-			return base + " - " + t.getDivision().trim();
+			return t.getDivision().trim();
 		}
-		return base;
+		if (t.getClassName() != null && !t.getClassName().isBlank()) {
+			return t.getClassName().trim();
+		}
+		return "Class";
 	}
 
 	private String computeAcademicYearLabel() {

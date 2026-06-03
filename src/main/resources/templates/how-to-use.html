@@ -1,118 +1,1121 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="admin-layout :: head('How to Use · Admin', ~{::extraHead})">
-    <th:block th:fragment="extraHead">
-        <style>
-            .page-shell { display:flex; flex-direction:column; gap:20px; max-width:860px; }
-            .card { background:white; padding:28px; border-radius:14px; box-shadow:0 6px 20px rgba(0,0,0,0.08); border:1px solid #e2e8f0; }
-            .step { display:flex; gap:16px; margin-bottom:20px; align-items:flex-start; }
-            .step-num { min-width:36px; height:36px; background:#4f46e5; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; }
-            .step-body h4 { margin:0 0 4px; color:#0f172a; font-size:16px; }
-            .step-body p  { margin:0; color:#475569; font-size:14px; line-height:1.7; }
-            .step-body a  { color:#4f46e5; font-weight:600; }
-            .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:700; }
-            .badge-coming { background:#fef3c7; color:#92400e; }
-            .divider { border:none; border-top:1px solid #e2e8f0; margin:8px 0 20px; }
-        </style>
-    </th:block>
+<th:block th:fragment="extraHead">
+<style>
+/* ── Layout ─────────────────────────────────────────── */
+.ht-shell {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 24px;
+    max-width: 1100px;
+    align-items: start;
+}
+@media(max-width:820px){ .ht-shell{ grid-template-columns:1fr; } .ht-nav{ display:none; } }
+
+/* ── Left nav ────────────────────────────────────────── */
+.ht-nav {
+    position: sticky;
+    top: 20px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.ht-nav-head {
+    background: linear-gradient(135deg,#4f46e5,#6366f1);
+    color: #fff;
+    padding: 16px 18px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ht-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+}
+.ht-nav ul li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+}
+.ht-nav ul li a:hover,
+.ht-nav ul li a.active {
+    background: #f0f3ff;
+    color: #4f46e5;
+    border-left-color: #4f46e5;
+}
+.ht-nav ul li a .nav-num {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    color: #64748b;
+    flex-shrink: 0;
+    transition: all .15s;
+}
+.ht-nav ul li a:hover .nav-num,
+.ht-nav ul li a.active .nav-num {
+    background: #4f46e5;
+    color: #fff;
+}
+.ht-nav-progress {
+    padding: 12px 16px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 11px;
+    color: #94a3b8;
+}
+.ht-nav-progress .prog-bar {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+.ht-nav-progress .prog-fill {
+    height: 100%;
+    background: linear-gradient(90deg,#4f46e5,#818cf8);
+    border-radius: 4px;
+    width: 0%;
+    transition: width .3s ease;
+}
+
+/* ── Main content ────────────────────────────────────── */
+.ht-main { display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Hero ────────────────────────────────────────────── */
+.ht-hero {
+    background: linear-gradient(135deg,#4f46e5 0%,#6d28d9 60%,#4338ca 100%);
+    border-radius: 18px;
+    padding: 28px 32px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+.ht-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+}
+.ht-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 40%;
+    width: 260px; height: 260px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 50%;
+}
+.ht-hero h1 { margin:0 0 6px; font-size:22px; font-weight:800; position:relative; z-index:1; }
+.ht-hero p  { margin:0 0 18px; font-size:13px; opacity:.85; position:relative; z-index:1; line-height:1.6; }
+.ht-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+}
+.ht-flow-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ht-flow-box {
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.28);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .15s;
+}
+.ht-flow-box:hover { background: rgba(255,255,255,0.28); }
+.ht-flow-arr { color: rgba(255,255,255,0.5); font-size: 12px; }
+
+/* ── Section ─────────────────────────────────────────── */
+.ht-sec {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    scroll-margin-top: 20px;
+}
+.ht-sec-hd {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s;
+}
+.ht-sec-hd:hover { background: #fafbff; }
+.ht-sec-icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+.ht-sec-hd-text { flex: 1; }
+.ht-sec-hd-text h2 { margin:0; font-size:15px; font-weight:800; color:#1e293b; }
+.ht-sec-hd-text p  { margin:3px 0 0; font-size:12px; color:#64748b; }
+.ht-sec-chevron {
+    color: #94a3b8;
+    font-size: 13px;
+    transition: transform .25s;
+}
+.ht-sec.open .ht-sec-chevron { transform: rotate(180deg); }
+.ht-sec-body {
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .35s ease, padding .2s;
+}
+.ht-sec.open .ht-sec-body {
+    max-height: 4000px;
+    padding: 24px;
+}
+
+/* ── Steps ───────────────────────────────────────────── */
+.ht-steps { display: flex; flex-direction: column; gap: 0; }
+.ht-step {
+    display: flex;
+    gap: 0;
+    position: relative;
+}
+.ht-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 32px;
+    bottom: -8px;
+    width: 2px;
+    background: #e2e8f0;
+}
+.ht-step-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 2px;
+    margin-right: 16px;
+    flex-shrink: 0;
+}
+.ht-step-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #4f46e5;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+}
+.ht-step-body {
+    flex: 1;
+    padding-bottom: 24px;
+}
+.ht-step-body h4 { margin:0 0 6px; font-size:14px; font-weight:700; color:#1e293b; }
+.ht-step-body p  { margin:0 0 8px; font-size:13px; color:#475569; line-height:1.7; }
+.ht-step-body p:last-child { margin-bottom: 0; }
+.ht-step-body ul { margin:6px 0 0 16px; font-size:13px; color:#475569; line-height:1.9; padding:0; }
+.ht-step-body ul li { margin-bottom:2px; }
+.ht-step:last-child .ht-step-body { padding-bottom: 0; }
+
+/* ── Field table ─────────────────────────────────────── */
+.ft {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    margin-top: 8px;
+}
+.ft thead th {
+    background: #f8fafc;
+    color: #64748b;
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    padding: 9px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+.ft tbody td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    vertical-align: top;
+    line-height: 1.6;
+}
+.ft tbody tr:last-child td { border-bottom: none; }
+.ft tbody tr:hover td { background: #fafbff; }
+.ft .req { color: #dc2626; font-weight: 700; font-size: 11px; }
+
+/* ── Alert boxes ─────────────────────────────────────── */
+.ht-tip  { display:flex; gap:12px; background:#f0fdf4; border:1px solid #86efac; border-left:4px solid #16a34a; border-radius:10px; padding:13px 16px; font-size:13px; color:#166534; }
+.ht-warn { display:flex; gap:12px; background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:10px; padding:13px 16px; font-size:13px; color:#92400e; }
+.ht-info { display:flex; gap:12px; background:#eff6ff; border:1px solid #bfdbfe; border-left:4px solid #3b82f6; border-radius:10px; padding:13px 16px; font-size:13px; color:#1e40af; }
+.ht-tip i, .ht-warn i, .ht-info i { margin-top:1px; flex-shrink:0; font-size:14px; }
+.ht-tip p, .ht-warn p, .ht-info p { margin:0; }
+
+/* ── Code block ──────────────────────────────────────── */
+.ht-code {
+    background: #1e293b;
+    color: #94a3b8;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+    margin-top: 8px;
+}
+.ht-code .c-ok    { color: #4ade80; }
+.ht-code .c-warn  { color: #fbbf24; }
+.ht-code .c-label { color: #818cf8; }
+
+/* ── Slot time table ─────────────────────────────────── */
+.slot-grid {
+    display: grid;
+    grid-template-columns: repeat(9,1fr);
+    gap: 4px;
+    margin-top: 8px;
+}
+.slot-box {
+    border-radius: 8px;
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid;
+}
+.slot-theory { background:#eff6ff; color:#1e40af; border-color:#bfdbfe; }
+.slot-break  { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.slot-lunch  { background:#fff7ed; color:#c2410c; border-color:#fed7aa; }
+.slot-box .sl-time { font-size:9px; font-weight:600; opacity:.7; margin-top:2px; }
+
+/* ── Checklist ───────────────────────────────────────── */
+.ht-checklist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.ht-checklist li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #334155;
+    font-weight: 500;
+}
+.ht-checklist li .chk {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: #dcfce7;
+    border: 1.5px solid #86efac;
+    display: flex; align-items: center; justify-content: center;
+    color: #16a34a;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+/* ── Window badge ────────────────────────────────────── */
+.win-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.win-a { background:#fef9c3; color:#854d0e; border:1px solid #fef08a; }
+.win-b { background:#f0fdf4; color:#166534; border:1px solid #86efac; }
+.win-c { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+
+/* ── Divider ─────────────────────────────────────────── */
+.ht-divider { border:none; border-top:1px solid #f1f5f9; margin:16px 0; }
+
+/* ── Section color themes ────────────────────────────── */
+.theme-indigo .ht-sec-icon { background:#eef2ff; color:#4f46e5; }
+.theme-violet .ht-sec-icon { background:#f5f3ff; color:#7c3aed; }
+.theme-blue   .ht-sec-icon { background:#eff6ff; color:#2563eb; }
+.theme-cyan   .ht-sec-icon { background:#ecfeff; color:#0891b2; }
+.theme-teal   .ht-sec-icon { background:#f0fdfa; color:#0d9488; }
+.theme-green  .ht-sec-icon { background:#f0fdf4; color:#16a34a; }
+.theme-amber  .ht-sec-icon { background:#fffbeb; color:#d97706; }
+.theme-orange .ht-sec-icon { background:#fff7ed; color:#ea580c; }
+.theme-rose   .ht-sec-icon { background:#fff1f2; color:#e11d48; }
+.theme-pink   .ht-sec-icon { background:#fdf4ff; color:#a21caf; }
+.theme-slate  .ht-sec-icon { background:#f8fafc; color:#475569; }
+.theme-sky    .ht-sec-icon { background:#f0f9ff; color:#0284c7; }
+
+.theme-indigo .ht-sec-hd:hover { background:#f9faff; }
+.theme-violet .ht-sec-hd:hover { background:#faf9ff; }
+.theme-blue   .ht-sec-hd:hover { background:#f8fbff; }
+.theme-cyan   .ht-sec-hd:hover { background:#f8feff; }
+.theme-teal   .ht-sec-hd:hover { background:#f7fdfc; }
+.theme-green  .ht-sec-hd:hover { background:#f7fdf9; }
+.theme-amber  .ht-sec-hd:hover { background:#fffdf5; }
+.theme-orange .ht-sec-hd:hover { background:#fffaf5; }
+.theme-rose   .ht-sec-hd:hover { background:#fff8f9; }
+
+.theme-indigo .ht-step-dot { background:#4f46e5; }
+.theme-violet .ht-step-dot { background:#7c3aed; }
+.theme-blue   .ht-step-dot { background:#2563eb; }
+.theme-cyan   .ht-step-dot { background:#0891b2; }
+.theme-teal   .ht-step-dot { background:#0d9488; }
+.theme-green  .ht-step-dot { background:#16a34a; }
+.theme-amber  .ht-step-dot { background:#d97706; }
+.theme-orange .ht-step-dot { background:#ea580c; }
+.theme-rose   .ht-step-dot { background:#e11d48; }
+.theme-pink   .ht-step-dot { background:#a21caf; }
+.theme-slate  .ht-step-dot { background:#475569; }
+.theme-sky    .ht-step-dot { background:#0284c7; }
+
+/* ── Section tag number ──────────────────────────────── */
+.sec-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.theme-indigo .sec-tag { background:#c7d2fe; color:#3730a3; }
+.theme-violet .sec-tag { background:#ddd6fe; color:#5b21b6; }
+.theme-blue   .sec-tag { background:#bfdbfe; color:#1e40af; }
+.theme-cyan   .sec-tag { background:#a5f3fc; color:#164e63; }
+.theme-teal   .sec-tag { background:#99f6e4; color:#134e4a; }
+.theme-green  .sec-tag { background:#bbf7d0; color:#14532d; }
+.theme-amber  .sec-tag { background:#fde68a; color:#78350f; }
+.theme-orange .sec-tag { background:#fed7aa; color:#7c2d12; }
+.theme-rose   .sec-tag { background:#fecdd3; color:#881337; }
+.theme-pink   .sec-tag { background:#f5d0fe; color:#701a75; }
+.theme-slate  .sec-tag { background:#cbd5e1; color:#1e293b; }
+.theme-sky    .sec-tag { background:#bae6fd; color:#0c4a6e; }
+</style>
+</th:block>
 </head>
 <body th:replace="admin-layout :: shell('howto', 'How to Use', ~{::content})">
-<section th:fragment="content" class="page-shell">
+<section th:fragment="content">
+<div class="ht-shell">
 
-    <div>
-        <h2 style="margin:0;font-size:26px;color:#0f172a;"><i class="fas fa-book-open" style="color:#4f46e5;"></i> How to Use — Timetable Generator</h2>
-        <p style="color:#64748b;margin-top:6px;">A quick guide to get from empty setup to a generated timetable.</p>
-    </div>
-
-    <div class="card">
-        <h3 style="margin:0 0 18px;"><i class="fas fa-list-ol" style="color:#4f46e5;"></i> Setup Steps (do once per semester)</h3>
-        <hr class="divider">
-
-        <div class="step">
-            <div class="step-num">1</div>
-            <div class="step-body">
-                <h4>Add Department</h4>
-                <p>Go to <a href="/add-department">Departments</a> → fill name (e.g., <em>Information Technology</em>), code (e.g., <em>IT</em>), and HOD. Click Create Department.</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">2</div>
-            <div class="step-body">
-                <h4>Add Divisions (Classes)</h4>
-                <p>Go to <a href="/add-division">Divisions</a> → add each class: SE-IT (Sem 4, 4 batches, prefix S), TE-IT (Sem 6, prefix T), BE-IT (Sem 8, prefix B). Also set Lab Time Preference per division.</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">3</div>
-            <div class="step-body">
-                <h4>Add Classrooms &amp; Labs</h4>
-                <p>Go to <a href="/add-classroom">Classrooms</a> → add all lecture rooms (Type: Classroom) and lab rooms (Type: Lab). The generator assigns rooms automatically based on type.</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">4</div>
-            <div class="step-body">
-                <h4>Configure Time Slots</h4>
-                <p>Go to <a href="/add-timeslot">Time Slots</a> → add slots for the day: 09:00–10:00, 10:00–11:00, then add 11:00–11:15 as a <strong>Break</strong>, then 11:15–12:15, 12:15–13:15, add 13:15–14:00 as <strong>Break (Lunch)</strong>, then afternoon slots. Also tick working days (Mon–Fri).</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">5</div>
-            <div class="step-body">
-                <h4>Add Subjects</h4>
-                <p>Go to <a href="/add-subject">Subjects</a> → for each subject set: Name, Code, Department, Semester, Type (Theory/Lab/Audit), Lecture hours/week, Practical hours/week, Practical slot duration (usually 2 for 2-hour labs).</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">6</div>
-            <div class="step-body">
-                <h4>Add Faculty &amp; Assign Subjects</h4>
-                <p>Go to <a href="/add-faculty">Add Faculty</a> → create each teacher's login. In <em>Subjects Handled</em> field, enter a comma-separated list of subject names they teach (used by the generator to assign faculty to slots).<br>
-                Then go to <a href="/assign-subjects">Assign Subjects</a> to set primary faculty per subject.</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">7</div>
-            <div class="step-body">
-                <h4>Generate Timetable</h4>
-                <p>Go to <a href="/auto-generate">Generate Timetable</a> → click <strong>Generate</strong>. The system places all subjects, labs (with batch rotation), and audits automatically. Check the placement count — ideally 100%.</p>
-            </div>
-        </div>
-
-        <div class="step">
-            <div class="step-num">8</div>
-            <div class="step-body">
-                <h4>View &amp; Export</h4>
-                <p>View the result on <a href="/timetable-grid">Weekly Grid</a> or <a href="/view-timetable">Table View</a>. Use <strong>Export PDF</strong> to download the master timetable. Add any fixed slots (INTERNSHIP, AUDIT COURSE etc.) via <a href="/add-special-slot">Special Slots</a> before exporting.</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3 style="margin:0 0 10px;"><i class="fas fa-exclamation-triangle" style="color:#f59e0b;"></i> Important Notes</h3>
-        <hr class="divider">
-        <ul style="color:#475569;font-size:14px;line-height:2;padding-left:20px;">
-            <li>Generating again clears the old timetable — do this only when needed.</li>
-            <li>Faculty are matched by <em>Subjects Handled</em> — keep those up to date.</li>
-            <li>For lab subjects with different teachers per batch, make sure each teacher has the lab name in their <em>Subjects Handled</em>.</li>
-            <li>Break/Lunch slots marked in Time Slots are never scheduled.</li>
-            <li>The generator respects faculty conflicts — no teacher is double-booked in the same time slot.</li>
+    <!-- ═══ LEFT NAV ═══════════════════════════════════════════════ -->
+    <aside class="ht-nav">
+        <div class="ht-nav-head"><i class="fas fa-compass"></i> Navigation</div>
+        <ul>
+            <li><a href="#sec1"  class="nav-link"><span class="nav-num">1</span> Department</a></li>
+            <li><a href="#sec2"  class="nav-link"><span class="nav-num">2</span> Divisions</a></li>
+            <li><a href="#sec3"  class="nav-link"><span class="nav-num">3</span> Classrooms</a></li>
+            <li><a href="#sec4"  class="nav-link"><span class="nav-num">4</span> Time Slots</a></li>
+            <li><a href="#sec5"  class="nav-link"><span class="nav-num">5</span> Subjects</a></li>
+            <li><a href="#sec6"  class="nav-link"><span class="nav-num">6</span> Faculty</a></li>
+            <li><a href="#sec7"  class="nav-link"><span class="nav-num">7</span> Assign Subjects</a></li>
+            <li><a href="#sec8"  class="nav-link"><span class="nav-num">8</span> Generate</a></li>
+            <li><a href="#sec9"  class="nav-link"><span class="nav-num">9</span> View &amp; Export</a></li>
+            <li><a href="#sec10" class="nav-link"><span class="nav-num">10</span> HOD Workflow</a></li>
+            <li><a href="#sec11" class="nav-link"><span class="nav-num">11</span> Troubleshooting</a></li>
         </ul>
-    </div>
+        <div class="ht-nav-progress">
+            <span>Reading progress</span>
+            <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+        </div>
+    </aside>
 
-    <div class="card" style="background:#f8fafc;">
-        <p style="margin:0;color:#64748b;font-size:14px;">
-            <i class="fas fa-info-circle" style="color:#4f46e5;"></i>
-            <strong>More content coming soon.</strong> This page will be expanded with screenshots, FAQs, and troubleshooting tips.
-            <span class="badge badge-coming">Work in Progress</span>
-        </p>
-    </div>
+    <!-- ═══ MAIN ════════════════════════════════════════════════════ -->
+    <div class="ht-main">
+
+        <!-- Hero -->
+        <div class="ht-hero">
+            <h1><i class="fas fa-graduation-cap"></i> &nbsp;Complete Setup Guide</h1>
+            <p>Follow these 11 steps — in order — to go from a fresh database to a fully generated and exported timetable. Click any step in the workflow below to jump directly to it.</p>
+            <div class="ht-flow">
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec1">1 · Department</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec2">2 · Divisions</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec3">3 · Classrooms</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec4">4 · Time Slots</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec5">5 · Subjects</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec6">6 · Faculty</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec7">7 · Assign</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec8">8 · Generate</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec9">9 · Export</a></div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 1 — DEPARTMENT ─────────────────────────── -->
+        <div class="ht-sec theme-indigo open" id="sec1">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-building"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">1</span> Add Department</h2>
+                    <p>One-time setup — create the department that owns all divisions and subjects</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to Departments</h4>
+                            <p>Click <strong>Departments</strong> in the sidebar, or visit <a href="/add-department" style="color:#4f46e5;font-weight:700;">/add-department</a>.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Fill the form</h4>
+                            <table class="ft">
+                                <thead><tr><th>Field</th><th>Example</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Department Name</strong></td><td>Information Technology</td><td>Full official name</td></tr>
+                                    <tr><td><strong>Department Code</strong></td><td>IT</td><td>Short code used everywhere in the app</td></tr>
+                                    <tr><td><strong>HOD</strong></td><td>(set after adding HOD)</td><td>Can be updated after Step 10</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Click Create Department</h4>
+                            <p>The department appears in the list below the form. You can edit or delete it at any time.</p>
+                            <div class="ht-tip"><i class="fas fa-lightbulb"></i><p>Most colleges need only one department per install. Add multiple only if you run separate IT + CS + ENTC schedules in the same database.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 2 — DIVISIONS ──────────────────────────── -->
+        <div class="ht-sec theme-violet open" id="sec2">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-layer-group"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">2</span> Add Divisions (Classes)</h2>
+                    <p>Each year of students is a Division — add SE-IT, TE-IT, BE-IT separately</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to Divisions</h4>
+                            <p>Click <strong>Divisions</strong> in the sidebar → <a href="/add-division" style="color:#7c3aed;font-weight:700;">/add-division</a>.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Add all three divisions with these exact values</h4>
+                            <table class="ft">
+                                <thead><tr><th>Field</th><th>SE-IT</th><th>TE-IT</th><th>BE-IT</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Division Name</strong></td><td>SE-IT</td><td>TE-IT</td><td>BE-IT</td></tr>
+                                    <tr><td><strong>Semester</strong></td><td>4</td><td>6</td><td>8</td></tr>
+                                    <tr><td><strong>Batch Count</strong></td><td>4</td><td>4</td><td>4</td></tr>
+                                    <tr><td><strong>Batch Prefix</strong></td><td>S</td><td>T</td><td>B</td></tr>
+                                    <tr><td><strong>Lab Time Preference</strong></td><td><span style="color:#1d4ed8;font-weight:700;">AFTERNOON</span></td><td><span style="color:#16a34a;font-weight:700;">MIDDAY</span></td><td><span style="color:#d97706;font-weight:700;">MORNING</span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Lab Time Preference — what it means</h4>
+                            <p>This controls which 2-hour window the generator <em>prefers</em> for lab rotation:</p>
+                            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+                                <span class="win-badge win-a"><i class="fas fa-sun"></i> MORNING → Window A (09:00–11:00) · BE-IT</span>
+                                <span class="win-badge win-b"><i class="fas fa-cloud-sun"></i> MIDDAY → Window B (11:15–13:15) · TE-IT</span>
+                                <span class="win-badge win-c"><i class="fas fa-moon"></i> AFTERNOON → Window C (14:00–16:00) · SE-IT</span>
+                            </div>
+                            <div class="ht-warn" style="margin-top:12px;"><i class="fas fa-exclamation-triangle"></i><p><strong>Set this correctly.</strong> Wrong Lab Time Preference causes window conflicts between divisions — the most common reason for large numbers of failed sessions.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 3 — CLASSROOMS ─────────────────────────── -->
+        <div class="ht-sec theme-blue open" id="sec3">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-door-open"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">3</span> Add Classrooms &amp; Labs</h2>
+                    <p>Register all physical rooms — the generator auto-assigns them based on type</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Add lecture rooms (Type = Classroom)</h4>
+                            <p>Go to <a href="/add-classroom" style="color:#2563eb;font-weight:700;">/add-classroom</a>. Add Room 305 and Room 306 as <strong>Classroom</strong> type. Theory sessions only use Classroom-type rooms.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Add lab rooms (Type = Lab)</h4>
+                            <p>Add all IT lab rooms as <strong>Lab</strong> type. Lab subjects (practical) are only assigned to Lab-type rooms.</p>
+                            <table class="ft">
+                                <thead><tr><th>Room</th><th>Type</th><th>Used for</th></tr></thead>
+                                <tbody>
+                                    <tr><td>IT-203</td><td>Lab</td><td>Computer Graphics Lab, DBMS Lab</td></tr>
+                                    <tr><td>IT-204</td><td>Lab</td><td>Electronics Circuits Lab</td></tr>
+                                    <tr><td>IT-205</td><td>Lab</td><td>LP-II, LP-V, LP-VI</td></tr>
+                                    <tr><td>IT-206</td><td>Lab</td><td>DM&amp;SM Lab, CNSL Lab</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Room conflict note</h4>
+                            <div class="ht-info"><i class="fas fa-info-circle"></i><p>With 3 divisions and only 2 lecture rooms, up to 6 theory sessions per week cannot be placed when all 3 divisions need a room simultaneously. Adding a 3rd lecture room (e.g., Room 307) eliminates these conflicts entirely.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 4 — TIME SLOTS ─────────────────────────── -->
+        <div class="ht-sec theme-cyan open" id="sec4">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-clock"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">4</span> Configure Time Slots</h2>
+                    <p>Define the 9 periods of the teaching day — break slots are never scheduled</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Visual overview of the 9 slots</h4>
+                            <div class="slot-grid">
+                                <div class="slot-box slot-theory">Slot 1<div class="sl-time">09:00–10:00</div></div>
+                                <div class="slot-box slot-theory">Slot 2<div class="sl-time">10:00–11:00</div></div>
+                                <div class="slot-box slot-break">BREAK<div class="sl-time">11:00–11:15</div></div>
+                                <div class="slot-box slot-theory">Slot 4<div class="sl-time">11:15–12:15</div></div>
+                                <div class="slot-box slot-theory">Slot 5<div class="sl-time">12:15–13:15</div></div>
+                                <div class="slot-box slot-lunch">LUNCH<div class="sl-time">13:15–14:00</div></div>
+                                <div class="slot-box slot-theory">Slot 7<div class="sl-time">14:00–15:00</div></div>
+                                <div class="slot-box slot-theory">Slot 8<div class="sl-time">15:00–16:00</div></div>
+                                <div class="slot-box slot-theory">Slot 9<div class="sl-time">16:00–17:00</div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Add each slot at <a href="/add-timeslot" style="color:#0891b2;font-weight:700;">/add-timeslot</a></h4>
+                            <table class="ft">
+                                <thead><tr><th>#</th><th>Start</th><th>End</th><th>Is Break?</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                    <tr><td>1</td><td>09:00</td><td>10:00</td><td>No</td><td>Lab Window A start</td></tr>
+                                    <tr><td>2</td><td>10:00</td><td>11:00</td><td>No</td><td>Lab Window A end</td></tr>
+                                    <tr><td>3</td><td>11:00</td><td>11:15</td><td><strong style="color:#dc2626;">YES ✓</strong></td><td>Short Break — never scheduled</td></tr>
+                                    <tr><td>4</td><td>11:15</td><td>12:15</td><td>No</td><td>Lab Window B start</td></tr>
+                                    <tr><td>5</td><td>12:15</td><td>13:15</td><td>No</td><td>Lab Window B end</td></tr>
+                                    <tr><td>6</td><td>13:15</td><td>14:00</td><td><strong style="color:#dc2626;">YES ✓</strong></td><td>Lunch Break — never scheduled</td></tr>
+                                    <tr><td>7</td><td>14:00</td><td>15:00</td><td>No</td><td>Lab Window C start</td></tr>
+                                    <tr><td>8</td><td>15:00</td><td>16:00</td><td>No</td><td>Lab Window C end</td></tr>
+                                    <tr><td>9</td><td>16:00</td><td>17:00</td><td>No</td><td>Theory only — never a lab start</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="ht-warn" style="margin-top:12px;"><i class="fas fa-exclamation-triangle"></i><p>Always tick <strong>Is Break</strong> for slots 3 and 6. If missed, the generator may schedule a lecture during the break.</p></div>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Mark working days</h4>
+                            <p>Tick <strong>Monday through Friday</strong>. Saturday remains unchecked.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 5 — SUBJECTS ───────────────────────────── -->
+        <div class="ht-sec theme-teal open" id="sec5">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-book"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">5</span> Add Subjects</h2>
+                    <p>Every subject — theory, lab, audit, special — must be registered. Hours/week drive the generator.</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to <a href="/add-subject" style="color:#0d9488;font-weight:700;">/add-subject</a> and understand each field</h4>
+                            <table class="ft">
+                                <thead><tr><th>Field</th><th>What to enter</th><th>Example</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Subject Name</strong></td><td>Full official name from curriculum</td><td>Computer Graphics</td></tr>
+                                    <tr><td><strong>Subject Code</strong></td><td>Short code (no spaces)</td><td>CG</td></tr>
+                                    <tr><td><strong>Semester</strong></td><td>Semester number</td><td>4 (SE-IT)</td></tr>
+                                    <tr><td><strong>Subject Type</strong></td><td>Theory / Lab / Audit / Special</td><td>Theory</td></tr>
+                                    <tr><td><strong>Lecture Hours/Week</strong></td><td>Number of 1-hr theory sessions/week (0 if lab-only)</td><td>3</td></tr>
+                                    <tr><td><strong>Practical Hours/Week</strong></td><td>Total lab hours/week (0 if theory-only)</td><td>0</td></tr>
+                                    <tr><td><strong>Practical Slot Duration</strong></td><td>Consecutive slots one lab session uses (usually 2)</td><td>2</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Hours examples — how the generator uses them</h4>
+                            <table class="ft">
+                                <thead><tr><th>Subject</th><th>Type</th><th>Lec hrs</th><th>Prac hrs</th><th>Dur</th><th>Generator result</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Computer Graphics</td><td>Theory</td><td>3</td><td>0</td><td>—</td><td>3 theory slots, different days</td></tr>
+                                    <tr><td>P&amp;S</td><td>Theory</td><td>4</td><td>0</td><td>—</td><td>4 theory slots spread Mon–Fri</td></tr>
+                                    <tr><td>CGL (CG Lab)</td><td>Lab</td><td>0</td><td>2</td><td>2</td><td>1 rotation slot of 2 hrs</td></tr>
+                                    <tr><td>DMSML</td><td>Lab</td><td>0</td><td>4</td><td>2</td><td>2 rotation slots × 2 hrs each</td></tr>
+                                    <tr><td>Library</td><td>Special</td><td>0</td><td>2</td><td>2</td><td>1 rotation slot, no faculty/room</td></tr>
+                                    <tr><td>VL / Spoken Tutorial</td><td>Special</td><td>1</td><td>0</td><td>—</td><td>Auto-pinned Friday 16:00</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Subject type guide</h4>
+                            <ul>
+                                <li><strong>Theory</strong> — whole-class 1-hr lecture. Set only lecture hours.</li>
+                                <li><strong>Lab</strong> — batch rotation, 2-hr window. Set practical hours + duration.</li>
+                                <li><strong>Audit</strong> — fixed whole-class session (e.g., Audit Course). Pin via Special Slots.</li>
+                                <li><strong>Special</strong> — no-faculty sessions: Library, Internship, VL, T&amp;P.</li>
+                            </ul>
+                            <div class="ht-tip" style="margin-top:10px;"><i class="fas fa-lightbulb"></i><p><strong>Same subject has theory AND lab?</strong> Create two entries: one for theory (e.g., MIL — 1 lecture hr) and one for lab (e.g., MILL — 2 practical hrs). The generator handles them independently.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 6 — FACULTY ────────────────────────────── -->
+        <div class="ht-sec theme-green open" id="sec6">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">6</span> Add Faculty</h2>
+                    <p>Each teacher gets a login. The "Subjects Handled" list is critical — it tells the generator who can teach what.</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to <a href="/add-faculty" style="color:#16a34a;font-weight:700;">/add-faculty</a> and fill the form</h4>
+                            <table class="ft">
+                                <thead><tr><th>Field</th><th>Example</th><th>Notes</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Faculty Name</strong></td><td>Prof. P. G. Kulkarni</td><td>Full name shown in timetable cells</td></tr>
+                                    <tr><td><strong>Faculty Code</strong></td><td>PGK</td><td>Short code used in cell labels like "CG (PGK)"</td></tr>
+                                    <tr><td><strong>Username</strong></td><td>pgk</td><td>Login username for faculty portal</td></tr>
+                                    <tr><td><strong>Password</strong></td><td>pgk123</td><td>Login password</td></tr>
+                                    <tr><td><strong>Subjects Handled</strong></td><td>Computer Graphics, Computer Graphics Lab</td><td>Comma-separated — must exactly match Subject Name</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Subjects Handled — most important field</h4>
+                            <p>The generator uses this to know which faculty can be assigned to which session. Key rules:</p>
+                            <ul>
+                                <li>Values must <strong>exactly match</strong> the Subject Name (case-sensitive).</li>
+                                <li>Separate multiple subjects with a comma: <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">Computer Graphics, Computer Graphics Lab</code></li>
+                                <li>No leading or trailing spaces around subject names — <code style="background:#fef2f2;padding:2px 8px;border-radius:5px;font-size:12px;color:#dc2626;"> CG Lab</code> ≠ <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">CG Lab</code></li>
+                                <li>For labs where batches are split (e.g., SSK takes S1/S2, ARD takes S3/S4), both faculty list the lab — the per-batch split is done in <strong>Step 7</strong>.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 7 — ASSIGN SUBJECTS ───────────────────── -->
+        <div class="ht-sec theme-amber open" id="sec7">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-link"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">7</span> Assign Subjects (Batch-level)</h2>
+                    <p>For labs where different batches have different teachers, set the exact mapping here</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to <a href="/assign-subjects" style="color:#d97706;font-weight:700;">/assign-subjects</a></h4>
+                            <p>Use this page when a lab subject is taught by different faculty for different batches:</p>
+                            <table class="ft">
+                                <thead><tr><th>Subject</th><th>Batch</th><th>Faculty</th></tr></thead>
+                                <tbody>
+                                    <tr><td rowspan="4">DM&amp;SM Lab</td><td>S1</td><td>SSK</td></tr>
+                                    <tr><td>S2</td><td>SSK</td></tr>
+                                    <tr><td>S3</td><td>ARD</td></tr>
+                                    <tr><td>S4</td><td>ARD</td></tr>
+                                    <tr><td rowspan="4">Electronics Circuits Lab</td><td>S1</td><td>ANK</td></tr>
+                                    <tr><td>S2</td><td>ANK</td></tr>
+                                    <tr><td>S3</td><td>AAK</td></tr>
+                                    <tr><td>S4</td><td>AAK</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>How to assign</h4>
+                            <ul>
+                                <li>Select the <strong>Subject</strong> from the dropdown.</li>
+                                <li>For each batch row, select the assigned faculty.</li>
+                                <li>Click <strong>Save Assignment</strong>.</li>
+                                <li>Repeat for every split-faculty lab subject.</li>
+                            </ul>
+                            <div class="ht-info" style="margin-top:10px;"><i class="fas fa-info-circle"></i><p>These assignments are the primary input for faculty conflict detection. If two batches share the same faculty for the same lab, the generator must spread them across different days — incorrect assignments are the #1 cause of failed lab sessions.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 8 — GENERATE ───────────────────────────── -->
+        <div class="ht-sec theme-rose open" id="sec8">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-magic"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">8</span> Generate Timetable</h2>
+                    <p>One click runs the full algorithm — understand the output to verify everything placed correctly</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to <a href="/auto-generate" style="color:#e11d48;font-weight:700;">/auto-generate</a> → click Generate</h4>
+                            <p>The algorithm runs in 2–5 seconds. A successful run shows:</p>
+                            <div class="ht-code">
+                                <span class="c-ok">✓</span> <span class="c-label">Placed</span> 200 <span class="c-label">of</span> 200 <span class="c-label">requested sessions</span><br>
+                                <span class="c-ok">✓</span> Generation complete — no warnings
+                            </div>
+                            <p style="margin-top:10px;">If some sessions couldn't be placed:</p>
+                            <div class="ht-code">
+                                <span class="c-warn">⚠</span> <span class="c-label">Placed</span> 197 <span class="c-label">of</span> 200 <span class="c-label">requested sessions</span><br>
+                                <span class="c-warn">⚠</span> Could not place Social Computing [BE-IT] (lecture 2/3)<br>
+                                <span class="c-warn">⚠</span> Could not place Social Computing [BE-IT] (lecture 3/3)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Understanding warnings</h4>
+                            <table class="ft">
+                                <thead><tr><th>Warning</th><th>Root cause</th><th>Fix</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Could not place [subject] (lecture N/X)</td><td>No free slot — faculty conflict or room conflict</td><td>Check faculty load; add more lecture rooms</td></tr>
+                                    <tr><td>Lab rotation slot N/N could not be placed</td><td>All day-window combinations occupied or conflict</td><td>Review batch-faculty assignments in Step 7</td></tr>
+                                    <tr><td>Could not place practical block</td><td>All windows on all days occupied</td><td>Pin session via Special Slots (Step 8)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>What the generator guarantees</h4>
+                            <ul>
+                                <li>No faculty double-booked — same teacher never in two slots simultaneously.</li>
+                                <li>No room double-booked — same room never has two sessions at the same time.</li>
+                                <li>Break and lunch slots are never used.</li>
+                                <li>Lab sessions always use a full 2-hour window (A, B, or C) — never 1 hour.</li>
+                                <li>Theory slots use only lecture rooms; labs use only lab rooms.</li>
+                                <li>No subject appears twice on the same day unless unavoidable.</li>
+                            </ul>
+                            <div class="ht-warn" style="margin-top:10px;"><i class="fas fa-exclamation-triangle"></i><p><strong>Regenerating clears the entire timetable</strong> and rebuilds from scratch. Always export before regenerating to avoid losing manual edits.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 9 — VIEW & EXPORT ─────────────────────── -->
+        <div class="ht-sec theme-pink open" id="sec9">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-calendar-alt"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">9</span> View &amp; Export</h2>
+                    <p>Three views to inspect the timetable — two export formats available</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4><a href="/view-timetable" style="color:#a21caf;font-weight:700;">View Timetable</a> — searchable table</h4>
+                            <p>Filterable list of all placed sessions. Each row shows day, slot, subject, faculty, room, and batch. Click the <strong>Edit</strong> icon on any row to change subject, faculty, or room for that slot without regenerating.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4><a href="/timetable-grid" style="color:#a21caf;font-weight:700;">Weekly Grid</a> — classic timetable view</h4>
+                            <p>Rows = days, columns = time slots, cells = subject + faculty. Each division has its own grid. Lab rotation cells show all 4 batches: <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">S1→CGL(PGK)  S2→DBMSL(RAN) ...</code></p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Export XLSX — multi-sheet workbook</h4>
+                            <p>Click <strong>Export XLSX</strong> on the View Timetable page. Downloads an Excel file with:</p>
+                            <ul>
+                                <li><strong>MASTER</strong> — all 3 divisions in one sheet</li>
+                                <li><strong>SE_IT, TE_IT, BE_IT</strong> — one sheet per division</li>
+                                <li><strong>Faculty_PGK, Faculty_ANK …</strong> — each teacher's personal timetable</li>
+                                <li><strong>Room_305, Room_IT-203 …</strong> — each room's occupancy schedule</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">4</div></div>
+                        <div class="ht-step-body">
+                            <h4>Export PDF — print-ready</h4>
+                            <p>Click <strong>Export PDF</strong> on the View Timetable page. Downloads a print-ready PDF suitable for notice board posting.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 10 — HOD WORKFLOW ─────────────────────── -->
+        <div class="ht-sec theme-slate open" id="sec10">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-user-tie"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">10</span> HOD Approval Workflow</h2>
+                    <p>HOD reviews and approves the timetable before faculty can view their schedules</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Create HOD account at <a href="/add-hod" style="color:#475569;font-weight:700;">/add-hod</a></h4>
+                            <p>Set name, username (e.g., <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">hod_it</code>), and password. The HOD logs in at the same login page with the HOD role.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>HOD portal features</h4>
+                            <ul>
+                                <li><strong>View Timetable</strong> — read-only grid for each division.</li>
+                                <li><strong>Approve Timetable</strong> — marks timetable as approved; unlocks faculty portal views.</li>
+                                <li><strong>Request Change</strong> — flags a specific slot for Admin revision.</li>
+                                <li><strong>Assign Subjects</strong> — independent subject→faculty assignment (separate from Admin).</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Faculty portal</h4>
+                            <p>Each faculty member logs in with the credentials set in <strong>Add Faculty</strong>. They see only their own slots. They can submit a <strong>swap request</strong> to exchange a slot with another faculty member, which routes back to the HOD for approval.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 11 — TROUBLESHOOTING ──────────────────── -->
+        <div class="ht-sec theme-sky open" id="sec11">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-tools"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">11</span> Troubleshooting &amp; Checklist</h2>
+                    <p>Common problems, fixes, and a pre-generation checklist</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
+                        <div class="ht-step-body">
+                            <h4>Sessions placed &lt; requested</h4>
+                            <ul>
+                                <li><strong>Faculty overload</strong> — a teacher assigned too many hours across subjects. Check Subjects Handled list and redistribute labs.</li>
+                                <li><strong>Room shortage</strong> — 3 divisions competing for 2 lecture rooms. Add a 3rd lecture room via Classrooms.</li>
+                                <li><strong>Wrong Lab Time Preference</strong> — divisions competing for the same window. Verify Step 2 values.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
+                        <div class="ht-step-body">
+                            <h4>Wrong faculty in lab rotation cell</h4>
+                            <p>Go to <strong>Assign Subjects</strong> → find the lab → verify each batch's faculty mapping. Update and regenerate.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
+                        <div class="ht-step-body">
+                            <h4>Subject appears twice on the same day</h4>
+                            <p>The generator always tries to spread subjects across different days. A same-day repeat means no other day had a free slot. Options: reduce total hours, add a lecture room, or reduce another subject's hours.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
+                        <div class="ht-step-body">
+                            <h4>Recycle Bin</h4>
+                            <p>Deleted subjects, faculty, or rooms go to <a href="/recycle-bin" style="color:#0284c7;font-weight:700;">/recycle-bin</a>. Restore any item deleted by mistake. Items in the Recycle Bin are invisible to the generator.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="ht-divider">
+
+                <p style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:12px;"><i class="fas fa-clipboard-check" style="color:#0284c7;"></i> &nbsp;Pre-generation checklist — verify all items before clicking Generate</p>
+                <ul class="ht-checklist">
+                    <li><div class="chk"><i class="fas fa-check"></i></div> Department created with correct name and code</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> All 3 divisions added with correct Lab Time Preference (AFTERNOON / MIDDAY / MORNING)</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> Lecture rooms (305, 306) and lab rooms (IT-203 to IT-206) added</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> All 9 time slots added — Short Break (slot 3) and Lunch (slot 6) marked as Break</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> All subjects added with correct type, lecture hours, and practical hours</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> All faculty added with exact Subject Names in Subjects Handled</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> Batch→faculty assignments set for all split-faculty lab subjects</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> Special slots pinned: VL (Fri 16:00), INTP (Mon+Thu 14:00), Audit, Seminar, T&amp;P</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13px;color:#64748b;"><i class="fas fa-info-circle" style="color:#4f46e5;"></i> &nbsp;<strong>APCOER IT Dept</strong> — Automated Timetable Generator &nbsp;|&nbsp; AY 2025–26 Sem II</span>
+            <a href="/admin" style="font-size:12px;font-weight:700;color:#4f46e5;text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+        </div>
+
+    </div><!-- /.ht-main -->
+</div><!-- /.ht-shell -->
+
+<script>
+/* ── Toggle accordion ── */
+function toggleSec(hd) {
+    const sec = hd.closest('.ht-sec');
+    sec.classList.toggle('open');
+}
+
+/* ── Active nav link on scroll ── */
+(function () {
+    const links = document.querySelectorAll('.nav-link');
+    const secs  = document.querySelectorAll('.ht-sec');
+    const main  = document.getElementById('page-content');
+    const fill  = document.getElementById('progFill');
+
+    function onScroll() {
+        const scrollTop = main ? main.scrollTop : window.scrollY;
+        const scrollH   = main ? main.scrollHeight - main.clientHeight : document.documentElement.scrollHeight - window.innerHeight;
+        if (fill && scrollH > 0) {
+            fill.style.width = Math.min(100, (scrollTop / scrollH) * 100) + '%';
+        }
+        let current = '';
+        secs.forEach(sec => {
+            const top = sec.offsetTop - (main ? main.offsetTop : 0) - 60;
+            if (scrollTop >= top) current = '#' + sec.id;
+        });
+        links.forEach(a => {
+            a.classList.toggle('active', a.getAttribute('href') === current);
+        });
+    }
+
+    if (main) { main.addEventListener('scroll', onScroll, { passive: true }); }
+    else { window.addEventListener('scroll', onScroll, { passive: true }); }
+
+    /* ── Smooth scroll ── */
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+            const id = a.getAttribute('href').slice(1);
+            const target = document.getElementById(id);
+            if (!target) return;
+            e.preventDefault();
+            const sec = target.closest('.ht-sec') || target;
+            if (!sec.classList.contains('open')) sec.classList.add('open');
+            const container = main || window;
+            const offset = main
+                ? target.offsetTop - main.offsetTop - 16
+                : target.getBoundingClientRect().top + window.scrollY - 80;
+            if (main) { main.scrollTo({ top: offset, behavior: 'smooth' }); }
+            else { window.scrollTo({ top: offset, behavior: 'smooth' }); }
+        });
+    });
+})();
+</script>
 </section>
 </body>
 </html>
