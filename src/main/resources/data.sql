@@ -84,11 +84,6 @@ INSERT INTO users (name, username, password, role, department, deleted)
 SELECT 'Dr. A. A. Kadam', 'aak', 'fac123', 'FACULTY', 'Information Technology', false
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'aak');
 
--- SMD
-INSERT INTO users (name, username, password, role, department, deleted)
-SELECT 'Prof. S. M. Dhane', 'smd', 'fac123', 'FACULTY', 'Information Technology', false
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'smd');
-
 -- Library Coordinator: dedicated to Library rotation slots so real faculty stay free
 INSERT INTO users (name, username, password, role, department, deleted)
 SELECT 'Library Coordinator', 'lib_coord', 'lib123', 'FACULTY', 'Information Technology', false
@@ -99,6 +94,10 @@ UPDATE users SET subjects_handled = NULL WHERE role = 'FACULTY';
 
 -- Fix any stale empty-string faculty assignments left by old controller
 UPDATE subject SET faculty = NULL WHERE faculty = '';
+
+-- Remove duplicate subjects caused by wrong WHERE NOT EXISTS conditions in earlier versions
+DELETE FROM subject WHERE code='PA'    AND semester=4 AND id NOT IN (SELECT MIN(id) FROM subject WHERE code='PA'    AND semester=4);
+DELETE FROM subject WHERE code='DMSML' AND semester=4 AND id NOT IN (SELECT MIN(id) FROM subject WHERE code='DMSML' AND semester=4);
 
 -- ============================================================
 -- 5. DIVISIONS
@@ -235,7 +234,7 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='CG' AND semester=4);
 -- PA: Mon 10-11, Tue 10-11, Wed 9-10 = 3 sessions
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
 SELECT 'Processor Architecture', 'PA', 'Information Technology', 4, 3, 2, 0, 0, 'Theory', false
-WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='PAE' AND semester=4);
+WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='PA' AND semester=4);
 
 -- DBMS: Tue 9-10, Wed 12:15, Thu 12:15 = 3 sessions
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
@@ -285,7 +284,7 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='DBMSL' AND semester=4);
 -- DMSL: 2 blocks per batch/week (appears twice in rotation) → practical_hours=4, slot_duration=2
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
 SELECT 'Digital Marketing & Social Media', 'DMSML', 'Information Technology', 4, 1, 0, 4, 2, 'Lab', false
-WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='DMSL' AND semester=4);
+WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='DMSML' AND semester=4);
 
 -- MILL: 1 block per batch/week → 2/2
 INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
@@ -446,3 +445,184 @@ WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='SEM8' AND semester=8);
 -- INSERT INTO subject (name, code, department, semester, credits, lecture_hours_per_week, practical_hours_per_week, practical_slot_duration, type, deleted)
 -- SELECT 'Virtual Lab / Spoken Tutorial', 'VL8', 'Information Technology', 8, 0, 0, 1, 1, 'Audit', false
 -- WHERE NOT EXISTS (SELECT 1 FROM subject WHERE code='VL8' AND semester=8);
+
+-- ============================================================
+-- 12. THEORY FACULTY ASSIGNMENTS — persisted so generator uses correct faculty on every restart.
+--     Only theory subjects listed here. Lab faculty is managed via the Assign Subjects UI
+--     and stored in subject_faculty_assignment (batch-specific, generator reads that table directly).
+--     Source: IT.xlsx faculty sheets + CLAUDE.md Section 0.
+-- ============================================================
+
+-- SE-IT (Sem 4) theory
+UPDATE subject SET faculty = 'Prof. P. G. Khaire'    WHERE code='CG'    AND semester=4;
+UPDATE subject SET faculty = 'Prof. S. S. Khote'     WHERE code='PA'    AND semester=4;
+UPDATE subject SET faculty = 'Prof. R. A. Nikam'     WHERE code='DBMS'  AND semester=4;
+UPDATE subject SET faculty = 'Prof. Rashmi Kenvat'   WHERE code='PS'    AND semester=4;
+UPDATE subject SET faculty = 'Prof. D. P. Rankhambe' WHERE code='ES'    AND semester=4;
+UPDATE subject SET faculty = 'Dr. S. R. Kokane'      WHERE code='OE2'   AND semester=4;
+UPDATE subject SET faculty = 'Prof. R. S. Lavhe'     WHERE code='MIL'   AND semester=4;
+UPDATE subject SET faculty = 'Prof. A. N. Kalal'     WHERE code='EC'    AND semester=4;
+
+-- TE-IT (Sem 6) theory
+UPDATE subject SET faculty = 'Prof. R. S. Lavhe'     WHERE code='CNS'   AND semester=6;
+UPDATE subject SET faculty = 'Prof. A. N. Kalal'     WHERE code='WAD'   AND semester=6;
+UPDATE subject SET faculty = 'Prof. D. P. Rankhambe' WHERE code='DSBDA' AND semester=6;
+UPDATE subject SET faculty = 'Prof. A. R. Dodke'     WHERE code='EL2'   AND semester=6;
+UPDATE subject SET faculty = 'Prof. P. G. Khaire'    WHERE code='EACH'  AND semester=6;
+
+-- BE-IT (Sem 8) theory
+UPDATE subject SET faculty = 'Dr. A. A. Kadam'       WHERE code='SE8'   AND semester=8;
+UPDATE subject SET faculty = 'Dr. S. R. Kokane'      WHERE code='DS8'   AND semester=8;
+UPDATE subject SET faculty = 'Prof. S. S. Khote'     WHERE code='EL5'   AND semester=8;
+UPDATE subject SET faculty = 'Prof. R. A. Nikam'     WHERE code='EL6'   AND semester=8;
+UPDATE subject SET faculty = 'Prof. A. N. Kalal'     WHERE code='ISMH'  AND semester=8;
+UPDATE subject SET faculty = 'Prof. D. P. Rankhambe' WHERE code='SEM8'  AND semester=8;
+
+-- ============================================================
+-- 13. LAB BATCH FACULTY SEEDS (subject_faculty_assignment)
+--     Uses subquery to look up subject_id dynamically so dedup
+--     deletes never break the assignments.
+--     INSERT ... WHERE NOT EXISTS: UI overrides during a session
+--     are preserved; entries are only added if missing.
+--     Source: CLAUDE.md Section 3 batch lab schedule tables.
+-- ============================================================
+
+-- SE-IT — CGL (Computer Graphics Lab) all batches → PGK
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S1','Prof. P. G. Khaire' FROM subject s WHERE s.code='CGL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S2','Prof. P. G. Khaire' FROM subject s WHERE s.code='CGL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S3','Prof. P. G. Khaire' FROM subject s WHERE s.code='CGL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S4','Prof. P. G. Khaire' FROM subject s WHERE s.code='CGL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S4');
+
+-- SE-IT — DBMSL (Database Management System Lab) all batches → RAN
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S1','Prof. R. A. Nikam' FROM subject s WHERE s.code='DBMSL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S2','Prof. R. A. Nikam' FROM subject s WHERE s.code='DBMSL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S3','Prof. R. A. Nikam' FROM subject s WHERE s.code='DBMSL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S4','Prof. R. A. Nikam' FROM subject s WHERE s.code='DBMSL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S4');
+
+-- SE-IT — DMSML (Digital Marketing & Social Media) S1/S2→SSK, S3/S4→ARD
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S1','Prof. S. S. Khote' FROM subject s WHERE s.code='DMSML' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S2','Prof. S. S. Khote' FROM subject s WHERE s.code='DMSML' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S3','Prof. A. R. Dodke' FROM subject s WHERE s.code='DMSML' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S4','Prof. A. R. Dodke' FROM subject s WHERE s.code='DMSML' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S4');
+
+-- SE-IT — MILL (Modern Indian Language Lab) S1/S2→RSL, S3/S4→SRK
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S1','Prof. R. S. Lavhe' FROM subject s WHERE s.code='MILL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S2','Prof. R. S. Lavhe' FROM subject s WHERE s.code='MILL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S3','Dr. S. R. Kokane' FROM subject s WHERE s.code='MILL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S4','Dr. S. R. Kokane' FROM subject s WHERE s.code='MILL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S4');
+
+-- SE-IT — ECL (E Commerse Lab) S1/S2→ANK, S3/S4→AAK
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S1','Prof. A. N. Kalal' FROM subject s WHERE s.code='ECL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S2','Prof. A. N. Kalal' FROM subject s WHERE s.code='ECL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S3','Dr. A. A. Kadam' FROM subject s WHERE s.code='ECL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'SE-IT','S4','Dr. A. A. Kadam' FROM subject s WHERE s.code='ECL' AND s.semester=4
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='SE-IT' AND x.batch='S4');
+
+-- TE-IT — CNSL (Computer Networks & Security Lab) T1/T2→RSL, T3/T4→SSK
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T1','Prof. R. S. Lavhe' FROM subject s WHERE s.code='CNSL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T2','Prof. R. S. Lavhe' FROM subject s WHERE s.code='CNSL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T3','Prof. S. S. Khote' FROM subject s WHERE s.code='CNSL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T4','Prof. S. S. Khote' FROM subject s WHERE s.code='CNSL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T4');
+
+-- TE-IT — DSBDAL (DS & BDA-Lab) all batches → DPR
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T1','Prof. D. P. Rankhambe' FROM subject s WHERE s.code='DSBDAL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T2','Prof. D. P. Rankhambe' FROM subject s WHERE s.code='DSBDAL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T3','Prof. D. P. Rankhambe' FROM subject s WHERE s.code='DSBDAL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T4','Prof. D. P. Rankhambe' FROM subject s WHERE s.code='DSBDAL' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T4');
+
+-- TE-IT — LP2 (Laboratory Practice-II) T1/T3→ARD (EL-II track), T2/T4→ANK (WAD track)
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T1','Prof. A. R. Dodke' FROM subject s WHERE s.code='LP2' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T2','Prof. A. N. Kalal' FROM subject s WHERE s.code='LP2' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T3','Prof. A. R. Dodke' FROM subject s WHERE s.code='LP2' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'TE-IT','T4','Prof. A. N. Kalal' FROM subject s WHERE s.code='LP2' AND s.semester=6
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='TE-IT' AND x.batch='T4');
+
+-- BE-IT — LP5 (Lab Practice V) B1/B3→SRK, B2/B4→AAK
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B1','Dr. S. R. Kokane' FROM subject s WHERE s.code='LP5' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B2','Dr. A. A. Kadam' FROM subject s WHERE s.code='LP5' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B3','Dr. S. R. Kokane' FROM subject s WHERE s.code='LP5' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B4','Dr. A. A. Kadam' FROM subject s WHERE s.code='LP5' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B4');
+
+-- BE-IT — LP6 (Lab Practice VI) B1/B2→PGK, B3/B4→RAN
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B1','Prof. P. G. Khaire' FROM subject s WHERE s.code='LP6' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B1');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B2','Prof. P. G. Khaire' FROM subject s WHERE s.code='LP6' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B2');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B3','Prof. R. A. Nikam' FROM subject s WHERE s.code='LP6' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B3');
+INSERT INTO subject_faculty_assignment (subject_id, division_name, batch, faculty_name)
+SELECT s.id,'BE-IT','B4','Prof. R. A. Nikam' FROM subject s WHERE s.code='LP6' AND s.semester=8
+  AND NOT EXISTS (SELECT 1 FROM subject_faculty_assignment x WHERE x.subject_id=s.id AND x.division_name='BE-IT' AND x.batch='B4');
