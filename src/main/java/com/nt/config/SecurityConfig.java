@@ -17,9 +17,11 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/login", "/logout",
-                                "/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**").permitAll()
+                                "/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**",
+                                "/h2-console/**").permitAll()
                         .requestMatchers("/admin/**", "/add-**", "/save-**", "/update-**", "/delete-**",
                                 "/edit-**", "/assign-subjects/**", "/assign-batch-faculty/**",
                                 "/assign-theory-faculty/**", "/auto-generate/**", "/clear-timetable").hasRole("ADMIN")
