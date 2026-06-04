@@ -1,7 +1,11 @@
 package com.nt.service;
 
+import com.nt.entity.AcademicSetting;
+import com.nt.entity.Division;
 import com.nt.entity.Subject;
 import com.nt.entity.Timetable;
+import com.nt.repository.AcademicSettingRepository;
+import com.nt.repository.DivisionRepository;
 import com.nt.repository.SubjectRepository;
 import com.nt.repository.TimetableRepository;
 import org.apache.poi.ss.usermodel.*;
@@ -25,8 +29,10 @@ import java.util.stream.Collectors;
 @Service
 public class TimetableXlsxExportService {
 
-    @Autowired private TimetableRepository timetableRepo;
-    @Autowired private SubjectRepository    subjectRepo;
+    @Autowired private TimetableRepository    timetableRepo;
+    @Autowired private SubjectRepository      subjectRepo;
+    @Autowired private DivisionRepository     divisionRepo;
+    @Autowired private AcademicSettingRepository academicSettingRepo;
 
     /* ── DB slot keys ── */
     static final String[] SLOTS = {
@@ -47,92 +53,98 @@ public class TimetableXlsxExportService {
     static final int FC_DAY=2, FC_BRK=5, FC_LNG=8, FC_NCOLS=12;
     static final int[] FC_SCOL = {3,4,6,7,9,10,11};
 
-    /* ── MASTER: header rows 0-7 (Excel 1-8) and per-class data row heights ── */
-    static final float[] HDR_HT   = {19.5f,42.0f,27.0f,27.0f,24.75f,70.5f,39.75f,96.0f};
-    static final float[] SE_HT    = {88.5f,69.75f,70.5f,77.25f,64.5f};
-    static final float[] TE_HT    = {73.5f,68.25f,62.25f,66.0f,83.25f};
-    static final float[] BE_HT    = {63.0f,68.25f,66.75f,62.25f,51.0f};
-    static final float   SEP1_HT  = 51.75f;
-    static final float   SEP2_HT  = 50.25f;
+    /* ── MASTER: header rows 0-6 + per-class data row heights ── */
+    // Row 0=institution(bordered), 1=Record/DoI(bordered), 2=Revision(bordered),
+    // 3=titleBar(gray), 4=AY/Dept/Sem, 5=WEF, 6=colHeaders → data at row 7
+    static final float[] HDR_HT   = {48.0f,16.0f,14.0f,18.0f,28.0f,18.0f,42.0f};
+    static final float[] SE_HT    = {40.0f,32.0f,32.0f,40.0f,32.0f};
+    static final float[] TE_HT    = {50.0f,32.0f,32.0f,40.0f,40.0f};
+    static final float[] BE_HT    = {40.0f,40.0f,40.0f,40.0f,30.0f};
+    static final float   SEP1_HT  = 10.0f;
+    static final float   SEP2_HT  = 10.0f;
 
-    /* ── CLASS sheet (Template D): 10 header rows + per-class data heights ── */
-    static final float[] CLASS_HDR_HT = {15.0f,27.0f,25.5f,19.5f,19.5f,30.0f,30.0f,30.0f,25.5f,96.75f};
-    static final float[] SE_CLASS_HT  = {73.5f,60.0f,60.0f,87.75f,60.0f};
-    static final float[] TE_CLASS_HT  = {108.0f,60.0f,60.0f,84.75f,60.0f};
-    static final float[] BE_CLASS_HT  = {60.0f,60.0f,60.0f,60.0f,49.5f};
+    /* ── CLASS sheet: 7 header rows + data row heights ── */
+    // Row 0=institution, 1=Record/DoI, 2=Revision, 3=titleBar,
+    // 4=Dept/AY/Sem, 5=WEF, 6=colHeaders → data at row 7
+    static final float[] CLASS_HDR_HT = {48.0f,16.0f,14.0f,18.0f,16.0f,16.0f,42.0f};
+    static final float[] SE_CLASS_HT  = {40.0f,32.0f,32.0f,40.0f,32.0f};
+    static final float[] TE_CLASS_HT  = {50.0f,32.0f,32.0f,40.0f,40.0f};
+    static final float[] BE_CLASS_HT  = {40.0f,40.0f,40.0f,40.0f,30.0f};
 
-    /* ── FACULTY sheet (Template E): 9 header rows + data row heights ── */
-    static final float[] FAC_HDR_HT   = {15.0f,54.0f,24.75f,24.75f,24.75f,24.75f,28.5f,26.25f,75.75f};
-    static final float[] FAC_DATA_HT  = {40.0f,40.0f,40.0f,50.0f,50.0f};
+    /* ── FACULTY sheet: 8 header rows + data row heights ── */
+    // Row 0=institution, 1=Record/DoI, 2=Revision, 3=titleBar,
+    // 4=Dept/Sem, 5=WEF, 6=FacultyName, 7=colHeaders → data at row 8
+    static final float[] FAC_HDR_HT   = {48.0f,16.0f,14.0f,18.0f,14.0f,14.0f,14.0f,42.0f};
+    static final float[] FAC_DATA_HT  = {32.0f,32.0f,32.0f,36.0f,36.0f};
 
-    /* ── MASTER column widths (14 cols A-N) — exact match IT.xlsx MASTER ── */
+    /* ── MASTER column widths — print-optimised (A4 landscape) ── */
     static final double[] COL_WIDTHS = {
-        8.0,   // A
-        5.42,  // B
-        28.42, // C  Day
-        16.57, // D  Class
-        35.0,  // E  09-10
-        50.86, // F  10-11
-        20.29, // G  SHORT BREAK
-        36.15, // H  11:15-12:15
-        65.71, // I  12:15-13:15
-        29.14, // J  LONG BREAK
-        32.29, // K  14-15
-        63.14, // L  15-16
-        47.86, // M  16-17
-        5.14,  // N  (margin)
+        0,     // A  hidden spacer
+        0,     // B  hidden spacer
+        12.0,  // C  Day
+        10.0,  // D  Class
+        18.0,  // E  09-10
+        22.0,  // F  10-11
+        8.0,   // G  SHORT BREAK
+        20.0,  // H  11:15-12:15
+        22.0,  // I  12:15-13:15
+        8.0,   // J  LONG BREAK
+        20.0,  // K  14-15
+        22.0,  // L  15-16
+        18.0,  // M  16-17
+        0,     // N  hidden margin
     };
 
-    /* ── CLASS sheet column widths (from IT.xlsx CLASS_SE) ── */
+    /* ── CLASS sheet column widths — print-optimised ── */
     static final double[] CLASS_COL_WIDTHS = {
-        1.14,  // A
-        6.29,  // B
-        20.85, // C  Day
-        17.15, // D  Class
-        25.42, // E  09-10
-        41.29, // F  10-11
-        21.0,  // G  SHORT BREAK
-        28.29, // H  11:15-12:15
-        44.71, // I  12:15-13:15
-        16.85, // J  LONG BREAK
-        16.85, // K  14-15
-        34.14, // L  15-16
-        23.0,  // M  16-17
-        25.29, // N  (margin)
+        0,     // A  hidden spacer
+        0,     // B  hidden spacer
+        12.0,  // C  Day/Time
+        8.0,   // D  Class (hidden on individual sheets)
+        20.0,  // E  09-10
+        24.0,  // F  10-11
+        8.0,   // G  SHORT BREAK
+        22.0,  // H  11:15-12:15
+        24.0,  // I  12:15-13:15
+        8.0,   // J  LONG BREAK
+        22.0,  // K  14-15
+        24.0,  // L  15-16
+        20.0,  // M  16-17
+        0,     // N  hidden margin
     };
 
-    /* ── FACULTY sheet column widths (from IT.xlsx RSL faculty sheet) ── */
+    /* ── FACULTY sheet column widths — print-optimised ── */
     static final double[] FAC_COL_WIDTHS = {
-        1.14,  // A
-        11.0,  // B
-        22.0,  // C  Day
-        19.14, // D  09-10
-        22.0,  // E  10-11
-        20.42, // F  SHORT BREAK
-        22.42, // G  11:15-12:15
-        23.71, // H  12:15-13:15
-        15.0,  // I  LONG BREAK
-        21.0,  // J  14-15
-        25.0,  // K  15-16
-        30.29, // L  16-17
-        9.14,  // M  (margin)
+        0,     // A  hidden spacer
+        0,     // B  hidden spacer
+        12.0,  // C  Day
+        18.0,  // D  09-10
+        18.0,  // E  10-11
+        8.0,   // F  SHORT BREAK
+        18.0,  // G  11:15-12:15
+        18.0,  // H  12:15-13:15
+        8.0,   // I  LONG BREAK
+        18.0,  // J  14-15
+        18.0,  // K  15-16
+        18.0,  // L  16-17
+        0,     // M  hidden margin
     };
 
-    /* ── LAB/ROOM sheet column widths (from IT.xlsx CCL/WET lab sheets) ── */
+    /* ── LAB/ROOM sheet column widths — print-optimised ── */
     static final double[] LAB_COL_WIDTHS = {
-        1.14,  // A
-        1.14,  // B
-        17.0,  // C  Day
-        19.0,  // D  09-10
-        21.43, // E  10-11
-        20.42, // F  SHORT BREAK
-        18.14, // G  11:15-12:15
-        18.71, // H  12:15-13:15
-        21.43, // I  LONG BREAK
-        17.15, // J  14-15
-        24.0,  // K  15-16
+        0,     // A  hidden spacer
+        0,     // B  hidden spacer
+        12.0,  // C  Day
+        18.0,  // D  09-10
+        18.0,  // E  10-11
+        8.0,   // F  SHORT BREAK
+        18.0,  // G  11:15-12:15
+        18.0,  // H  12:15-13:15
+        8.0,   // I  LONG BREAK
+        18.0,  // J  14-15
+        18.0,  // K  15-16
         14.0,  // L  16-17
-        9.14,  // M  (margin)
+        0,     // M  hidden margin
     };
 
     /* ── Subject code display overrides ── */
@@ -160,42 +172,63 @@ public class TimetableXlsxExportService {
         "AUDIT COURSE-IV","AUDIT COURSE-VI","AUDIT COURSE-VIII"
     );
 
-    /* Logo paths */
-    static final String CLG_LOGO   = "/home/sudhir/Desktop/ATG/clglogo.png";
-    static final String OWNER_LOGO = "/home/sudhir/Desktop/ATG/ownerlogo.png";
+    /* Default fallback values (used when AcademicSetting fields are null) */
+    static final String DEF_INST_FULL  =
+        "Akhil Bharatiya Maratha Shikshan Parishad's\n" +
+        "Anantrao Pawar college of Engineering & Research, Parvati, Pune";
+    static final String DEF_INST_SHORT =
+        "Akhil Bharatiya Maratha Shikshan Parishad's\n" +
+        "Anantrao Pawar college of Engineering & Research";
+    static final String DEF_DEPT      = "Information Technology";
+    static final String DEF_AY        = "2025-26";
+    static final String DEF_SEM       = "II";
+    static final String DEF_WEF       = "01/01/2026";
+    static final String DEF_DOI       = "01/02/2025";
+    static final String DEF_REV       = "00";
+    static final String DEF_REC_M     = "ACA/R/003A";
+    static final String DEF_REC_C     = "ACA/R/003B";
+    static final String DEF_REC_L     = "ACA/R/003D";
+    static final String DEF_REC_F     = "ACA/R/003E";
+    static final String DEF_TTC       = "PROF. R. A. NIKAM";
+    static final String DEF_HOD       = "DR. A. A. KADAM";
+    static final String DEF_PRINCIPAL = "DR. S. B. THAKARE";
+    static final String DEF_CLG_LOGO  = "/home/sudhir/Desktop/ATG/clglogo.png";
+    static final String DEF_OWN_LOGO  = "/home/sudhir/Desktop/ATG/ownerlogo.png";
 
     /* ═══════════════════════════ PUBLIC ENTRY ═══════════════════════════════ */
 
     public byte[] generate() throws IOException {
         List<Timetable> all = timetableRepo.findByDeletedFalse();
         Map<String,String> nc = nameToCode(subjectRepo.findAll());
+        List<Division> divisions = divisionRepo.findAll();
+        AcademicSetting cfg = academicSettingRepo.findById(1).orElseGet(AcademicSetting::new);
 
         XSSFWorkbook wb = new XSSFWorkbook();
         Styles st = new Styles(wb);
 
-        byte[] clgBytes   = readLogo(CLG_LOGO);
-        byte[] ownerBytes = readLogo(OWNER_LOGO);
+        byte[] clgBytes   = readLogo(nvl(cfg.getCollegeLogo(), DEF_CLG_LOGO));
+        byte[] ownerBytes = readLogo(nvl(cfg.getOwnerLogo(),   DEF_OWN_LOGO));
 
         /* Class sheets */
         for (String cls : CLASSES)
-            writeClassSheet(wb, st, cls, filter(all,cls), nc, clgBytes, ownerBytes);
+            writeClassSheet(wb, st, cls, filter(all,cls), nc, clgBytes, ownerBytes, divisions, cfg);
 
         /* Master sheet */
-        writeMasterSheet(wb, st, all, nc, clgBytes, ownerBytes);
+        writeMasterSheet(wb, st, all, nc, clgBytes, ownerBytes, divisions, cfg);
 
         /* Faculty sheets (skip Library Coordinator) */
         all.stream()
             .filter(t -> nb(t.getFaculty()) && !"Library Coordinator".equalsIgnoreCase(t.getFaculty()))
             .collect(Collectors.groupingBy(Timetable::getFaculty))
             .entrySet().stream().sorted(Map.Entry.comparingByKey())
-            .forEach(e -> writeFacSheet(wb, st, e.getKey(), e.getValue(), nc, clgBytes, ownerBytes));
+            .forEach(e -> writeFacSheet(wb, st, e.getKey(), e.getValue(), nc, clgBytes, ownerBytes, cfg));
 
         /* Room sheets */
         all.stream()
             .filter(t -> nb(t.getRoom()))
             .collect(Collectors.groupingBy(Timetable::getRoom))
             .entrySet().stream().sorted(Map.Entry.comparingByKey())
-            .forEach(e -> writeRoomSheet(wb, st, e.getKey(), e.getValue(), nc, clgBytes, ownerBytes));
+            .forEach(e -> writeRoomSheet(wb, st, e.getKey(), e.getValue(), nc, clgBytes, ownerBytes, cfg));
 
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         wb.write(bos); wb.close();
@@ -206,25 +239,32 @@ public class TimetableXlsxExportService {
 
     private void writeClassSheet(XSSFWorkbook wb, Styles st, String cls,
                                   List<Timetable> rows, Map<String,String> nc,
-                                  byte[] clgLogo, byte[] ownerLogo) {
+                                  byte[] clgLogo, byte[] ownerLogo,
+                                  List<Division> divisions, AcademicSetting cfg) {
         XSSFSheet sh = wb.createSheet(cls.replace("(","_").replace(")",""));
-        int hi = classHeader(sh, wb, st, cls, clgLogo, ownerLogo);
+        int hi = classHeader(sh, wb, st, cls, clgLogo, ownerLogo, cfg);
         float[] heights = classSheetRowHeights(cls);
         int dataEnd = hi + DAYS.length - 1;
         writeClassRows(sh, st, hi, cls, buildGrid(rows), nc, heights, CC_SCOL);
         mergeBreaks(sh, hi, dataEnd, CC_BRK, CC_LNG);
         applyColWidths(sh, CLASS_COL_WIDTHS);
+        // Hide spacer/redundant columns so PDF shows only timetable content
+        sh.setColumnHidden(0, true);      // A
+        sh.setColumnHidden(1, true);      // B
+        sh.setColumnHidden(CC_CLS, true); // D — Class label (redundant on individual sheet)
+        sh.setColumnHidden(13, true);     // N — right margin
         applyPageSetup(sh);
-        classFooter(sh, st, cls, rows, nc, hi + DAYS.length);
+        classFooter(sh, st, cls, rows, nc, hi + DAYS.length, divisions, cfg);
         sh.createFreezePane(0, hi + 1);
     }
 
     private void writeMasterSheet(XSSFWorkbook wb, Styles st, List<Timetable> all,
-                                   Map<String,String> nc, byte[] clgLogo, byte[] ownerLogo) {
+                                   Map<String,String> nc, byte[] clgLogo, byte[] ownerLogo,
+                                   List<Division> divisions, AcademicSetting cfg) {
         XSSFSheet sh = wb.createSheet("MASTER");
 
         /* ── header rows 0-7 ── */
-        int hi = masterHeader(sh, wb, st, clgLogo, ownerLogo);
+        int hi = masterHeader(sh, wb, st, clgLogo, ownerLogo, cfg);
         // hi = 8 (data starts at row 8)
 
         /* ── SE-IT rows 8-12 ── */
@@ -252,220 +292,213 @@ public class TimetableXlsxExportService {
         mergeBreaks(sh, hi, beEnd, CC_BRK, CC_LNG);
 
         /* ── footer ── */
-        masterFooter(sh, st, beEnd + 1);
+        masterFooter(sh, st, beEnd + 1, divisions, cfg);
 
         applyColWidths(sh, COL_WIDTHS);
+        sh.setColumnHidden(0, true); sh.setColumnHidden(1, true); sh.setColumnHidden(13, true);
         applyPageSetup(sh);
         sh.createFreezePane(0, hi + 1);
     }
 
     private void writeFacSheet(XSSFWorkbook wb, Styles st, String fac,
                                 List<Timetable> rows, Map<String,String> nc,
-                                byte[] clgLogo, byte[] ownerLogo) {
+                                byte[] clgLogo, byte[] ownerLogo, AcademicSetting cfg) {
         XSSFSheet sh = wb.createSheet(safe("Fac_" + abbrev(fac)));
-        int hi = facRoomHeader(sh, wb, st, fac, "Individual Time Table", clgLogo, ownerLogo);
+        int hi = facRoomHeader(sh, wb, st, fac, "Individual Time Table", clgLogo, ownerLogo,
+                               FAC_COL_WIDTHS[FC_DAY], FAC_COL_WIDTHS[11], cfg);
         writeFacRoomRows(sh, st, hi, buildGrid(rows), nc, FC_SCOL, "fac");
         mergeBreaks(sh, hi, hi + DAYS.length - 1, FC_BRK, FC_LNG);
         applyColWidths(sh, FAC_COL_WIDTHS);
+        sh.setColumnHidden(0, true); sh.setColumnHidden(1, true); sh.setColumnHidden(12, true);
         applyPageSetup(sh);
-        facFooter(sh, st, fac, rows, nc, hi + DAYS.length);
+        facFooter(sh, st, fac, rows, nc, hi + DAYS.length, cfg);
         sh.createFreezePane(0, hi + 1);
     }
 
     private void writeRoomSheet(XSSFWorkbook wb, Styles st, String room,
                                  List<Timetable> rows, Map<String,String> nc,
-                                 byte[] clgLogo, byte[] ownerLogo) {
+                                 byte[] clgLogo, byte[] ownerLogo, AcademicSetting cfg) {
         XSSFSheet sh = wb.createSheet(safe(roomAbbrev(room)));
-        int hi = facRoomHeader(sh, wb, st, room, "Laboratory Timetable", clgLogo, ownerLogo);
+        int hi = facRoomHeader(sh, wb, st, room, "Laboratory Timetable", clgLogo, ownerLogo,
+                               LAB_COL_WIDTHS[FC_DAY], LAB_COL_WIDTHS[11], cfg);
         writeFacRoomRows(sh, st, hi, buildGrid(rows), nc, FC_SCOL, "room");
         mergeBreaks(sh, hi, hi + DAYS.length - 1, FC_BRK, FC_LNG);
         applyColWidths(sh, LAB_COL_WIDTHS);
+        sh.setColumnHidden(0, true); sh.setColumnHidden(1, true); sh.setColumnHidden(12, true);
         applyPageSetup(sh);
-        labFooter(sh, st, room, rows, nc, hi + DAYS.length);
+        labFooter(sh, st, room, rows, nc, hi + DAYS.length, cfg);
         sh.createFreezePane(0, hi + 1);
     }
 
     /* ═══════════════════════════ HEADER BUILDERS ════════════════════════════ */
 
-    /** Returns POI row index of first data row (=8 for MASTER). */
+    /** Returns POI row index of first data row. */
     private int masterHeader(XSSFSheet sh, XSSFWorkbook wb, Styles st,
-                              byte[] clgLogo, byte[] ownerLogo) {
-        /* Row 0 (Excel 1, 19.5pt): empty — logo row */
-        row(sh, 0, HDR_HT[0]);
+                              byte[] clgLogo, byte[] ownerLogo, AcademicSetting cfg) {
+        String inst = nvl(cfg.getInstitutionName(), DEF_INST_FULL);
+        String sem  = nvl(cfg.getSemesterDisplay(), DEF_SEM);
 
-        /* Row 1 (Excel 2, 42.0pt): E1:L2 institution name; M1:M4 right logo */
+        // Row 0 — bordered institution name (logo overlaid as floating image)
+        XSSFRow r0 = row(sh, 0, HDR_HT[0]);
+        fillRow(r0, st.emptyCell, CC_NCOLS + 1);
+        cell(r0, 3, st.hdrBorderC).setCellValue(inst);
+        merge(sh, 0, 0, 3, 11);      // D:L — institution name
+        merge(sh, 0, 2, 12, 12);     // M (right logo col, spans rows 0-2)
+
+        // Row 1 — Record No. | DoI (bordered)
         XSSFRow r1 = row(sh, 1, HDR_HT[1]);
-        cell(r1, 4, st.inst22).setCellValue(
-            "Akhil Bharatiya Maratha Shikshan Parishad's\n" +
-            "Anantrao Pawar college of Engineering & Research, Parvati, Pune");
-        merge(sh, 0, 1, 4, 11);   // E1:L2
-        merge(sh, 0, 3, 12, 12);  // M1:M4 (right logo column)
+        fillRow(r1, st.emptyCell, CC_NCOLS + 1);
+        cell(r1, 3, st.hdrBorderL).setCellValue("Record No.: " + nvl(cfg.getRecordNoMaster(), DEF_REC_M));
+        cell(r1, 8, st.hdrBorderL).setCellValue("DoI: " + nvl(cfg.getDoiDate(), DEF_DOI));
+        merge(sh, 1, 1, 3, 7); merge(sh, 1, 1, 8, 11);
 
-        /* Row 2 (Excel 3, 27.0pt): Record No | DoI */
+        // Row 2 — Revision (bordered)
         XSSFRow r2 = row(sh, 2, HDR_HT[2]);
-        cell(r2, 4, st.meta).setCellValue("Record No.: ACA/R/003A");
-        cell(r2, 7, st.meta).setCellValue("DoI: 01/02/2025");
-        merge(sh, 2, 2, 4, 6); merge(sh, 2, 2, 7, 11);
+        fillRow(r2, st.emptyCell, CC_NCOLS + 1);
+        cell(r2, 3, st.hdrBorderL).setCellValue("Revision: " + nvl(cfg.getRevisionNumber(), DEF_REV));
+        merge(sh, 2, 2, 3, 11);
 
-        /* Row 3 (Excel 4, 27.0pt): Revision | Version */
+        // Row 3 — Gray title bar (full-width, bordered, gray fill)
         XSSFRow r3 = row(sh, 3, HDR_HT[3]);
-        cell(r3, 4, st.meta).setCellValue("Revision: 00");
-        cell(r3, 7, st.meta).setCellValue("Version: 3A.0");
-        merge(sh, 3, 3, 4, 6); merge(sh, 3, 3, 7, 11);
+        fillRow(r3, st.titleBarCell, CC_NCOLS + 1);
+        cell(r3, 2, st.titleBarCell).setCellValue("Master Timetable");
+        merge(sh, 3, 3, 2, 12);
 
-        /* Row 4 (Excel 5, 24.75pt): C5:M5 Master Timetable */
+        // Row 4 — A.Y. | Dept | SEM-II (plain, outside bordered table)
         XSSFRow r4 = row(sh, 4, HDR_HT[4]);
-        cell(r4, 2, st.masterTitle).setCellValue("Master Timetable");
-        merge(sh, 4, 4, 2, 12);
+        cell(r4, 2, st.ay24b).setCellValue("A.Y. " + nvl(cfg.getAcademicYear(), DEF_AY));
+        cell(r4, 4, st.dept36b).setCellValue("Department of " + nvl(cfg.getDepartmentName(), DEF_DEPT));
+        cell(r4, 12, st.ay24b).setCellValue("SEM-" + sem);
+        merge(sh, 4, 4, 2, 3); merge(sh, 4, 4, 4, 11);
 
-        /* Row 5 (Excel 6, 70.5pt): C6:D6 A.Y. | E6:L6 DEPT | M6 SEM-II */
+        // Row 5 — W.E.F.
         XSSFRow r5 = row(sh, 5, HDR_HT[5]);
-        cell(r5, 2, st.ay24b).setCellValue("A.Y. 2025-26");
-        cell(r5, 4, st.dept36b).setCellValue("Department of Information Technology");
-        cell(r5, 12, st.ay24b).setCellValue("SEM-II");
-        merge(sh, 5, 5, 2, 3); merge(sh, 5, 5, 4, 11);
+        cell(r5, 2, st.wef26b).setCellValue("W. E. F.: " + nvl(cfg.getWefDate(), DEF_WEF));
+        merge(sh, 5, 5, 2, 12);
 
-        /* Row 6 (Excel 7, 39.75pt): C7:M7 W.E.F. */
-        XSSFRow r6 = row(sh, 6, HDR_HT[6]);
-        cell(r6, 2, st.wef26b).setCellValue("W. E. F.: 01/01/2026");
-        merge(sh, 6, 6, 2, 12);
+        // Row 6 — column headers
+        colHeaderRow(sh, 6, HDR_HT[6], st, CC_SCOL, CC_BRK, CC_LNG, CC_NCOLS, true);
+        sh.getRow(6).getCell(CC_DAY).setCellValue("Days");
 
-        /* Row 7 (Excel 8, 96.0pt): column headers — MASTER uses "Days" not "Day/ Time" */
-        colHeaderRow(sh, 7, HDR_HT[7], st, CC_SCOL, CC_BRK, CC_LNG, CC_NCOLS, true);
-        // Override Day label for MASTER
-        sh.getRow(7).getCell(CC_DAY).setCellValue("Days");
-
-        /* Logos */
-        addLogos(sh, wb, clgLogo, ownerLogo);
-
-        return 8;  // data starts at row 8
+        addLogos(sh, wb, clgLogo, ownerLogo, COL_WIDTHS[CC_DAY], 12, COL_WIDTHS[12]);
+        return 7;  // data starts at row 7
     }
 
-    /**
-     * CLASS sheet header — 10 rows matching IT.xlsx Template D (ACA/R/003B).
-     * Returns 10 (data starts at POI row 10 = Excel row 11).
-     */
+    /** CLASS sheet header — consistent with sample_header.png. Data starts at row 7. */
     private int classHeader(XSSFSheet sh, XSSFWorkbook wb, Styles st, String cls,
-                             byte[] clgLogo, byte[] ownerLogo) {
-        // Row 0 (Excel 1, 15pt): empty logo space
-        row(sh, 0, CLASS_HDR_HT[0]);
+                             byte[] clgLogo, byte[] ownerLogo, AcademicSetting cfg) {
+        String inst = nvl(cfg.getInstitutionName(), DEF_INST_FULL);
+        String dept = nvl(cfg.getDepartmentName(), DEF_DEPT);
+        String ay   = nvl(cfg.getAcademicYear(), DEF_AY);
+        String sem  = nvl(cfg.getSemesterDisplay(), DEF_SEM);
+        String wef  = nvl(cfg.getWefDate(), DEF_WEF);
 
-        // Rows 1-2 (Excel 2-3): institution name — D2:L3 merged (2-row tall block)
+        // Row 0 — bordered institution name (logo overlaid)
+        XSSFRow r0 = row(sh, 0, CLASS_HDR_HT[0]);
+        fillRow(r0, st.emptyCell, CC_NCOLS + 1);
+        cell(r0, 3, st.hdrBorderC).setCellValue(inst);
+        merge(sh, 0, 0, 3, 11);     // D:L — institution name
+        merge(sh, 0, 2, 12, 12);    // M (right logo col, rows 0-2)
+
+        // Row 1 — Record No. | DoI (bordered)
         XSSFRow r1 = row(sh, 1, CLASS_HDR_HT[1]);
-        cell(r1, 3, st.inst22).setCellValue(
-            "Akhil Bharatiya Maratha Shikshan Parishad's" +
-            "                                        " +
-            "Anantrao Pawar college of Engineering & Research, Parvati, Pune");
-        row(sh, 2, CLASS_HDR_HT[2]);
-        merge(sh, 1, 2, 3, 11);  // D2:L3
-        merge(sh, 1, 4, 12, 12); // M2:M5 (right logo column)
+        fillRow(r1, st.emptyCell, CC_NCOLS + 1);
+        cell(r1, 3, st.hdrBorderL).setCellValue("Record No.: " + nvl(cfg.getRecordNoClass(), DEF_REC_C));
+        cell(r1, 8, st.hdrBorderL).setCellValue("DoI: " + nvl(cfg.getDoiDate(), DEF_DOI));
+        merge(sh, 1, 1, 3, 7); merge(sh, 1, 1, 8, 11);
 
-        // Row 3 (Excel 4, 19.5pt): Record No. | DoI
+        // Row 2 — Revision (bordered)
+        XSSFRow r2 = row(sh, 2, CLASS_HDR_HT[2]);
+        fillRow(r2, st.emptyCell, CC_NCOLS + 1);
+        cell(r2, 3, st.hdrBorderL).setCellValue("Revision: " + nvl(cfg.getRevisionNumber(), DEF_REV));
+        merge(sh, 2, 2, 3, 11);
+
+        // Row 3 — Gray title bar (bordered, gray fill)
         XSSFRow r3 = row(sh, 3, CLASS_HDR_HT[3]);
-        cell(r3, 3, st.meta).setCellValue("Record No.: ACA/R/003B");
-        cell(r3, 7, st.meta).setCellValue("DoI: 01/02/2025");
-        merge(sh, 3, 3, 3, 6); merge(sh, 3, 3, 7, 11);
+        fillRow(r3, st.titleBarCell, CC_NCOLS + 1);
+        cell(r3, 2, st.titleBarCell).setCellValue("Timetable");
+        merge(sh, 3, 3, 2, 12);
 
-        // Row 4 (Excel 5, 19.5pt): Revision
+        // Row 4 — Dept | Academic Year | Semester (plain, outside bordered table)
         XSSFRow r4 = row(sh, 4, CLASS_HDR_HT[4]);
-        cell(r4, 3, st.meta).setCellValue("Revision: 00");
-        merge(sh, 4, 4, 3, 11);
+        cell(r4, 2, st.ay24b).setCellValue("Department: " + dept);
+        cell(r4, 7, st.ay24b).setCellValue("Academic Year: " + ay);
+        cell(r4, 12, st.ay24b).setCellValue("Semester: " + sem);
+        merge(sh, 4, 4, 2, 6); merge(sh, 4, 4, 7, 11);
 
-        // Row 5 (Excel 6, 30pt): "Timetable" grey title — B6:M6
+        // Row 5 — W.E.F.
         XSSFRow r5 = row(sh, 5, CLASS_HDR_HT[5]);
-        cell(r5, 1, st.masterTitle).setCellValue("Timetable");
-        merge(sh, 5, 5, 1, 12);
+        cell(r5, 2, st.wef26b).setCellValue("W. E. F.: " + wef);
+        merge(sh, 5, 5, 2, 12);
 
-        // Row 6 (Excel 7, 30pt): Dept | Acadamic Year | Semester (spaces to separate)
-        XSSFRow r6 = row(sh, 6, CLASS_HDR_HT[6]);
-        cell(r6, 2, st.ay24b).setCellValue("Department: Information Technology");
-        cell(r6, 6, st.ay24b).setCellValue("Acadamic Year- 2025-26");
-        cell(r6, 12, st.ay24b).setCellValue("Semester: II");
-        merge(sh, 6, 6, 2, 5); merge(sh, 6, 6, 6, 11);
-
-        // Row 7 (Excel 8, 30pt): empty row
-        row(sh, 7, CLASS_HDR_HT[7]);
-
-        // Row 8 (Excel 9, 25.5pt): W.E.F.
-        XSSFRow r8 = row(sh, 8, CLASS_HDR_HT[8]);
-        cell(r8, 2, st.wef26b).setCellValue("W. E. F.: 01 / 01 /2026");
-        merge(sh, 8, 8, 2, 12);
-
-        // Row 9 (Excel 10, 96.75pt): column headers
-        colHeaderRow(sh, 9, CLASS_HDR_HT[9], st, CC_SCOL, CC_BRK, CC_LNG, CC_NCOLS, true);
-        addLogos(sh, wb, clgLogo, ownerLogo);
-
-        return 10;  // data starts at POI row 10
+        // Row 6 — column headers
+        colHeaderRow(sh, 6, CLASS_HDR_HT[6], st, CC_SCOL, CC_BRK, CC_LNG, CC_NCOLS, true);
+        addLogos(sh, wb, clgLogo, ownerLogo, CLASS_COL_WIDTHS[CC_DAY], 12, CLASS_COL_WIDTHS[12]);
+        return 7;  // data starts at row 7
     }
 
-    /**
-     * FACULTY/LAB header — 9 rows matching IT.xlsx Template E/B.
-     * Returns 9 (data starts at POI row 9 = Excel row 10).
-     */
+    /** FACULTY/LAB header — consistent with sample_header.png. Data starts at row 8. */
     private int facRoomHeader(XSSFSheet sh, XSSFWorkbook wb, Styles st,
                                String name, String type,
-                               byte[] clgLogo, byte[] ownerLogo) {
+                               byte[] clgLogo, byte[] ownerLogo,
+                               double dayColW, double rightColW, AcademicSetting cfg) {
         boolean isFac = "Individual Time Table".equals(type);
-        String recNo   = isFac ? "Record No.: ACA/R/003E" : "Record No.: ACA/R/003D";
+        String recNo  = "Record No.: " + (isFac ? nvl(cfg.getRecordNoFaculty(), DEF_REC_F)
+                                                 : nvl(cfg.getRecordNoLab(), DEF_REC_L));
+        String inst   = nvl(cfg.getInstitutionNameShort(), DEF_INST_SHORT);
+        String dept   = nvl(cfg.getDepartmentName(), DEF_DEPT);
+        String sem    = nvl(cfg.getSemesterDisplay(), DEF_SEM);
+        String wef    = nvl(cfg.getWefDate(), DEF_WEF);
 
-        // Row 0 (Excel 1, 15pt): empty logo space
-        row(sh, 0, FAC_HDR_HT[0]);
+        // Row 0 — bordered institution name (logos overlaid as floating images)
+        XSSFRow r0 = row(sh, 0, FAC_HDR_HT[0]);
+        fillRow(r0, st.emptyCell, FC_NCOLS);
+        cell(r0, 3, st.hdrBorderC).setCellValue(inst);
+        merge(sh, 0, 0, 3, 10);     // D:K — institution name
+        merge(sh, 0, 2, 11, 11);    // L (right logo col, rows 0-2)
 
-        // Row 1 (Excel 2, 54pt): institution name — E2:K2 (single tall row)
-        // Faculty sheets: no ", Parvati, Pune"; lab sheets: keep it
-        String instName = isFac
-            ? "Akhil Bharatiya Maratha Shikshan Parishad's" +
-              "                                                                                 " +
-              "Anantrao Pawar college of Engineering & Research"
-            : "Akhil Bharatiya Maratha Shikshan Parishad's" +
-              "                                        " +
-              "Anantrao Pawar college of Engineering & Research, Parvati, Pune";
+        // Row 1 — Record No. | DoI (bordered)
         XSSFRow r1 = row(sh, 1, FAC_HDR_HT[1]);
-        cell(r1, 4, st.inst22).setCellValue(instName);
-        merge(sh, 1, 1, 4, 10);  // E2:K2
-        merge(sh, 1, 3, 11, 11); // L2:L4 (right logo column — stop at row 4, not 5)
+        fillRow(r1, st.emptyCell, FC_NCOLS);
+        cell(r1, 3, st.hdrBorderL).setCellValue(recNo);
+        cell(r1, 7, st.hdrBorderL).setCellValue("DoI: " + nvl(cfg.getDoiDate(), DEF_DOI));
+        merge(sh, 1, 1, 3, 6); merge(sh, 1, 1, 7, 10);
 
-        // Row 2 (Excel 3, 24.75pt): Record No. | DoI
+        // Row 2 — Revision (bordered)
         XSSFRow r2 = row(sh, 2, FAC_HDR_HT[2]);
-        cell(r2, 4, st.meta).setCellValue(recNo);
-        cell(r2, 7, st.meta).setCellValue("DoI: 01/02/2025");
-        merge(sh, 2, 2, 4, 6); merge(sh, 2, 2, 7, 10);
+        fillRow(r2, st.emptyCell, FC_NCOLS);
+        cell(r2, 3, st.hdrBorderL).setCellValue("Revision: " + nvl(cfg.getRevisionNumber(), DEF_REV));
+        merge(sh, 2, 2, 3, 10);
 
-        // Row 3 (Excel 4, 24.75pt): Revision
+        // Row 3 — Gray title bar (full width, bordered, gray fill)
         XSSFRow r3 = row(sh, 3, FAC_HDR_HT[3]);
-        cell(r3, 4, st.meta).setCellValue("Revision: 00");
-        merge(sh, 3, 3, 4, 10);
+        fillRow(r3, st.titleBarCell, FC_NCOLS);
+        cell(r3, 2, st.titleBarCell).setCellValue(type);
+        merge(sh, 3, 3, 2, 11);
 
-        // Row 4 (Excel 5, 24.75pt): title bar (grey)
+        // Row 4 — Dept | Sem-II (plain, outside bordered table)
         XSSFRow r4 = row(sh, 4, FAC_HDR_HT[4]);
-        cell(r4, 2, st.masterTitle).setCellValue(type);
-        merge(sh, 4, 4, 2, 11);
+        cell(r4, 2, st.facMetaL).setCellValue("Department: " + dept);
+        cell(r4, 9, st.facMetaL).setCellValue("Sem-" + sem);
+        merge(sh, 4, 4, 2, 8);
 
-        // Row 5 (Excel 6, 24.75pt): Dept (with spaces so Sem-II appears right-aligned)
+        // Row 5 — W.E.F.
         XSSFRow r5 = row(sh, 5, FAC_HDR_HT[5]);
-        cell(r5, 2, st.facMetaL).setCellValue(
-            "Department: Information Technology" +
-            "                                                                                         " +
-            "Sem-II");
+        cell(r5, 2, st.facMetaL).setCellValue("W. E. F.: " + wef);
         merge(sh, 5, 5, 2, 11);
 
-        // Row 6 (Excel 7, 28.5pt): W.E.F.
+        // Row 6 — Faculty / Lab name
         XSSFRow r6 = row(sh, 6, FAC_HDR_HT[6]);
-        cell(r6, 2, st.facMetaL).setCellValue("W. E. F.: 01/01/2026");
-        merge(sh, 6, 6, 2, 11);
-
-        // Row 7 (Excel 8, 26.25pt): Name
-        XSSFRow r7 = row(sh, 7, FAC_HDR_HT[7]);
         String cleanName = cleanFacultyName(name);
         String nameLabel = isFac ? "Name of the Faculty: Prof. " + cleanName : "Lab Name: " + name;
-        cell(r7, 2, st.facMetaL).setCellValue(nameLabel);
-        merge(sh, 7, 7, 2, 11);
+        cell(r6, 2, st.facMetaL).setCellValue(nameLabel);
+        merge(sh, 6, 6, 2, 11);
 
-        // Row 8 (Excel 9, 75.75pt): column headers
-        colHeaderRow(sh, 8, FAC_HDR_HT[8], st, FC_SCOL, FC_BRK, FC_LNG, FC_NCOLS, false);
-        addLogos(sh, wb, clgLogo, ownerLogo);
+        // Row 7 — Column headers
+        colHeaderRow(sh, 7, FAC_HDR_HT[7], st, FC_SCOL, FC_BRK, FC_LNG, FC_NCOLS, false);
+        addLogos(sh, wb, clgLogo, ownerLogo, dayColW, 11, rightColW);
 
-        return 9;  // data starts at POI row 9
+        return 8;  // data starts at row 8
     }
 
     /** Strip leading honorific so we don't double up "Prof. Prof." */
@@ -487,9 +520,9 @@ public class TimetableXlsxExportService {
         for (int c = 0; c < ncol; c++) row.createCell(c).setCellStyle(st.hdrCell);
 
         String[] labels = {
-            "9.00 AM to 10.00 AM","10.00AM to 11.00 AM",
-            "11.15 AM to 12.15 PM","12.15 AM to 1.15 AM",
-            "2. 00 PM to 3.00 PM","3.00 PM to 4.00 PM","4.00 PM to 5.00 PM"
+            "9.00 AM to 10.00 AM","10.00 AM to 11.00 AM",
+            "11.15 AM to 12.15 PM","12.15 PM to 1.15 PM",
+            "2.00 PM to 3.00 PM","3.00 PM to 4.00 PM","4.00 PM to 5.00 PM"
         };
         if (hasCls) {
             row.getCell(CC_DAY).setCellValue("Day/ Time");
@@ -499,8 +532,9 @@ public class TimetableXlsxExportService {
         }
         // SHORT BREAK header has no bottom border (matches IT.xlsx G8 border)
         row.getCell(brkCol).setCellStyle(st.brkHdrCell);
-        row.getCell(brkCol).setCellValue("11.00 AM to 11.15 AM");
-        row.getCell(lngCol).setCellValue("1.15 PM to 2.00 PM");
+        row.getCell(brkCol).setCellValue("SHORT\nBREAK");
+        row.getCell(lngCol).setCellStyle(st.lngHdrCell);
+        row.getCell(lngCol).setCellValue("LONG\nBREAK");
         for (int si = 0; si < SLOTS.length; si++)
             row.getCell(scol[si]).setCellValue(labels[si]);
     }
@@ -623,27 +657,32 @@ public class TimetableXlsxExportService {
     }
 
     /* ═══════════════════════════ FOOTER — FACULTY (Template A) ══════════════ */
-    // Columns (0-based, Faculty FC layout — no Class col):
-    //   D(3)=SUBECT NAME  E(4)=CLASS  F(5)=LOAD IN HOURS
+    // Table cols: D(3)=SUBJECT NAME  E(4)=CLASS  G(6)=LOAD IN HOURS
+    // All break columns and hidden columns avoided.
+    // Signature block has NO grid border — plain text only.
 
     private void facFooter(XSSFSheet sh, Styles st, String facName,
-                            List<Timetable> rows, Map<String,String> nc, int afterRow) {
+                            List<Timetable> rows, Map<String,String> nc, int afterRow,
+                            AcademicSetting cfg) {
         int r = afterRow;
-        emptyRow(sh, st, r++, 15f, FC_NCOLS);   // blank gap
+        row(sh, r++, 10f);  // plain gap — no borders
 
-        // Header row: SUBECT NAME | CLASS | LOAD IN HOURS  (matching IT.xlsx RSL layout)
-        XSSFRow hdr = row(sh, r, 27.75f);
-        fillRow(hdr, st.emptyCell, FC_NCOLS);
-        cell(hdr, 4, st.tblHdrCell).setCellValue("SUBECT NAME");
-        cell(hdr, 5, st.tblHdrCell).setCellValue("CLASS");
-        cell(hdr, 6, st.tblHdrCell).setCellValue("LOAD IN HOURS");
+        // Table: SUBJECT NAME(3-5) | CLASS(6-8) | LOAD IN HOURS(9-11)
+        // Break cols 5(SHORT BREAK) and 8(LONG BREAK) absorbed inside merges — no visible gap
+        XSSFRow hdr = row(sh, r, 22f);
+        cell(hdr, 3,  st.tblHdrCell).setCellValue("SUBJECT NAME");
+        cell(hdr, 4,  st.tblHdrCell); cell(hdr, 5, st.tblHdrCell);
+        cell(hdr, 6,  st.tblHdrCell).setCellValue("CLASS");
+        cell(hdr, 7,  st.tblHdrCell); cell(hdr, 8, st.tblHdrCell);
+        cell(hdr, 9,  st.tblHdrCell).setCellValue("LOAD IN HOURS");
+        cell(hdr, 10, st.tblHdrCell); cell(hdr, 11, st.tblHdrCell);
+        merge(sh, r, r, 3, 5); merge(sh, r, r, 6, 8); merge(sh, r, r, 9, 11);
         r++;
 
-        // subject → class → count (deduplicated by slot, not double-counting lab windows)
+        // subject → class → hour count (dedup: day+slot+subject+batch)
         Map<String, Map<String, Long>> subjClassHours = new LinkedHashMap<>();
         Set<String> seen = new HashSet<>();
         for (Timetable t : rows) {
-            // unique key: day + timeSlot + subject + batch (avoids counting merged lab window twice)
             String dedup = s(t.getDay()) + "|" + s(t.getTimeSlot()) + "|" + s(t.getSubject()) + "|" + s(t.getBatch());
             if (!seen.add(dedup)) continue;
             String subj  = subjDisp(t, nc);
@@ -655,78 +694,96 @@ public class TimetableXlsxExportService {
         long total = 0;
         for (Map.Entry<String, Map<String, Long>> e : subjClassHours.entrySet()) {
             String subj = e.getKey();
-            if (NO_FAC.contains(subj)) continue;  // skip VL/Library/Audit in load table
+            if (NO_FAC.contains(subj)) continue;
             for (Map.Entry<String, Long> ce : e.getValue().entrySet()) {
-                XSSFRow dr = row(sh, r, 27.75f);
-                fillRow(dr, st.emptyCell, FC_NCOLS);
-                cell(dr, 4, st.tblDataCell).setCellValue(subj);
-                cell(dr, 5, st.tblDataCell).setCellValue(abbrevClass(ce.getKey()));
-                cell(dr, 6, st.tblDataCell).setCellValue(String.valueOf(ce.getValue()));
+                XSSFRow dr = row(sh, r, 20f);
+                cell(dr, 3,  st.tblDataCell).setCellValue(subj);
+                cell(dr, 4,  st.tblDataCell); cell(dr, 5, st.tblDataCell);
+                cell(dr, 6,  st.tblDataCell).setCellValue(abbrevClass(ce.getKey()));
+                cell(dr, 7,  st.tblDataCell); cell(dr, 8, st.tblDataCell);
+                cell(dr, 9,  st.tblDataCell).setCellValue(String.valueOf(ce.getValue()));
+                cell(dr, 10, st.tblDataCell); cell(dr, 11, st.tblDataCell);
+                merge(sh, r, r, 3, 5); merge(sh, r, r, 6, 8); merge(sh, r, r, 9, 11);
                 total += ce.getValue();
                 r++;
             }
         }
 
         // TOTAL row
-        XSSFRow totRow = row(sh, r, 30f);
-        fillRow(totRow, st.emptyCell, FC_NCOLS);
-        cell(totRow, 4, st.tblTotCell).setCellValue("TOTAL");
-        cell(totRow, 6, st.tblTotCell).setCellValue(String.valueOf(total));
+        XSSFRow totRow = row(sh, r, 22f);
+        cell(totRow, 3,  st.tblTotCell).setCellValue("TOTAL");
+        cell(totRow, 4,  st.tblTotCell); cell(totRow, 5, st.tblTotCell);
+        cell(totRow, 6,  st.tblTotCell); cell(totRow, 7, st.tblTotCell); cell(totRow, 8, st.tblTotCell);
+        merge(sh, r, r, 3, 8);
+        cell(totRow, 9,  st.tblTotCell).setCellValue(String.valueOf(total));
+        cell(totRow, 10, st.tblTotCell); cell(totRow, 11, st.tblTotCell);
+        merge(sh, r, r, 9, 11);
         r++;
 
-        emptyRow(sh, st, r++, 15f, FC_NCOLS);   // gap before Date
-        XSSFRow dv = row(sh, r, 24.75f);
-        fillRow(dv, st.emptyCell, FC_NCOLS);
-        cell(dv, 2, st.footSm).setCellValue("Date:");
-        cell(dv, 9, st.footSm).setCellValue("Version 3E.0");
+        // Date — with today's date
+        row(sh, r++, 8f);
+        String facToday = java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        XSSFRow dv = row(sh, r, 16f);
+        cell(dv, 2, st.footSm).setCellValue("Date: " + facToday);
         r++;
 
-        while (r < afterRow + 24) emptyRow(sh, st, r++, 15f, FC_NCOLS);
+        // Gap rows — plain empty rows (no cell borders)
+        while (r < afterRow + 14) row(sh, r++, 12f);
 
-        XSSFRow names = row(sh, r, 28.5f);
-        fillRow(names, st.emptyCell, FC_NCOLS);
-        cell(names, 2, st.footHdr).setCellValue("PROF. R. A. NIKAM");
-        cell(names, 5, st.footHdr).setCellValue("DR. A. A.  KADAM");
-        cell(names, 9, st.footHdr).setCellValue("DR. S. B. THAKARE");
-        merge(sh, r, r, 2, 3); merge(sh, r, r, 5, 7); merge(sh, r, r, 9, 11);
+        // Signature block — NO fillRow; only the 3 name cells created (no grid box)
+        XSSFRow names = row(sh, r, 22f);
+        cell(names, 2,  st.footHdr).setCellValue(nvl(cfg.getTtCoordinatorName(), DEF_TTC));
+        cell(names, 5,  st.footHdr).setCellValue(nvl(cfg.getHodSignatureName(), DEF_HOD));
+        cell(names, 9,  st.footHdr).setCellValue(nvl(cfg.getPrincipalName(), DEF_PRINCIPAL));
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 8); merge(sh, r, r, 9, 11);
         r++;
-        XSSFRow titles = row(sh, r, 20.25f);
-        fillRow(titles, st.emptyCell, FC_NCOLS);
-        cell(titles, 2, st.footSm).setCellValue("TIME TABLE COORDINATOR");
-        cell(titles, 5, st.footSm).setCellValue("HOD");
-        cell(titles, 9, st.footSm).setCellValue("PRINCIPAL");
-        merge(sh, r, r, 2, 3); merge(sh, r, r, 5, 7); merge(sh, r, r, 9, 11);
+        XSSFRow titles = row(sh, r, 16f);
+        cell(titles, 2, st.footSmC).setCellValue("TIME TABLE COORDINATOR");
+        cell(titles, 5, st.footSmC).setCellValue("HOD");
+        cell(titles, 9, st.footSmC).setCellValue("PRINCIPAL");
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 8); merge(sh, r, r, 9, 11);
     }
 
     /* ═══════════════════════════ FOOTER — CLASS (Template D) ════════════════ */
-    // Columns (0-based, CC layout with Day=C(2) and Class=D(3)):
-    //   Theory: C(2)=Subject  D(3)=Staff(full name)
-    //   Lab:    G(6)=Subject  H(7)=Batch(comma list)  I(8)=Staff  J(9)=LAB room
+    // Uses only visible, wide columns. Col D(3) is hidden on class sheets, cols G(6)
+    // and J(9) are narrow break columns — all avoided.
+    //   Theory: C(2)=Subject  E(4)=Staff
+    //   Lab:    F(5)=Subject  H(7)=Batch  I(8)=Staff  L(11)=LAB room
 
     private void classFooter(XSSFSheet sh, Styles st, String cls,
-                              List<Timetable> rows, Map<String,String> nc, int afterRow) {
+                              List<Timetable> rows, Map<String,String> nc, int afterRow,
+                              List<Division> divisions, AcademicSetting cfg) {
         int r = afterRow;
 
-        // Batch roll-no legend
-        String legend = batchLegend(cls);
+        // Batch roll-no legend — plain text, no borders
+        String legend = batchLegend(cls, divisions);
         if (!legend.isEmpty()) {
-            XSSFRow lr = row(sh, r, 24.75f);
-            fillRow(lr, st.emptyCell, CC_NCOLS);
+            XSSFRow lr = row(sh, r, 16f);
             cell(lr, 2, st.footSm).setCellValue(legend);
             merge(sh, r, r, 2, 12);
             r++;
         }
-        emptyRow(sh, st, r++, 15.75f, CC_NCOLS);
+        row(sh, r++, 6f);  // small gap
 
-        // Header row — matches IT.xlsx CLASS_SE row 18
-        XSSFRow hdr = row(sh, r, 29.25f);
-        fillRow(hdr, st.emptyCell, CC_NCOLS);
-        cell(hdr, 2, st.tblHdrCell).setCellValue("Subject");
-        cell(hdr, 3, st.tblHdrCell).setCellValue("Staff");
-        cell(hdr, 6, st.tblHdrCell).setCellValue("Subject");
-        cell(hdr, 7, st.tblHdrCell).setCellValue("Batch");
-        cell(hdr, 8, st.tblHdrCell).setCellValue("Staff");
-        cell(hdr, 9, st.tblHdrCell).setCellValue("LAB");
+        // ── Column header row (single level) ──
+        // Theory: Subject(2-3) | Faculty(4-5)   [col 6 = SHORT BREAK spacer]
+        // Practical: Subject(7-8) | Batch(9-10) | Faculty(11) | LAB(12)
+        XSSFRow hdr = row(sh, r, 22f);
+        cell(hdr, 2,  st.tblHdrCell).setCellValue("Subject");
+        cell(hdr, 3,  st.tblHdrCell);
+        cell(hdr, 4,  st.tblHdrCell).setCellValue("Faculty");
+        cell(hdr, 5,  st.tblHdrCell);
+        cell(hdr, 7,  st.tblHdrCell).setCellValue("Subject");
+        cell(hdr, 8,  st.tblHdrCell);
+        cell(hdr, 9,  st.tblHdrCell).setCellValue("Batch");
+        cell(hdr, 10, st.tblHdrCell);
+        cell(hdr, 11, st.tblHdrCell).setCellValue("Faculty");
+        cell(hdr, 12, st.tblHdrCell).setCellValue("LAB");
+        merge(sh, r, r, 2, 3);
+        merge(sh, r, r, 4, 5);
+        merge(sh, r, r, 7, 8);
+        merge(sh, r, r, 9, 10);
         r++;
 
         // Theory subjects (unique, deduplicated; skip VL/Audit/no-faculty entries)
@@ -735,7 +792,7 @@ public class TimetableXlsxExportService {
             if ("Practical".equalsIgnoreCase(t.getLectureType()) ||
                 "Lab".equalsIgnoreCase(t.getLectureType())) continue;
             String subj = subjDisp(t, nc);
-            if (NO_FAC.contains(subj)) continue;  // skip VL, Audit, Internship
+            if (NO_FAC.contains(subj)) continue;
             if (!theorySubjFac.containsKey(subj))
                 theorySubjFac.put(subj, nb(t.getFaculty()) ? t.getFaculty() : "—");
         }
@@ -748,7 +805,7 @@ public class TimetableXlsxExportService {
             if (!"Practical".equalsIgnoreCase(t.getLectureType()) &&
                 !"Lab".equalsIgnoreCase(t.getLectureType())) continue;
             String subj = subjDisp(t, nc);
-            if ("LIBRARY".equals(subj) || NO_FAC.contains(subj)) continue; // skip Library
+            if ("LIBRARY".equals(subj) || NO_FAC.contains(subj)) continue;
             String batch = s(t.getBatch()).trim();
             if (!labSeen.add(subj + "|" + batch)) continue;
             labBatches.computeIfAbsent(subj, k -> new TreeSet<>()).add(batch);
@@ -762,73 +819,95 @@ public class TimetableXlsxExportService {
         List<String[]> lList = new ArrayList<>(labMap.values());
         int nRows = Math.max(tList.size(), lList.size());
         for (int i = 0; i < nRows; i++) {
-            XSSFRow dr = row(sh, r, 29.25f);
-            fillRow(dr, st.emptyCell, CC_NCOLS);
+            XSSFRow dr = row(sh, r, 20f);
             if (i < tList.size()) {
-                cell(dr, 2, st.tblDataCell).setCellValue(tList.get(i).getKey());
-                cell(dr, 3, st.tblDataCell).setCellValue(tList.get(i).getValue());
+                cell(dr, 2,  st.tblDataCell).setCellValue(tList.get(i).getKey());
+                cell(dr, 3,  st.tblDataCell);
+                cell(dr, 4,  st.tblDataCell).setCellValue(tList.get(i).getValue());
+                cell(dr, 5,  st.tblDataCell);
+                merge(sh, r, r, 2, 3);
+                merge(sh, r, r, 4, 5);
             }
             if (i < lList.size()) {
                 String[] la = lList.get(i);
                 String batches = String.join(",", labBatches.getOrDefault(la[0], new LinkedHashSet<>()));
-                cell(dr, 6, st.tblDataCell).setCellValue(la[0]);
-                cell(dr, 7, st.tblDataCell).setCellValue(batches);
-                cell(dr, 8, st.tblDataCell).setCellValue(la[1]);
-                cell(dr, 9, st.tblDataCell).setCellValue(la[2]);
+                cell(dr, 7,  st.tblDataCell).setCellValue(la[0]);
+                cell(dr, 8,  st.tblDataCell);
+                cell(dr, 9,  st.tblDataCell).setCellValue(batches);
+                cell(dr, 10, st.tblDataCell);
+                cell(dr, 11, st.tblDataCell).setCellValue(la[1]);
+                cell(dr, 12, st.tblDataCell).setCellValue(roomAbbrev(la[2]));
+                merge(sh, r, r, 7, 8);
+                merge(sh, r, r, 9, 10);
             }
             r++;
         }
 
-        // Class Teacher block (right side, cols G:I)
-        emptyRow(sh, st, r++, 15.75f, CC_NCOLS);
-        XSSFRow ct = row(sh, r, 29.25f);
-        fillRow(ct, st.emptyCell, CC_NCOLS);
-        cell(ct, 6, st.tblHdrCell).setCellValue("Class Teacher:");
-        merge(sh, r, r, 6, 9);
+        row(sh, r++, 8f);  // gap after table
+
+        // ── Class Teacher + Date on same row ──
+        String ctPrefix = cls.startsWith("SE") ? "S" : cls.startsWith("TE") ? "T" : "B";
+        String classTeacher = divisions.stream()
+            .filter(dv -> ctPrefix.equals(dv.getBatchPrefix()))
+            .findFirst()
+            .map(dv -> nb(dv.getClassTeacher()) ? dv.getClassTeacher() : "")
+            .orElse("");
+        String today = java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+        // Class Teacher row
+        XSSFRow ctd = row(sh, r, 22f);
+        cell(ctd, 2, st.footSmB).setCellValue("Class Teacher:");
+        if (nb(classTeacher)) {
+            XSSFCell ctLine = ctd.createCell(3);
+            ctLine.setCellStyle(st.footSm);
+            ctLine.setCellValue(classTeacher);
+            for (int c = 4; c <= 11; c++) ctd.createCell(c).setCellStyle(st.footSm);
+        } else {
+            for (int c = 3; c <= 11; c++) ctd.createCell(c).setCellStyle(st.signLine);
+        }
+        merge(sh, r, r, 3, 11);
         r++;
 
-        while (r < afterRow + 15) emptyRow(sh, st, r++, 15.75f, CC_NCOLS);
-        XSSFRow dv = row(sh, r, 29.25f);
-        fillRow(dv, st.emptyCell, CC_NCOLS);
-        cell(dv, 2, st.footSm).setCellValue("Date:");
-        cell(dv, 9, st.footSm).setCellValue("Version: 3B.0");
+        // Date — left-aligned at col 2, same position as all other sheets
+        XSSFRow ctDate = row(sh, r, 18f);
+        cell(ctDate, 2, st.footSm).setCellValue("Date: " + today);
         r++;
 
-        while (r < afterRow + 22) emptyRow(sh, st, r++, 15.75f, CC_NCOLS);
+        // Gap rows for signing space (at least 3 rows)
+        int sigStart = Math.max(r + 3, afterRow + 16);
+        while (r < sigStart) row(sh, r++, 14f);
 
-        XSSFRow names = row(sh, r, 38.25f);
-        fillRow(names, st.emptyCell, CC_NCOLS);
-        cell(names, 2, st.footHdr).setCellValue("PROF.R. A. NIKAM");
-        cell(names, 6, st.footHdr).setCellValue("DR. A. A KADAM");
-        cell(names, 10, st.footHdr).setCellValue("DR. S. B. THAKARE");
-        merge(sh, r, r, 2, 4); merge(sh, r, r, 6, 8); merge(sh, r, r, 10, 12);
+        // ── Signature block — no grid box ──
+        XSSFRow names = row(sh, r, 22f);
+        cell(names, 2, st.footHdr).setCellValue(nvl(cfg.getTtCoordinatorName(), DEF_TTC));
+        cell(names, 5, st.footHdr).setCellValue(nvl(cfg.getHodSignatureName(), DEF_HOD));
+        cell(names, 9, st.footHdr).setCellValue(nvl(cfg.getPrincipalName(), DEF_PRINCIPAL));
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 8); merge(sh, r, r, 9, 12);
         r++;
-        XSSFRow titles = row(sh, r, 15.75f);
-        fillRow(titles, st.emptyCell, CC_NCOLS);
-        cell(titles, 2, st.footSm).setCellValue("TIME TABLE COORDINATOR");
-        cell(titles, 6, st.footSm).setCellValue("HOD");
-        cell(titles, 10, st.footSm).setCellValue("PRINCIPAL");
-        merge(sh, r, r, 2, 4); merge(sh, r, r, 6, 8); merge(sh, r, r, 10, 12);
+        XSSFRow titles = row(sh, r, 16f);
+        cell(titles, 2, st.footSmC).setCellValue("TIME TABLE COORDINATOR");
+        cell(titles, 5, st.footSmC).setCellValue("HOD");
+        cell(titles, 9, st.footSmC).setCellValue("PRINCIPAL");
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 8); merge(sh, r, r, 9, 12);
     }
 
     /* ═══════════════════════════ FOOTER — LAB (Template B) ══════════════════ */
 
     private void labFooter(XSSFSheet sh, Styles st, String labName,
-                            List<Timetable> rows, Map<String,String> nc, int afterRow) {
+                            List<Timetable> rows, Map<String,String> nc, int afterRow,
+                            AcademicSetting cfg) {
         int r = afterRow;
-        row(sh, r++, 18f);
-
-        // Lab name header row
-        XSSFRow labTitle = row(sh, r, 20f);
-        cell(labTitle, 2, st.tblHdrCell).setCellValue("LAB NAME: " + labName);
-        merge(sh, r, r, 2, 11);
-        r++;
+        row(sh, r++, 10f);
 
         // Occupancy header
         XSSFRow hdr = row(sh, r, 22f);
-        cell(hdr, 2, st.tblHdrCell).setCellValue("SUBECT NAME");
-        cell(hdr, 5, st.tblHdrCell).setCellValue("BATCH");
-        cell(hdr, 7, st.tblHdrCell).setCellValue("OCCUPANCY IN HOURS");
+        cell(hdr, 2,  st.tblHdrCell).setCellValue("SUBJECT NAME");
+        cell(hdr, 4,  st.tblHdrCell);   // right-border for merge 2-4
+        cell(hdr, 5,  st.tblHdrCell).setCellValue("BATCH");
+        cell(hdr, 6,  st.tblHdrCell);   // right-border for merge 5-6
+        cell(hdr, 7,  st.tblHdrCell).setCellValue("OCCUPANCY IN HOURS");
+        cell(hdr, 11, st.tblHdrCell);   // right-border for merge 7-11
         merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 6); merge(sh, r, r, 7, 11);
         r++;
 
@@ -839,193 +918,149 @@ public class TimetableXlsxExportService {
         for (Map.Entry<String, Long> e : new TreeMap<>(subjHours).entrySet()) {
             String[] parts = e.getKey().split("\\|", 2);
             XSSFRow dr = row(sh, r, 22f);
-            cell(dr, 2, st.tblDataCell).setCellValue(parts[0]);
-            cell(dr, 5, st.tblDataCell).setCellValue(parts.length > 1 ? parts[1] : "");
-            cell(dr, 7, st.tblDataCell).setCellValue(e.getValue());
+            cell(dr, 2,  st.tblDataCell).setCellValue(parts[0]);
+            cell(dr, 4,  st.tblDataCell);   // right-border for merge 2-4
+            cell(dr, 5,  st.tblDataCell).setCellValue(parts.length > 1 ? parts[1] : "");
+            cell(dr, 6,  st.tblDataCell);   // right-border for merge 5-6
+            cell(dr, 7,  st.tblDataCell).setCellValue(e.getValue());
+            cell(dr, 11, st.tblDataCell);   // right-border for merge 7-11
             merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 6); merge(sh, r, r, 7, 11);
             total += e.getValue();
             r++;
         }
         XSSFRow totRow = row(sh, r, 22f);
-        cell(totRow, 2, st.tblTotCell).setCellValue("TOTAL");
-        cell(totRow, 7, st.tblTotCell).setCellValue(total);
+        cell(totRow, 2,  st.tblTotCell).setCellValue("TOTAL");
+        cell(totRow, 6,  st.tblTotCell);   // right-border for merge 2-6
+        cell(totRow, 7,  st.tblTotCell).setCellValue(total);
+        cell(totRow, 11, st.tblTotCell);   // right-border for merge 7-11
         merge(sh, r, r, 2, 6); merge(sh, r, r, 7, 11);
         r++;
 
-        while (r < afterRow + 14) row(sh, r++, 16f);
-        XSSFRow dv = row(sh, r, 26f);
-        cell(dv, 2, st.footSm).setCellValue("Date:");
-        cell(dv, 9, st.footSm).setCellValue("Version: 3D.0");
+        int labSigStart = Math.max(r + 3, afterRow + 10);
+        while (r < labSigStart) row(sh, r++, 12f);
+        String labToday = java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        XSSFRow dv = row(sh, r, 16f);
+        cell(dv, 2, st.footSm).setCellValue("Date: " + labToday);
         r++;
 
-        while (r < afterRow + 22) row(sh, r++, 16f);
-        XSSFRow names = row(sh, r, 28f);
-        cell(names, 2, st.footHdr).setCellValue("PROF. R. A. NIKAM");
-        cell(names, 6, st.footHdr).setCellValue("DR. A. A.  KADAM");
-        cell(names, 10, st.footHdr).setCellValue("DR. S. B. THAKARE");
-        merge(sh, r, r, 2, 4); merge(sh, r, r, 6, 8); merge(sh, r, r, 10, 11);
+        while (r < afterRow + 16) row(sh, r++, 12f);
+        XSSFRow names = row(sh, r, 22f);
+        cell(names, 2, st.footHdr).setCellValue(nvl(cfg.getTtCoordinatorName(), DEF_TTC));
+        cell(names, 5, st.footHdr).setCellValue(nvl(cfg.getHodSignatureName(), DEF_HOD));
+        cell(names, 9, st.footHdr).setCellValue(nvl(cfg.getPrincipalName(), DEF_PRINCIPAL));
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 8); merge(sh, r, r, 9, 11);
         r++;
-        XSSFRow titles = row(sh, r, 22f);
-        cell(titles, 2, st.footSm).setCellValue("TIME TABLE COORDINATOR");
-        cell(titles, 6, st.footSm).setCellValue("HOD");
-        cell(titles, 10, st.footSm).setCellValue("PRINCIPAL");
-        merge(sh, r, r, 2, 4); merge(sh, r, r, 6, 8); merge(sh, r, r, 10, 11);
+        XSSFRow titles = row(sh, r, 16f);
+        cell(titles, 2, st.footSmC).setCellValue("TIME TABLE COORDINATOR");
+        cell(titles, 5, st.footSmC).setCellValue("HOD");
+        cell(titles, 9, st.footSmC).setCellValue("PRINCIPAL");
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 5, 8); merge(sh, r, r, 9, 11);
     }
 
-    /** Batch roll-number legend string per class. */
-    private String batchLegend(String cls) {
-        if ("SE(IT)".equals(cls))
-            return "BATCHES:  S1 ROLL NO. 52201-5220   S2 ROLL NO. 5221-5240   S3 ROLL NO. 5241-5260   S4 ROLL NO. 5261-5275";
-        if ("TE(IT)".equals(cls))
-            return "BATCHES:  T1 ROLL NO. 5301-5320   T2 ROLL NO. 5321-5340   T3 ROLL NO. 5341-5360   T4 ROLL NO. 5361-5374";
-        if ("BE(IT)".equals(cls))
-            return "BATCHES:  B1 ROLL NO. 5401-5420   B2 ROLL NO. 5421-5440   B3 ROLL NO. 5441-5460   B4 ROLL NO. 5461-5477";
-        return "";
+    /** Batch roll-number legend string per class — built from Division.studentCount + rollNumberStart. */
+    private String batchLegend(String cls, List<Division> divisions) {
+        String prefix = cls.startsWith("SE") ? "S" : cls.startsWith("TE") ? "T" : "B";
+        return divisions.stream()
+            .filter(d -> prefix.equals(d.getBatchPrefix()))
+            .findFirst()
+            .map(d -> buildBatchLegend(d, prefix))
+            .orElse("");
+    }
+
+    private String buildBatchLegend(Division d, String prefix) {
+        Integer total   = d.getStudentCount();
+        Integer base    = d.getRollNumberStart();
+        Integer batches = d.getBatchCount();
+        if (total == null || total <= 0 || base == null || batches == null || batches <= 0) return "";
+        int perBatch = (total + batches - 1) / batches; // ceiling distribution
+        StringBuilder sb = new StringBuilder("BATCHES:");
+        for (int i = 0; i < batches; i++) {
+            int bStart = base + i * perBatch;
+            int bEnd   = Math.min(bStart + perBatch - 1, base + total - 1);
+            sb.append("  ").append(prefix).append(i + 1)
+              .append(" ROLL NO. ").append(bStart).append("-").append(bEnd);
+        }
+        return sb.toString();
     }
 
     /* ═══════════════════════════ FOOTER (MASTER only) ═══════════════════════ */
 
-    private void masterFooter(XSSFSheet sh, Styles st, int startRow) {
-        // ri = startRow = row 25 (0-indexed) = Excel row 26
+    private void masterFooter(XSSFSheet sh, Styles st, int startRow,
+                               List<Division> divisions, AcademicSetting cfg) {
+        // Compact footer — removed SE/TE/BE faculty lists so MASTER fits on one A4 page.
+        int r = startRow;
 
-        /* Row 25 (Excel 26): blank gap 34.5pt */
-        row(sh, startRow, 34.5f);
-
-        /* Row 26 (Excel 27, 30.75pt): BATCHES row 1 — B27:M27 */
-        int r27 = startRow + 1;
-        XSSFRow rb1 = row(sh, r27, 30.75f);
-        cell(rb1, 1, st.footSm).setCellValue(
-            " BATCHES -  S1 ROLL NO. 52201-5220       S2 ROLL NO.5221-5240    " +
-            "S3 ROLL NO.5241-5260    S4 ROLL NO. 5261-5275       " +
-            "T1 ROLL NO 5301-5320   T2 ROLL NO. 5321-5340   T3 ROLL NO. 5341-5360        ");
-        merge(sh, r27, r27, 1, 12);  // B:M
-
-        /* Row 27 (Excel 28, 29.25pt): BATCHES row 2 — E28:M28 */
-        int r28 = r27 + 1;
-        XSSFRow rb2 = row(sh, r28, 29.25f);
-        cell(rb2, 4, st.footSm).setCellValue(
-            " T4 ROLL NO. 5361-5374                                 " +
-            "B1 ROLL NO.   5401-5420   B2 ROLL NO 5421-5440     " +
-            "B3 ROLL NO 5441-5460    B4 ROLL NO. 5461-54774");
-        merge(sh, r28, r28, 4, 12);  // E:M
-
-        /* Row 28 (Excel 29, 29.25pt): blank */
-        row(sh, r28 + 1, 29.25f);
-
-        /* Row 29 (Excel 30, 29.25pt): SE | TE | BE headers */
-        int r30 = r28 + 2;
-        XSSFRow rHdr = row(sh, r30, 29.25f);
-        cell(rHdr, 2, st.footHdr).setCellValue("SE");
-        cell(rHdr, 6, st.footHdr).setCellValue("TE");
-        cell(rHdr, 11, st.footHdr).setCellValue("BE");
-
-        /* Faculty lines rows 30-37 (Excel 31-38) */
-        String[][] seFac = {
-            {"DR. S. R. KOKANE  -Open Elective-II, MIL"},
-            {"PROF. R. A. NIKAM- DBMS,DBMSL"},
-            {"PROF. S. S. KHOTE & PROF. A.R. DODKE - PA,DM & SM(S1,S2)"},
-            {"PROF.P. G. KHAIRE-CG,CGL"},
-            {"PROF. R. S. LAVHE - MIL"},
-            {"PROF. A. N. KALAL & DR. A. A. KADAM-EC"},
-            {"PROF. D. P. RANKHAMBE-ES"},
-            {"PROF. RASHMI KENVAT- P & S"}
-        };
-        String[][] teFac = {
-            {"PROF. D. P. RANKHAMBE- DSBDA, DSBDL"},
-            {"PROF. R. S. LAVHE- CNS,CNSL(T1,T2)"},
-            {"PROF. A. N. KALAL -  WAD, LP-II(WAD),INTERNSHIP"},
-            {"PROF. A. R.  DODKE- EL-II,LP-II"},
-            {"PROF. S. S. KHOTE- CNSL(T3 & T4)"},
-            {"PROF.P. G. KHAIRE- EAC(Hon)"},
-            {},{}
-        };
-        String[][] beFac = {
-            {"DR. A. A. KADAM- SE, LP-V(DS)"},
-            {"PROF. S. R. KOKANE- DS, LP-V(DS)"},
-            {"PROF. S. S. KHOTE- EL-V"},
-            {"PROF. A.N.KALAL- ISM(hon)"},
-            {"PROF. R. A. NIKAM- EL-VI, LP-VI(El-VI)(B3,B4)"},
-            {"PROF. D. P. RANKHAMBE-SEMINAR(Hon)"},
-            {"PROF.P. G. KHAIRE-LP-VI(El-VI)(B1,B2)"},
-            {}
-        };
-        float[] facHts = {29.25f,29.25f,29.25f,29.25f,36.0f,27.75f,32.25f,28.5f};
-
-        for (int i = 0; i < 8; i++) {
-            int fr = r30 + 1 + i;
-            XSSFRow fRow = row(sh, fr, facHts[i]);
-            if (seFac[i].length > 0) {
-                cell(fRow, 2, st.footSm).setCellValue(seFac[i][0]);
-                // C:E merges for rows 31,32,35 (POI 30,31,34)
-                if (i == 0 || i == 1 || i == 4)
-                    merge(sh, fr, fr, 2, 4);
-            }
-            if (teFac[i].length > 0) {
-                cell(fRow, 6, st.footSm).setCellValue(teFac[i][0]);
-                // G:I merge for row 34 only (POI 33, i=3)
-                if (i == 3) merge(sh, fr, fr, 6, 8);
-            }
-            if (beFac[i].length > 0) {
-                cell(fRow, 11, st.footSm).setCellValue(beFac[i][0]);
-                // L:N merges for rows 35,36 (POI 34,35, i=4,5)
-                if (i == 4 || i == 5) merge(sh, fr, fr, 11, 13);
+        // Batch roll numbers (all 3 classes, one line each)
+        row(sh, r++, 8f);
+        for (String cls : CLASSES) {
+            String leg = batchLegend(cls, divisions);
+            if (!leg.isEmpty()) {
+                XSSFRow rb = row(sh, r, 14f);
+                cell(rb, 2, st.footSm).setCellValue(leg);
+                merge(sh, r, r, 2, 12);
+                r++;
             }
         }
 
-        /* Version row (Excel 39, 28.5pt): Version at J */
-        int r39 = r30 + 9;
-        XSSFRow rVer = row(sh, r39, 28.5f);
-        cell(rVer, 9, st.footSm).setCellValue("Version: 3A.0");
+        // Date — with today's date
+        row(sh, r++, 8f);
+        String mToday = java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        XSSFRow dv = row(sh, r, 14f);
+        cell(dv, 2, st.footSm).setCellValue("Date: " + mToday);
+        r++;
 
-        /* Date row (Excel 40, 36.0pt) */
-        int r40 = r39 + 1;
-        XSSFRow rDate = row(sh, r40, 36.0f);
-        cell(rDate, 2, st.footSm).setCellValue("Date");
+        // Gap — plain rows, no borders
+        while (r < startRow + 10) row(sh, r++, 12f);
 
-        /* Blank rows 41-46 (5 rows × 15.75pt for signatures) */
-        int r41 = r40 + 1;
-        row(sh, r41, 21.0f);
-        for (int i = 1; i <= 5; i++) row(sh, r41 + i, 15.75f);
-
-        /* Row 47 (Excel 47, 36.0pt): Names — D47:F47, H47:J47, M47 standalone */
-        int r47 = r41 + 6;
-        XSSFRow rNames = row(sh, r47, 36.0f);
-        cell(rNames, 3, st.footHdr).setCellValue("PROF.R. A. NIKAM");
-        cell(rNames, 7, st.footHdr).setCellValue("DR. A. A. KADAM");
-        cell(rNames, 12, st.footHdr).setCellValue("DR. S. B. THAKARE");
-        merge(sh, r47, r47, 3, 5);  // D:F
-        merge(sh, r47, r47, 7, 9);  // H:J
-
-        /* Row 48 (Excel 48, 28.5pt): Titles — D48:F48, H48:J48, M48 standalone */
-        int r48 = r47 + 1;
-        XSSFRow rTitles = row(sh, r48, 28.5f);
-        cell(rTitles, 3, st.footSm).setCellValue("TIME TABLE COORDINATOR");
-        cell(rTitles, 7, st.footSm).setCellValue("HOD");
-        cell(rTitles, 12, st.footSm).setCellValue("PRINCIPAL");
-        merge(sh, r48, r48, 3, 5);
-        merge(sh, r48, r48, 7, 9);
-
-        /* Row 49 (Excel 49, 15.75pt): blank */
-        row(sh, r48 + 1, 15.75f);
+        // Signature block — NO borders, centered in three equal zones
+        XSSFRow rNames = row(sh, r, 20f);
+        cell(rNames, 2, st.footHdr).setCellValue(nvl(cfg.getTtCoordinatorName(), DEF_TTC));
+        cell(rNames, 6, st.footHdr).setCellValue(nvl(cfg.getHodSignatureName(), DEF_HOD));
+        cell(rNames, 10, st.footHdr).setCellValue(nvl(cfg.getPrincipalName(), DEF_PRINCIPAL));
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 6, 8); merge(sh, r, r, 10, 12);
+        r++;
+        XSSFRow rTitles = row(sh, r, 14f);
+        cell(rTitles, 2, st.footSmC).setCellValue("TIME TABLE COORDINATOR");
+        cell(rTitles, 6, st.footSmC).setCellValue("HOD");
+        cell(rTitles, 10, st.footSmC).setCellValue("PRINCIPAL");
+        merge(sh, r, r, 2, 4); merge(sh, r, r, 6, 8); merge(sh, r, r, 10, 12);
     }
 
     /* ═══════════════════════════ LOGO EMBEDDING ═════════════════════════════ */
 
-    private void addLogos(XSSFSheet sh, XSSFWorkbook wb, byte[] clgLogo, byte[] ownerLogo) {
+    /**
+     * Embeds both logos scaled to fit within their respective columns.
+     * dayColW / rightColW are in Excel character-width units.
+     * rightLogoCol is the 0-based column index of the owner/right logo.
+     */
+    private void addLogos(XSSFSheet sh, XSSFWorkbook wb, byte[] clgLogo, byte[] ownerLogo,
+                          double dayColW, int rightLogoCol, double rightColW) {
         if (clgLogo == null && ownerLogo == null) return;
         XSSFDrawing drawing = sh.createDrawingPatriarch();
+        final double EPU = 66675.0; // EMUs per Excel character-width unit
 
         if (clgLogo != null) {
-            // College crest: from(col=2,row=0,dx=85680,dy=38160) to(col=2,row=3,dx=1437840,dy=161640)
             int picIdx = wb.addPicture(clgLogo, Workbook.PICTURE_TYPE_PNG);
-            XSSFClientAnchor a = new XSSFClientAnchor(85680, 38160, 1437840, 161640, 2, 0, 2, 3);
+            int cw = (int)(dayColW * EPU);
+            // 3% left padding, 97% right — stays within day column
+            XSSFClientAnchor a = new XSSFClientAnchor(
+                (int)(cw * 0.03), 20000,
+                (int)(cw * 0.97), 0,  // dy2=0 at start of row3 = bottom of bordered header rows 0-2
+                2, 0, 2, 3);
             a.setAnchorType(ClientAnchor.AnchorType.MOVE_AND_RESIZE);
             drawing.createPicture(a, picIdx);
         }
         if (ownerLogo != null) {
-            // Person photo: from(col=12,row=0,dx=673560,dy=23400) to(col=12,row=3,dx=2531880,dy=301680)
             int picIdx = wb.addPicture(ownerLogo, Workbook.PICTURE_TYPE_PNG);
-            XSSFClientAnchor a = new XSSFClientAnchor(673560, 23400, 2531880, 301680, 12, 0, 12, 3);
+            int cw = (int)(rightColW * EPU);
+            // Limit to 85% width (15% right margin) to prevent page-edge overflow
+            // dy2=0 at start of row3 = image ends at bottom of bordered header (rows 0-2)
+            XSSFClientAnchor a = new XSSFClientAnchor(
+                (int)(cw * 0.05), 20000,
+                (int)(cw * 0.85), 0,
+                rightLogoCol, 0, rightLogoCol, 3);
             a.setAnchorType(ClientAnchor.AnchorType.MOVE_AND_RESIZE);
             drawing.createPicture(a, picIdx);
         }
@@ -1040,10 +1075,17 @@ public class TimetableXlsxExportService {
             String bat = nb(t.getBatch()) ? t.getBatch()+"-" : "";
             return bat + d + facSuffix(t, d);
         }
-        return entries.stream()
+        // 2 batches per line: "S1-X, S2-Y\nS3-Z, S4-W" — halves the row height needed
+        List<String> parts = entries.stream()
             .sorted(Comparator.comparing(t -> s(t.getBatch())))
             .map(t -> { String d = subjDisp(t,nc); return s(t.getBatch())+"-"+d+facSuffix(t,d); })
-            .collect(Collectors.joining(", "));
+            .collect(Collectors.toList());
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) sb.append(i % 2 == 0 ? "\n" : ", ");
+            sb.append(parts.get(i));
+        }
+        return sb.toString();
     }
 
     private String facText(List<Timetable> entries, Map<String,String> nc) {
@@ -1174,6 +1216,8 @@ public class TimetableXlsxExportService {
     }
     private boolean nb(String s) { return s!=null&&!s.isBlank(); }
     private String   s(String v)  { return v!=null?v:""; }
+    /** Returns val if non-blank, otherwise def. Used for AcademicSetting null-safe fallback. */
+    private String nvl(String val, String def) { return (val != null && !val.isBlank()) ? val : def; }
 
     /* ── Cell / Row creation shortcuts ── */
     private XSSFRow row(XSSFSheet sh, int ri, float ht) {
@@ -1207,20 +1251,21 @@ public class TimetableXlsxExportService {
             sh.setColumnWidth(i, (int) Math.round(widths[i] * 256));
     }
 
-    /** A4 landscape, scale 50%, fit-to-page. Applied to every sheet. */
+    /** A4 landscape, fit-to-page, narrow margins. Applied to every sheet. */
     private void applyPageSetup(XSSFSheet sh) {
         sh.getPrintSetup().setPaperSize(PrintSetup.A4_PAPERSIZE);
         sh.getPrintSetup().setLandscape(true);
-        sh.getPrintSetup().setScale((short)50);
         sh.getPrintSetup().setFitWidth((short)1);
         sh.getPrintSetup().setFitHeight((short)1);
         sh.getPrintSetup().setHResolution((short)300);
         sh.getPrintSetup().setVResolution((short)300);
         sh.setFitToPage(true);
-        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.LEFT,   1.06);
-        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.RIGHT,  0.70);
-        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.TOP,    0.58);
-        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.BOTTOM, 0.75);
+        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.LEFT,   0.25);
+        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.RIGHT,  0.25);
+        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.TOP,    0.25);
+        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.BOTTOM, 0.25);
+        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.HEADER, 0.10);
+        sh.setMargin(org.apache.poi.ss.usermodel.PageMargin.FOOTER, 0.10);
     }
 
     /* ═══════════════════════════ STYLES ═════════════════════════════════════ */
@@ -1231,67 +1276,77 @@ public class TimetableXlsxExportService {
         /* Faculty/class header rows (bold 18pt, left-aligned, no border) */
         final XSSFCellStyle facMetaL;
         /* Grid */
-        final XSSFCellStyle hdrCell, brkHdrCell;
+        final XSSFCellStyle hdrCell, brkHdrCell, lngHdrCell;
         final XSSFCellStyle dayCell, clsCell;
         final XSSFCellStyle thCell, labCell, emptyCell, brkData, lngData;
         /* Footer */
-        final XSSFCellStyle footSm, footHdr;
+        final XSSFCellStyle footSm, footHdr, footSmC, footSmB, signLine;
+        final XSSFCellStyle titleBarCell, hdrBorderL, hdrBorderC;
         /* Sub-tables (faculty load / class subject-staff / lab occupancy) */
         final XSSFCellStyle tblHdrCell, tblDataCell, tblTotCell;
 
         Styles(XSSFWorkbook wb) {
             /* ── Fonts ── */
-            XSSFFont f22   = tnr(wb,22,false);
-            XSSFFont f18   = tnr(wb,18,false);
-            XSSFFont f24b  = tnr(wb,24,true);
-            XSSFFont f36b  = tnr(wb,36,true);
-            XSSFFont f26b  = tnr(wb,26,true);
-            XSSFFont f26   = tnr(wb,26,false);
-            XSSFFont f9    = tnr(wb, 9,false);
+            XSSFFont f11b  = tnr(wb,11,true);
+            XSSFFont f11   = tnr(wb,11,false);
+            XSSFFont f10b  = tnr(wb,10,true);
             XSSFFont f10   = tnr(wb,10,false);
-            XSSFFont f22b  = tnr(wb,22,true);
-
+            XSSFFont f9    = tnr(wb, 9,false);
+            XSSFFont f9b   = tnr(wb, 9,true);
+            XSSFFont f14   = tnr(wb,14,false);
+            XSSFFont f16b  = tnr(wb,16,true);
             XSSFFont f18b  = tnr(wb,18,true);
+            XSSFFont f20   = tnr(wb,20,false);
+            XSSFFont f20b  = tnr(wb,20,true);
+            XSSFFont f22b  = tnr(wb,22,true);
+            XSSFFont f24b  = tnr(wb,24,true);
 
             /* ── No-border styles (header/footer rows) ── */
-            inst22      = nb(wb, f22, CENTER, true);
+            inst22      = nb(wb, f14, CENTER, true);
             meta        = nb(wb, f9,  LEFT,   false);
-            masterTitle = nb(wb, f18, CENTER, false);
-            ay24b       = nb(wb, f24b,CENTER, false);
-            dept36b     = nb(wb, f36b,CENTER, false);
-            wef26b      = nb(wb, f26b,CENTER, false);
-            facMetaL    = nb(wb, f18b,LEFT,   false);
+            masterTitle = nb(wb, f11, CENTER, false);
+            ay24b       = nb(wb, f16b,CENTER, false);
+            dept36b     = nb(wb, f20b,CENTER, false);
+            wef26b      = nb(wb, f16b,CENTER, false);
+            facMetaL    = nb(wb, f11b,LEFT,   false);
 
-            /* ── Grid header row (thin borders, white fill, bold 26pt) ── */
-            hdrCell    = bordered(wb,255,255,255, f26b,  CENTER, true,  true, true, true, true);
-            brkHdrCell = bordered(wb,255,255,255, f26b,  CENTER, true,  true, false,true, true);
-            // brkHdrCell has no bottom border (matches IT.xlsx G8)
+            /* ── Grid header row (thin borders, white fill, 11pt bold) ── */
+            hdrCell    = bordered(wb,255,255,255, f11b,  CENTER, true,  true, true, true, true);
+            brkHdrCell = bordered(wb,255,255,255, f9,    CENTER, true,  true, false,true, true);
+            lngHdrCell = bordered(wb,255,255,255, f9,    CENTER, true,  true, true, true, true);
 
             /* ── Day and Class labels ── */
-            dayCell    = bordered(wb,255,255,255, f26b,  CENTER, false, true, true, true, true);
-            clsCell    = bordered(wb,255,255,255, f26b,  CENTER, false, true, true, true, true);
+            dayCell    = bordered(wb,255,255,255, f11b,  CENTER, false, true, true, true, true);
+            clsCell    = bordered(wb,255,255,255, f11b,  CENTER, false, true, true, true, true);
 
-            /* ── Data cells: white fill, 26pt Times New Roman ── */
-            // Theory: wrap=false (matches IT.xlsx E9)
-            thCell     = bordered(wb,255,255,255, f26,   CENTER, false, true, true, true, true);
-            // Lab: wrap=true (matches IT.xlsx K9)
-            labCell    = bordered(wb,255,255,255, f26,   CENTER, true,  true, true, true, true);
-            emptyCell  = bordered(wb,255,255,255, f10,   CENTER, false, true, true, true, true);
+            /* ── Data cells: white fill, 11pt — wrap so all batch lines show ── */
+            thCell     = bordered(wb,255,255,255, f11,   CENTER, true,  true, true, true, true);
+            labCell    = bordered(wb,255,255,255, f11,   CENTER, true,  true, true, true, true);
+            emptyCell  = bordered(wb,255,255,255, f9,    CENTER, false, true, true, true, true);
 
             /* ── Break columns: gray fill #D8D8D8 ── */
-            brkData    = bordered(wb,0xD8,0xD8,0xD8, f9, CENTER, true,  true, true, true, true);
-            lngData    = bordered(wb,0xD8,0xD8,0xD8, f9, CENTER, true,  true, true, true, true);
+            brkData    = bordered(wb,0xD8,0xD8,0xD8, f9b, CENTER, true,  true, true, true, true);
+            lngData    = bordered(wb,0xD8,0xD8,0xD8, f9b, CENTER, true,  true, true, true, true);
 
             /* ── Footer ── */
-            footSm     = nb(wb, f9,  LEFT,   false);
-            footHdr    = nb(wb, f22b,CENTER, false);
+            footSm     = nb(wb, f10,  LEFT,   false);
+            footSmC    = nb(wb, f10,  CENTER, false);
+            footSmB    = nb(wb, f10b, LEFT,   false);
+            footHdr    = nb(wb, f11b, CENTER, false);
+            XSSFCellStyle sl = wb.createCellStyle();
+            sl.setFont(f10);
+            sl.setVerticalAlignment(VerticalAlignment.BOTTOM);
+            sl.setBorderBottom(BorderStyle.THIN);
+            signLine = sl;
+            // Header bordered-table styles (match sample_header.png)
+            titleBarCell = bordered(wb,0xA0,0xA0,0xA0, f11b, CENTER, false, true, true, true, true);
+            hdrBorderL   = bordered(wb,255,255,255,     f9,   LEFT,   false, true, true, true, true);
+            hdrBorderC   = bordered(wb,255,255,255,     f11b, CENTER, true,  true, true, true, true);
 
             /* ── Sub-table cells (thin borders, white fill) ── */
-            XSSFFont f16b = tnr(wb, 16, true);
-            XSSFFont f16  = tnr(wb, 16, false);
-            tblHdrCell  = bordered(wb,255,255,255, f16b, CENTER, true,  true,true,true,true);
-            tblDataCell = bordered(wb,255,255,255, f16,  CENTER, false, true,true,true,true);
-            tblTotCell  = bordered(wb,255,255,255, f16b, CENTER, false, true,true,true,true);
+            tblHdrCell  = bordered(wb,255,255,255, f11b, CENTER, true,  true,true,true,true);
+            tblDataCell = bordered(wb,255,255,255, f11,  CENTER, false, true,true,true,true);
+            tblTotCell  = bordered(wb,255,255,255, f11b, CENTER, false, true,true,true,true);
         }
 
         /** Times New Roman font */

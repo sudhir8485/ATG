@@ -1,6 +1,11 @@
 package com.nt.controller;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.lowagie.text.Chunk;
@@ -177,7 +183,7 @@ public class AdminController {
 		List<Classroom> rooms = roomRepo.findAll();
 		model.addAttribute("rooms", rooms);
 		model.addAttribute("labCount",       rooms.stream().filter(r -> "Lab".equals(r.getType())).count());
-		model.addAttribute("classroomCount", rooms.stream().filter(r -> !"Lab".equals(r.getType())).count());
+		model.addAttribute("classroomCount", rooms.stream().filter(r -> "Classroom".equals(r.getType()) || "Lecture".equals(r.getType())).count());
 		model.addAttribute("isEdit", false);
 		return "add-classroom";
 	}
@@ -448,12 +454,28 @@ public class AdminController {
 		List<User> faculty = userRepo.findByRoleAndDeletedFalse("FACULTY");
 		List<Classroom> rooms = roomRepo.findAll();
 		List<Timeslot> times = timeRepo.findAll();
+		List<Division> divisions = divRepo.findAll();
+
+		// Convert division names to class-label format: "SE-IT" → "SE(IT)"
+		List<String> classOptions = divisions.stream()
+			.map(d -> { String n = d.getName(); int i = n.indexOf('-');
+			            return i >= 0 ? n.substring(0, i) + "(" + n.substring(i + 1) + ")" : n; })
+			.collect(Collectors.toList());
+
+		// Build all batch codes: S1..S4, T1..T4, B1..B4
+		List<String> batchOptions = divisions.stream()
+			.filter(d -> d.getBatchPrefix() != null && d.getBatchCount() != null && d.getBatchCount() > 0)
+			.flatMap(d -> java.util.stream.IntStream.rangeClosed(1, d.getBatchCount())
+				.mapToObj(i -> d.getBatchPrefix() + i))
+			.collect(Collectors.toList());
 
 		model.addAttribute("departments", departments);
 		model.addAttribute("subjects", subjects);
 		model.addAttribute("faculty", faculty);
 		model.addAttribute("rooms", rooms);
 		model.addAttribute("times", times);
+		model.addAttribute("classOptions", classOptions);
+		model.addAttribute("batchOptions", batchOptions);
 
 		return "add-timetable";
 	}
@@ -560,7 +582,10 @@ public class AdminController {
 			@RequestParam(required = false) String classroom,
 			@RequestParam(required = false) String labPreference,
 			@RequestParam(required = false) Integer batchCount,
-			@RequestParam(required = false) String batchPrefix) {
+			@RequestParam(required = false) String batchPrefix,
+			@RequestParam(required = false) Integer studentCount,
+			@RequestParam(required = false) Integer rollNumberStart,
+			@RequestParam(required = false) String classTeacher) {
 
 		Division d = new Division();
 		d.setName(name);
@@ -572,6 +597,9 @@ public class AdminController {
 		d.setLabPreference(labPreference != null ? labPreference : "AFTERNOON");
 		d.setBatchCount(batchCount != null ? batchCount : 0);
 		d.setBatchPrefix(batchPrefix != null ? batchPrefix : "");
+		d.setStudentCount(studentCount);
+		d.setRollNumberStart(rollNumberStart);
+		d.setClassTeacher(classTeacher);
 		divRepo.save(d);
 		return "redirect:/add-division";
 	}
@@ -595,7 +623,10 @@ public class AdminController {
 			@RequestParam(required = false) Integer semesterNumber,
 			@RequestParam(required = false) String labPreference,
 			@RequestParam(required = false) Integer batchCount,
-			@RequestParam(required = false) String batchPrefix) {
+			@RequestParam(required = false) String batchPrefix,
+			@RequestParam(required = false) Integer studentCount,
+			@RequestParam(required = false) Integer rollNumberStart,
+			@RequestParam(required = false) String classTeacher) {
 		Division d = divRepo.findById(id).orElse(null);
 		if (d != null) {
 			d.setName(name);
@@ -605,6 +636,9 @@ public class AdminController {
 			d.setLabPreference(labPreference != null ? labPreference : "AFTERNOON");
 			d.setBatchCount(batchCount != null ? batchCount : 0);
 			d.setBatchPrefix(batchPrefix != null ? batchPrefix : "");
+			d.setStudentCount(studentCount);
+			d.setRollNumberStart(rollNumberStart);
+			d.setClassTeacher(classTeacher);
 			divRepo.save(d);
 		}
 		return "redirect:/add-division";
@@ -724,7 +758,7 @@ public class AdminController {
 		List<Classroom> rooms = roomRepo.findAll();
 		model.addAttribute("rooms", rooms);
 		model.addAttribute("labCount",       rooms.stream().filter(r -> "Lab".equals(r.getType())).count());
-		model.addAttribute("classroomCount", rooms.stream().filter(r -> !"Lab".equals(r.getType())).count());
+		model.addAttribute("classroomCount", rooms.stream().filter(r -> "Classroom".equals(r.getType()) || "Lecture".equals(r.getType())).count());
 		model.addAttribute("classroom", c);
 		model.addAttribute("isEdit", true);
 		return "add-classroom";
@@ -1103,27 +1137,23 @@ public class AdminController {
 
 	@PostMapping("/save-timetable")
 	public String saveTimetable(
-
 			@RequestParam String day, @RequestParam String department, @RequestParam String className,
-			@RequestParam String division, @RequestParam String subject, @RequestParam String faculty,
-			@RequestParam String room, @RequestParam String lectureType, @RequestParam String startTime,
-			@RequestParam String endTime, @RequestParam String breakTime) {
+			@RequestParam String subject, @RequestParam String faculty,
+			@RequestParam String room, @RequestParam String lectureType,
+			@RequestParam String timeSlot,
+			@RequestParam(required = false) String batch) {
 
 		Timetable t = new Timetable();
-
 		t.setDay(day);
 		t.setDepartment(department);
 		t.setClassName(className);
-		t.setDivision(division);
+		t.setDivision(className); // division mirrors className for manual entries
 		t.setSubject(subject);
 		t.setFaculty(faculty);
 		t.setRoom(room);
 		t.setLectureType(lectureType);
-
-		String timeSlot = startTime + " - " + endTime;
-
 		t.setTimeSlot(timeSlot);
-		t.setBreakTime(breakTime);
+		t.setBatch(batch != null && !batch.isBlank() ? batch : null);
 
 		timetableRepo.save(t);
 
@@ -1250,6 +1280,151 @@ public class AdminController {
 	@GetMapping("/how-to-use")
 	public String howToUse() {
 		return "how-to-use";
+	}
+
+	/*
+	 * ========================= INSTITUTION SETTINGS =========================
+	 */
+
+	@GetMapping("/institution-settings")
+	public String institutionSettings(Model model) {
+		AcademicSetting s = academicSettingRepo.findById(1).orElseGet(() -> {
+			AcademicSetting def = new AcademicSetting();
+			def.setId(1);
+			return def;
+		});
+		// Apply defaults for any null fields so the template can use ${settings.xxx} directly
+		if (s.getInstitutionName()     == null || s.getInstitutionName().isBlank())
+			s.setInstitutionName("Akhil Bharatiya Maratha Shikshan Parishad's\nAnantrao Pawar college of Engineering & Research, Parvati, Pune");
+		if (s.getInstitutionNameShort() == null || s.getInstitutionNameShort().isBlank())
+			s.setInstitutionNameShort("Akhil Bharatiya Maratha Shikshan Parishad's\nAnantrao Pawar college of Engineering & Research");
+		if (s.getDepartmentName()   == null || s.getDepartmentName().isBlank())   s.setDepartmentName("Information Technology");
+		if (s.getAcademicYear()     == null || s.getAcademicYear().isBlank())     s.setAcademicYear("2025-26");
+		if (s.getSemesterDisplay()  == null || s.getSemesterDisplay().isBlank())  s.setSemesterDisplay("II");
+		if (s.getWefDate()          == null || s.getWefDate().isBlank())          s.setWefDate("01/01/2026");
+		if (s.getDoiDate()          == null || s.getDoiDate().isBlank())          s.setDoiDate("01/02/2025");
+		if (s.getRevisionNumber()   == null || s.getRevisionNumber().isBlank())   s.setRevisionNumber("00");
+		if (s.getRecordNoMaster()   == null || s.getRecordNoMaster().isBlank())   s.setRecordNoMaster("ACA/R/003A");
+		if (s.getRecordNoClass()    == null || s.getRecordNoClass().isBlank())    s.setRecordNoClass("ACA/R/003B");
+		if (s.getRecordNoLab()      == null || s.getRecordNoLab().isBlank())      s.setRecordNoLab("ACA/R/003D");
+		if (s.getRecordNoFaculty()  == null || s.getRecordNoFaculty().isBlank())  s.setRecordNoFaculty("ACA/R/003E");
+		if (s.getTtCoordinatorName()== null || s.getTtCoordinatorName().isBlank()) s.setTtCoordinatorName("PROF. R. A. NIKAM");
+		if (s.getHodSignatureName() == null || s.getHodSignatureName().isBlank()) s.setHodSignatureName("DR. A. A. KADAM");
+		if (s.getPrincipalName()    == null || s.getPrincipalName().isBlank())    s.setPrincipalName("DR. S. B. THAKARE");
+		if (s.getCollegeLogo()      == null || s.getCollegeLogo().isBlank())      s.setCollegeLogo("/home/sudhir/Desktop/ATG/clglogo.png");
+		if (s.getOwnerLogo()        == null || s.getOwnerLogo().isBlank())        s.setOwnerLogo("/home/sudhir/Desktop/ATG/ownerlogo.png");
+
+		model.addAttribute("settings", s);
+		return "institution-settings";
+	}
+
+	@PostMapping("/save-institution-settings")
+	public String saveInstitutionSettings(
+			@RequestParam(required = false) String institutionName,
+			@RequestParam(required = false) String institutionNameShort,
+			@RequestParam(required = false) String departmentName,
+			@RequestParam(required = false) String academicYear,
+			@RequestParam(required = false) String semesterDisplay,
+			@RequestParam(required = false) String wefDate,
+			@RequestParam(required = false) String doiDate,
+			@RequestParam(required = false) String revisionNumber,
+			@RequestParam(required = false) String recordNoMaster,
+			@RequestParam(required = false) String recordNoClass,
+			@RequestParam(required = false) String recordNoLab,
+			@RequestParam(required = false) String recordNoFaculty,
+			@RequestParam(required = false) String ttCoordinatorName,
+			@RequestParam(required = false) String hodSignatureName,
+			@RequestParam(required = false) String principalName,
+			@RequestParam(required = false) String collegeLogo,
+			@RequestParam(required = false) String ownerLogo,
+			RedirectAttributes redirect) {
+
+		AcademicSetting s = academicSettingRepo.findById(1).orElseGet(() -> {
+			AcademicSetting def = new AcademicSetting();
+			def.setId(1);
+			return def;
+		});
+
+		// Preserve workingDays — managed separately by the timeslot page
+		s.setInstitutionName(institutionName);
+		s.setInstitutionNameShort(institutionNameShort);
+		s.setDepartmentName(departmentName);
+		s.setAcademicYear(academicYear);
+		s.setSemesterDisplay(semesterDisplay);
+		s.setWefDate(wefDate);
+		s.setDoiDate(doiDate);
+		s.setRevisionNumber(revisionNumber);
+		s.setRecordNoMaster(recordNoMaster);
+		s.setRecordNoClass(recordNoClass);
+		s.setRecordNoLab(recordNoLab);
+		s.setRecordNoFaculty(recordNoFaculty);
+		s.setTtCoordinatorName(ttCoordinatorName);
+		s.setHodSignatureName(hodSignatureName);
+		s.setPrincipalName(principalName);
+		s.setCollegeLogo(collegeLogo);
+		s.setOwnerLogo(ownerLogo);
+		academicSettingRepo.save(s);
+
+		redirect.addFlashAttribute("saved", true);
+		return "redirect:/institution-settings";
+	}
+
+	/** Upload a logo (college or owner) and update the path in AcademicSetting. */
+	@PostMapping("/upload-logo")
+	public String uploadLogo(
+			@RequestParam("logoType") String logoType,
+			@RequestParam("logoFile") MultipartFile file,
+			RedirectAttributes redirect) {
+
+		if (file == null || file.isEmpty()) {
+			redirect.addFlashAttribute("logoError", "No file selected.");
+			return "redirect:/institution-settings";
+		}
+
+		String origName = file.getOriginalFilename();
+		if (origName == null || origName.isBlank()) origName = "logo.png";
+		String ext = origName.contains(".") ? origName.substring(origName.lastIndexOf('.')) : ".png";
+		String saveName = ("college".equals(logoType) ? "clglogo" : "ownerlogo") + ext;
+
+		// Save to the same directory as existing logos
+		Path uploadDir = Paths.get("/home/sudhir/Desktop/ATG");
+		Path dest = uploadDir.resolve(saveName);
+		try {
+			Files.createDirectories(uploadDir);
+			Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			redirect.addFlashAttribute("logoError", "Upload failed: " + e.getMessage());
+			return "redirect:/institution-settings";
+		}
+
+		AcademicSetting s = academicSettingRepo.findById(1).orElseGet(() -> {
+			AcademicSetting def = new AcademicSetting();
+			def.setId(1);
+			return def;
+		});
+		if ("college".equals(logoType)) s.setCollegeLogo(dest.toAbsolutePath().toString());
+		else                            s.setOwnerLogo(dest.toAbsolutePath().toString());
+		academicSettingRepo.save(s);
+
+		redirect.addFlashAttribute("saved", true);
+		return "redirect:/institution-settings";
+	}
+
+	/** Serve a logo image directly from the filesystem path stored in settings. */
+	@GetMapping("/logo/{type}")
+	public ResponseEntity<byte[]> serveLogo(@PathVariable String type) {
+		AcademicSetting s = academicSettingRepo.findById(1).orElse(null);
+		String path = (s != null && "owner".equals(type)) ? s.getOwnerLogo()
+				    : (s != null ? s.getCollegeLogo() : null);
+		if (path == null || path.isBlank()) path = "/home/sudhir/Desktop/ATG/"
+				+ ("owner".equals(type) ? "ownerlogo.png" : "clglogo.png");
+		try {
+			byte[] bytes = Files.readAllBytes(Paths.get(path));
+			String ct = path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+			return ResponseEntity.ok().contentType(MediaType.parseMediaType(ct)).body(bytes);
+		} catch (IOException e) {
+			return ResponseEntity.notFound().build();
+		}
 	}
 
 	/*

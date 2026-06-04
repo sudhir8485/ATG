@@ -103,6 +103,25 @@
                     </div>
                 </div>
 
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Total Students</label>
+                        <input type="number" name="studentCount" min="0" placeholder="e.g., 75"
+                               th:value="${division != null and division.studentCount != null ? division.studentCount : ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Roll Number Start</label>
+                        <input type="number" name="rollNumberStart" min="0" placeholder="e.g., 5201"
+                               th:value="${division != null and division.rollNumberStart != null ? division.rollNumberStart : ''}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Class Teacher</label>
+                    <input type="text" name="classTeacher" placeholder="e.g., Prof. A. B. Sharma"
+                           th:value="${division != null and division.classTeacher != null ? division.classTeacher : ''}">
+                </div>
+
                 <div class="form-group">
                     <label>Lab Time Preference</label>
                     <select name="labPreference">
@@ -140,6 +159,8 @@
                             <th>Sem</th>
                             <th>Batches</th>
                             <th>Prefix</th>
+                            <th>Students</th>
+                            <th>Roll Start</th>
                             <th>Lab Pref</th>
                             <th style="width:130px;">Actions</th>
                         </tr>
@@ -152,6 +173,8 @@
                             <td th:text="${d.semesterNumber != null ? d.semesterNumber : '—'}"></td>
                             <td th:text="${d.batchCount != null ? d.batchCount : 0}"></td>
                             <td th:text="${d.batchPrefix != null and !d.batchPrefix.isEmpty() ? d.batchPrefix : '—'}"></td>
+                            <td th:text="${d.studentCount != null ? d.studentCount : '—'}"></td>
+                            <td th:text="${d.rollNumberStart != null ? d.rollNumberStart : '—'}"></td>
                             <td>
                                 <span style="font-size:12px;background:#f0f4ff;color:#4f46e5;padding:3px 8px;border-radius:8px;font-weight:600;"
                                       th:text="${d.labPreference != null ? d.labPreference : 'AFTERNOON'}"></span>
@@ -167,7 +190,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(divisions)}">
-                            <td colspan="8" style="text-align:center;padding:16px;color:#6b7280;">No divisions added yet.</td>
+                            <td colspan="10" style="text-align:center;padding:16px;color:#6b7280;">No divisions added yet.</td>
                         </tr>
                     </tbody>
                 </table>

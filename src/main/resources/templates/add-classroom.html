@@ -18,7 +18,7 @@
     <!-- Header -->
     <div class="pg-head">
         <h2><i class="fas fa-door-open" style="color:#4f46e5;"></i> Classroom Management</h2>
-        <p>Add and manage lecture halls and lab rooms used for scheduling.</p>
+        <p>Add and manage classrooms and lab rooms used for scheduling.</p>
     </div>
 
     <!-- Flash -->
@@ -79,8 +79,8 @@
                 <div class="fg">
                     <label>Room Type</label>
                     <select name="type">
-                        <option value="" th:selected="${classroom == null}">Select type</option>
-                        <option value="Lecture"   th:selected="${classroom != null and classroom.type == 'Lecture'}">Classroom / Lecture Hall</option>
+                        <option value="" th:selected="${classroom == null or (classroom.type == null or classroom.type == '')}">Select type</option>
+                        <option value="Classroom" th:selected="${classroom != null and (classroom.type == 'Classroom' or classroom.type == 'Lecture')}">Classroom</option>
                         <option value="Lab"       th:selected="${classroom != null and classroom.type == 'Lab'}">Laboratory</option>
                     </select>
                 </div>
@@ -100,7 +100,7 @@
         <!-- List -->
         <div class="ds-list">
             <div class="ds-list-head">
-                <h4><i class="fas fa-list" style="color:#4f46e5;"></i> All Classrooms &amp; Labs</h4>
+                <h4><i class="fas fa-list" style="color:#4f46e5;"></i> All Classrooms &amp; Lab Rooms</h4>
                 <span class="count-tag" th:text="${#lists.size(rooms)} + ' total'">0</span>
             </div>
             <table>
@@ -117,9 +117,9 @@
                     <td style="font-weight:600;" th:text="${r.room}"></td>
                     <td style="font-size:12px;color:#64748b;" th:text="${r.capacity != null ? r.capacity : '—'}"></td>
                     <td>
-                        <span th:if="${r.type == 'Lab'}"       class="type-lab">Lab</span>
-                        <span th:if="${r.type == 'Classroom'}" class="type-room">Classroom</span>
-                        <span th:if="${r.type != 'Lab' and r.type != 'Classroom'}"
+                        <span th:if="${r.type == 'Lab'}"                                        class="type-lab">Lab</span>
+                        <span th:if="${r.type == 'Classroom' or r.type == 'Lecture'}"           class="type-room">Classroom</span>
+                        <span th:if="${r.type != 'Lab' and r.type != 'Classroom' and r.type != 'Lecture'}"
                               style="color:#94a3b8;font-size:12px;">—</span>
                     </td>
                     <td>

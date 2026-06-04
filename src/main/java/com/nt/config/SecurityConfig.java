@@ -26,7 +26,10 @@ public class SecurityConfig {
                                 "/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**").permitAll()
                         .requestMatchers("/admin/**", "/add-**", "/save-**", "/update-**", "/delete-**",
                                 "/edit-**", "/assign-subjects/**", "/assign-batch-faculty/**",
-                                "/assign-theory-faculty/**", "/auto-generate/**", "/clear-timetable").hasRole("ADMIN")
+                                "/assign-theory-faculty/**", "/auto-generate/**", "/clear-timetable",
+                                "/export-xlsx", "/print-timetable",
+                                "/institution-settings", "/save-institution-settings",
+                                "/upload-logo", "/logo/**").hasRole("ADMIN")
                         .requestMatchers("/hod/**", "/hod-**", "/approve-**", "/approve/**", "/reject/**").hasRole("HOD")
                         .requestMatchers("/faculty/**", "/faculty-**", "/faculty-dashboard",
                                 "/faculty-timetable", "/faculty-lecture/**", "/faculty-request-change").hasRole("FACULTY")

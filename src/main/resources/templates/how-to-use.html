@@ -447,9 +447,9 @@
             <li><a href="#sec6"  class="nav-link"><span class="nav-num">6</span> Faculty</a></li>
             <li><a href="#sec7"  class="nav-link"><span class="nav-num">7</span> Assign Subjects</a></li>
             <li><a href="#sec8"  class="nav-link"><span class="nav-num">8</span> Generate</a></li>
-            <li><a href="#sec9"  class="nav-link"><span class="nav-num">9</span> View &amp; Export</a></li>
-            <li><a href="#sec10" class="nav-link"><span class="nav-num">10</span> HOD Workflow</a></li>
-            <li><a href="#sec11" class="nav-link"><span class="nav-num">11</span> Troubleshooting</a></li>
+            <li><a href="#sec9"  class="nav-link"><span class="nav-num">9</span> Institution Settings</a></li>
+            <li><a href="#sec10" class="nav-link"><span class="nav-num">10</span> View &amp; Export</a></li>
+            <li><a href="#sec12" class="nav-link"><span class="nav-num">11</span> Troubleshooting</a></li>
         </ul>
         <div class="ht-nav-progress">
             <span>Reading progress</span>
@@ -473,7 +473,8 @@
                 <div class="ht-flow-item"><a class="ht-flow-box" href="#sec6">6 · Faculty</a><span class="ht-flow-arr">›</span></div>
                 <div class="ht-flow-item"><a class="ht-flow-box" href="#sec7">7 · Assign</a><span class="ht-flow-arr">›</span></div>
                 <div class="ht-flow-item"><a class="ht-flow-box" href="#sec8">8 · Generate</a><span class="ht-flow-arr">›</span></div>
-                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec9">9 · Export</a></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec9">9 · Settings</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec10">10 · Export</a></div>
             </div>
         </div>
 
@@ -552,9 +553,13 @@
                                     <tr><td><strong>Semester</strong></td><td>4</td><td>6</td><td>8</td></tr>
                                     <tr><td><strong>Batch Count</strong></td><td>4</td><td>4</td><td>4</td></tr>
                                     <tr><td><strong>Batch Prefix</strong></td><td>S</td><td>T</td><td>B</td></tr>
+                                    <tr><td><strong>Total Students</strong></td><td>e.g. 75</td><td>e.g. 74</td><td>e.g. 77</td></tr>
+                                    <tr><td><strong>Roll Number Start</strong></td><td>e.g. 5201</td><td>e.g. 5301</td><td>e.g. 5401</td></tr>
+                                    <tr><td><strong>Class Teacher</strong></td><td>Prof. full name</td><td>Prof. full name</td><td>Prof. full name</td></tr>
                                     <tr><td><strong>Lab Time Preference</strong></td><td><span style="color:#1d4ed8;font-weight:700;">AFTERNOON</span></td><td><span style="color:#16a34a;font-weight:700;">MIDDAY</span></td><td><span style="color:#d97706;font-weight:700;">MORNING</span></td></tr>
                                 </tbody>
                             </table>
+                            <div class="ht-info" style="margin-top:10px;"><i class="fas fa-info-circle"></i><p><strong>Total Students + Roll Number Start</strong> are used to auto-generate the batch roll number legend at the bottom of each class timetable sheet in the XLSX export (e.g., S1 ROLL NO. 5201–5219). <strong>Class Teacher</strong> prints on the class timetable footer.</p></div>
                         </div>
                     </div>
                     <div class="ht-step">
@@ -589,18 +594,26 @@
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
                         <div class="ht-step-body">
-                            <h4>Add lecture rooms (Type = Classroom)</h4>
-                            <p>Go to <a href="/add-classroom" style="color:#2563eb;font-weight:700;">/add-classroom</a>. Add Room 305 and Room 306 as <strong>Classroom</strong> type. Theory sessions only use Classroom-type rooms.</p>
+                            <h4>Two room types only</h4>
+                            <p>Go to <a href="/add-classroom" style="color:#2563eb;font-weight:700;">/add-classroom</a>. The <strong>Room Type</strong> dropdown has exactly two options:</p>
+                            <table class="ft">
+                                <thead><tr><th>Type</th><th>Used for</th><th>Example rooms</th></tr></thead>
+                                <tbody>
+                                    <tr><td><span style="background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">Classroom</span></td><td>Theory lectures — all 3 divisions share these</td><td>Room 305, Room 306</td></tr>
+                                    <tr><td><span style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">Lab</span></td><td>Practical / batch rotation sessions only</td><td>IT-203, IT-204, IT-205, IT-206</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
                         <div class="ht-step-body">
-                            <h4>Add lab rooms (Type = Lab)</h4>
-                            <p>Add all IT lab rooms as <strong>Lab</strong> type. Lab subjects (practical) are only assigned to Lab-type rooms.</p>
+                            <h4>Recommended rooms for APCOER IT Dept</h4>
                             <table class="ft">
                                 <thead><tr><th>Room</th><th>Type</th><th>Used for</th></tr></thead>
                                 <tbody>
+                                    <tr><td>Room 305</td><td>Classroom</td><td>SE-IT / TE-IT theory lectures</td></tr>
+                                    <tr><td>Room 306</td><td>Classroom</td><td>BE-IT theory lectures</td></tr>
                                     <tr><td>IT-203</td><td>Lab</td><td>Computer Graphics Lab, DBMS Lab</td></tr>
                                     <tr><td>IT-204</td><td>Lab</td><td>Electronics Circuits Lab</td></tr>
                                     <tr><td>IT-205</td><td>Lab</td><td>LP-II, LP-V, LP-VI</td></tr>
@@ -613,7 +626,7 @@
                         <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
                         <div class="ht-step-body">
                             <h4>Room conflict note</h4>
-                            <div class="ht-info"><i class="fas fa-info-circle"></i><p>With 3 divisions and only 2 lecture rooms, up to 6 theory sessions per week cannot be placed when all 3 divisions need a room simultaneously. Adding a 3rd lecture room (e.g., Room 307) eliminates these conflicts entirely.</p></div>
+                            <div class="ht-info"><i class="fas fa-info-circle"></i><p>With 3 divisions and only 2 Classroom-type rooms, up to 6 theory sessions per week cannot be placed when all 3 divisions need a room simultaneously. Adding a 3rd Classroom-type room (e.g., Room 307) eliminates these conflicts entirely.</p></div>
                         </div>
                     </div>
                 </div>
@@ -901,13 +914,66 @@
             </div>
         </div>
 
-        <!-- ─── SECTION 9 — VIEW & EXPORT ─────────────────────── -->
-        <div class="ht-sec theme-pink open" id="sec9">
+        <!-- ─── SECTION 9 — INSTITUTION SETTINGS ──────────────── -->
+        <div class="ht-sec theme-orange open" id="sec9">
+            <div class="ht-sec-hd" onclick="toggleSec(this)">
+                <div class="ht-sec-icon"><i class="fas fa-university"></i></div>
+                <div class="ht-sec-hd-text">
+                    <h2><span class="sec-tag" style="margin-right:8px;">9</span> Institution Settings</h2>
+                    <p>Configure college name, logos, academic year, and signatures — printed on every exported sheet</p>
+                </div>
+                <i class="fas fa-chevron-down ht-sec-chevron"></i>
+            </div>
+            <div class="ht-sec-body">
+                <div class="ht-steps">
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
+                        <div class="ht-step-body">
+                            <h4>Go to <a href="/institution-settings" style="color:#ea580c;font-weight:700;">/institution-settings</a></h4>
+                            <p>All values are pre-filled with APCOER defaults. Change only what needs updating each semester.</p>
+                            <table class="ft">
+                                <thead><tr><th>Section</th><th>Fields</th><th>Where it appears</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>Institution</strong></td><td>Full name (2 lines), Short name</td><td>Header of every XLSX/PDF sheet</td></tr>
+                                    <tr><td><strong>Academic Info</strong></td><td>Department, Academic Year, Semester (Roman), W.E.F. date, Date of Issue</td><td>Sub-header row of every sheet</td></tr>
+                                    <tr><td><strong>Document Metadata</strong></td><td>Revision number, Record No. for Master / Class / Lab / Faculty sheets</td><td>Top-right bordered block of each sheet</td></tr>
+                                    <tr><td><strong>Signature Block</strong></td><td>TT Coordinator, HOD, Principal names</td><td>Footer of every sheet</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
+                        <div class="ht-step-body">
+                            <h4>Upload logos</h4>
+                            <p>The top section of Institution Settings has two logo upload cards:</p>
+                            <ul>
+                                <li><strong>College Logo (Left)</strong> — appears in the left margin of the institution header (college seal / crest). Accepts PNG or JPG.</li>
+                                <li><strong>Owner Logo (Right)</strong> — appears in the right margin (trust / management logo). Accepts PNG or JPG.</li>
+                            </ul>
+                            <p>Click <strong>Upload</strong> next to each logo. The file is saved to the server immediately and the preview updates. No regeneration needed for logos — they are embedded on the next export.</p>
+                            <div class="ht-info" style="margin-top:10px;"><i class="fas fa-info-circle"></i><p>Logos are stored at <code style="background:#e0f2fe;padding:2px 8px;border-radius:5px;font-size:12px;">/home/sudhir/Desktop/ATG/clglogo.png</code> and <code style="background:#e0f2fe;padding:2px 8px;border-radius:5px;font-size:12px;">ownerlogo.png</code>. Replace these files directly if upload is not used.</p></div>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
+                        <div class="ht-step-body">
+                            <h4>Click Save All Settings</h4>
+                            <p>Settings are stored in the database. They take effect on the <strong>next XLSX or PDF export</strong> — no regeneration of timetable data is required.</p>
+                            <div class="ht-tip"><i class="fas fa-lightbulb"></i><p>Each new semester: update <strong>Academic Year</strong>, <strong>Semester</strong>, <strong>W.E.F. date</strong>, and <strong>Date of Issue</strong>. Everything else usually stays the same year-to-year.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── SECTION 10 — VIEW & EXPORT ─────────────────────── -->
+        <div class="ht-sec theme-pink open" id="sec10">
             <div class="ht-sec-hd" onclick="toggleSec(this)">
                 <div class="ht-sec-icon"><i class="fas fa-calendar-alt"></i></div>
                 <div class="ht-sec-hd-text">
-                    <h2><span class="sec-tag" style="margin-right:8px;">9</span> View &amp; Export</h2>
-                    <p>Three views to inspect the timetable — two export formats available</p>
+                    <h2><span class="sec-tag" style="margin-right:8px;">10</span> View &amp; Export</h2>
+                    <p>Three views to inspect the timetable — export to XLSX (multi-sheet) or PDF</p>
                 </div>
                 <i class="fas fa-chevron-down ht-sec-chevron"></i>
             </div>
@@ -917,84 +983,48 @@
                         <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
                         <div class="ht-step-body">
                             <h4><a href="/view-timetable" style="color:#a21caf;font-weight:700;">View Timetable</a> — searchable table</h4>
-                            <p>Filterable list of all placed sessions. Each row shows day, slot, subject, faculty, room, and batch. Click the <strong>Edit</strong> icon on any row to change subject, faculty, or room for that slot without regenerating.</p>
+                            <p>Filterable list of all placed sessions. Each row shows day, slot, subject, faculty, room, and batch. Use the <strong>Edit</strong> button on any row to fix individual entries without regenerating.</p>
                         </div>
                     </div>
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
                         <div class="ht-step-body">
-                            <h4><a href="/timetable-grid" style="color:#a21caf;font-weight:700;">Weekly Grid</a> — classic timetable view</h4>
-                            <p>Rows = days, columns = time slots, cells = subject + faculty. Each division has its own grid. Lab rotation cells show all 4 batches: <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">S1→CGL(PGK)  S2→DBMSL(RAN) ...</code></p>
+                            <h4><a href="/timetable-grid" style="color:#a21caf;font-weight:700;">Weekly Grid</a> — classic day × time view</h4>
+                            <p>Rows = days, columns = time slots. Lab rotation cells show all 4 batches per slot: <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">S1→CGL(PGK), S2→DBMSL(RAN) ...</code></p>
+                            <p style="margin-top:8px;">Use the <strong>Add Entry</strong> button on this page to manually add a single slot. The form provides dropdowns for Class (SE(IT)/TE(IT)/BE(IT)), Batch (S1–S4/T1–T4/B1–B4), Time Slot, Subject, Faculty, and Room — no free-text typing needed.</p>
                         </div>
                     </div>
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
                         <div class="ht-step-body">
                             <h4>Export XLSX — multi-sheet workbook</h4>
-                            <p>Click <strong>Export XLSX</strong> on the View Timetable page. Downloads an Excel file with:</p>
-                            <ul>
-                                <li><strong>MASTER</strong> — all 3 divisions in one sheet</li>
-                                <li><strong>SE_IT, TE_IT, BE_IT</strong> — one sheet per division</li>
-                                <li><strong>Faculty_PGK, Faculty_ANK …</strong> — each teacher's personal timetable</li>
-                                <li><strong>Room_305, Room_IT-203 …</strong> — each room's occupancy schedule</li>
-                            </ul>
+                            <p>Click <strong>Export XLSX</strong> on the View Timetable page. Downloads a single Excel file containing:</p>
+                            <table class="ft" style="margin-top:8px;">
+                                <thead><tr><th>Sheet</th><th>Content</th></tr></thead>
+                                <tbody>
+                                    <tr><td><strong>SE_IT, TE_IT, BE_IT</strong></td><td>Class timetable — full week grid with lab rotations, batch legend, class teacher, signatures</td></tr>
+                                    <tr><td><strong>MASTER</strong></td><td>All 3 divisions stacked on one sheet for a combined overview</td></tr>
+                                    <tr><td><strong>Fac_PGK, Fac_ANK …</strong></td><td>Individual faculty timetable — one sheet per teacher showing their own slots across all classes</td></tr>
+                                    <tr><td><strong>Room_305, NL, WET …</strong></td><td>Room occupancy — one sheet per room showing which session/batch occupies each slot</td></tr>
+                                </tbody>
+                            </table>
+                            <p style="margin-top:8px;">Each sheet includes the institution header (logo, record number, revision, DoI) and a signature footer (TT Coordinator, HOD, Principal) from <a href="/institution-settings" style="color:#a21caf;font-weight:700;">Institution Settings</a>.</p>
                         </div>
                     </div>
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot">4</div></div>
                         <div class="ht-step-body">
-                            <h4>Export PDF — print-ready</h4>
-                            <p>Click <strong>Export PDF</strong> on the View Timetable page. Downloads a print-ready PDF suitable for notice board posting.</p>
+                            <h4>Export PDF — print-ready via XLSX conversion</h4>
+                            <p>Click <strong>Export PDF</strong> on the View Timetable page. The server generates the XLSX and converts it to PDF using LibreOffice in headless mode. Download and print directly — A4 landscape, fitted to page.</p>
+                            <div class="ht-warn" style="margin-top:10px;"><i class="fas fa-exclamation-triangle"></i><p>PDF conversion requires LibreOffice installed on the server. If the PDF download fails or shows an error, verify LibreOffice is installed: <code style="background:#fef3c7;padding:2px 8px;border-radius:5px;font-size:12px;">libreoffice --version</code></p></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ─── SECTION 10 — HOD WORKFLOW ─────────────────────── -->
-        <div class="ht-sec theme-slate open" id="sec10">
-            <div class="ht-sec-hd" onclick="toggleSec(this)">
-                <div class="ht-sec-icon"><i class="fas fa-user-tie"></i></div>
-                <div class="ht-sec-hd-text">
-                    <h2><span class="sec-tag" style="margin-right:8px;">10</span> HOD Approval Workflow</h2>
-                    <p>HOD reviews and approves the timetable before faculty can view their schedules</p>
-                </div>
-                <i class="fas fa-chevron-down ht-sec-chevron"></i>
-            </div>
-            <div class="ht-sec-body">
-                <div class="ht-steps">
-                    <div class="ht-step">
-                        <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
-                        <div class="ht-step-body">
-                            <h4>Create HOD account at <a href="/add-hod" style="color:#475569;font-weight:700;">/add-hod</a></h4>
-                            <p>Set name, username (e.g., <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;font-size:12px;">hod_it</code>), and password. The HOD logs in at the same login page with the HOD role.</p>
-                        </div>
-                    </div>
-                    <div class="ht-step">
-                        <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
-                        <div class="ht-step-body">
-                            <h4>HOD portal features</h4>
-                            <ul>
-                                <li><strong>View Timetable</strong> — read-only grid for each division.</li>
-                                <li><strong>Approve Timetable</strong> — marks timetable as approved; unlocks faculty portal views.</li>
-                                <li><strong>Request Change</strong> — flags a specific slot for Admin revision.</li>
-                                <li><strong>Assign Subjects</strong> — independent subject→faculty assignment (separate from Admin).</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="ht-step">
-                        <div class="ht-step-left"><div class="ht-step-dot">3</div></div>
-                        <div class="ht-step-body">
-                            <h4>Faculty portal</h4>
-                            <p>Each faculty member logs in with the credentials set in <strong>Add Faculty</strong>. They see only their own slots. They can submit a <strong>swap request</strong> to exchange a slot with another faculty member, which routes back to the HOD for approval.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ─── SECTION 11 — TROUBLESHOOTING ──────────────────── -->
-        <div class="ht-sec theme-sky open" id="sec11">
+        <!-- ─── SECTION 12 — TROUBLESHOOTING ──────────────────── -->
+        <div class="ht-sec theme-sky open" id="sec12">
             <div class="ht-sec-hd" onclick="toggleSec(this)">
                 <div class="ht-sec-icon"><i class="fas fa-tools"></i></div>
                 <div class="ht-sec-hd-text">
@@ -1010,9 +1040,9 @@
                         <div class="ht-step-body">
                             <h4>Sessions placed &lt; requested</h4>
                             <ul>
-                                <li><strong>Faculty overload</strong> — a teacher assigned too many hours across subjects. Check Subjects Handled list and redistribute labs.</li>
-                                <li><strong>Room shortage</strong> — 3 divisions competing for 2 lecture rooms. Add a 3rd lecture room via Classrooms.</li>
-                                <li><strong>Wrong Lab Time Preference</strong> — divisions competing for the same window. Verify Step 2 values.</li>
+                                <li><strong>Faculty overload</strong> — a teacher is assigned too many hours. Check Subjects Handled list and redistribute labs.</li>
+                                <li><strong>Room shortage</strong> — 3 divisions competing for 2 Classroom-type rooms. Add a 3rd Classroom-type room.</li>
+                                <li><strong>Wrong Lab Time Preference</strong> — two divisions use the same window. Verify Step 2 preferences (AFTERNOON / MIDDAY / MORNING).</li>
                             </ul>
                         </div>
                     </div>
@@ -1020,7 +1050,7 @@
                         <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
                         <div class="ht-step-body">
                             <h4>Wrong faculty in lab rotation cell</h4>
-                            <p>Go to <strong>Assign Subjects</strong> → find the lab → verify each batch's faculty mapping. Update and regenerate.</p>
+                            <p>Go to <a href="/assign-subjects" style="color:#0284c7;font-weight:700;">Assign Subjects</a> → find the lab → verify each batch's faculty. Update and regenerate.</p>
                         </div>
                     </div>
                     <div class="ht-step">
@@ -1028,6 +1058,13 @@
                         <div class="ht-step-body">
                             <h4>Subject appears twice on the same day</h4>
                             <p>The generator always tries to spread subjects across different days. A same-day repeat means no other day had a free slot. Options: reduce total hours, add a lecture room, or reduce another subject's hours.</p>
+                        </div>
+                    </div>
+                    <div class="ht-step">
+                        <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
+                        <div class="ht-step-body">
+                            <h4>XLSX type shows as "Lecture" in Classrooms list</h4>
+                            <p>Old data may have been saved as "Lecture" type before the standardisation. The app auto-migrates these to "Classroom" on each restart. If you see "—" instead of a type badge in the Classrooms list, go to <a href="/add-classroom" style="color:#0284c7;font-weight:700;">Classrooms</a>, edit the room, and re-save it as <strong>Classroom</strong>.</p>
                         </div>
                     </div>
                     <div class="ht-step">
@@ -1044,13 +1081,14 @@
                 <p style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:12px;"><i class="fas fa-clipboard-check" style="color:#0284c7;"></i> &nbsp;Pre-generation checklist — verify all items before clicking Generate</p>
                 <ul class="ht-checklist">
                     <li><div class="chk"><i class="fas fa-check"></i></div> Department created with correct name and code</li>
-                    <li><div class="chk"><i class="fas fa-check"></i></div> All 3 divisions added with correct Lab Time Preference (AFTERNOON / MIDDAY / MORNING)</li>
-                    <li><div class="chk"><i class="fas fa-check"></i></div> Lecture rooms (305, 306) and lab rooms (IT-203 to IT-206) added</li>
-                    <li><div class="chk"><i class="fas fa-check"></i></div> All 9 time slots added — Short Break (slot 3) and Lunch (slot 6) marked as Break</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> All 3 divisions added with correct Batch Prefix, Total Students, Roll Number Start, Class Teacher, and Lab Time Preference</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> Classroom-type rooms (305, 306) and Lab-type rooms (IT-203 to IT-206) added</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> All 9 time slots added — Short Break (slot 3) and Lunch (slot 6) ticked as Break</li>
                     <li><div class="chk"><i class="fas fa-check"></i></div> All subjects added with correct type, lecture hours, and practical hours</li>
                     <li><div class="chk"><i class="fas fa-check"></i></div> All faculty added with exact Subject Names in Subjects Handled</li>
                     <li><div class="chk"><i class="fas fa-check"></i></div> Batch→faculty assignments set for all split-faculty lab subjects</li>
                     <li><div class="chk"><i class="fas fa-check"></i></div> Special slots pinned: VL (Fri 16:00), INTP (Mon+Thu 14:00), Audit, Seminar, T&amp;P</li>
+                    <li><div class="chk"><i class="fas fa-check"></i></div> Institution Settings updated: Academic Year, Semester, W.E.F. date, DoI, logos uploaded</li>
                 </ul>
             </div>
         </div>
@@ -1074,7 +1112,7 @@ function toggleSec(hd) {
 /* ── Active nav link on scroll ── */
 (function () {
     const links = document.querySelectorAll('.nav-link');
-    const secs  = document.querySelectorAll('.ht-sec');
+    const secs  = document.querySelectorAll('.ht-sec[id]');
     const main  = document.getElementById('page-content');
     const fill  = document.getElementById('progFill');
 

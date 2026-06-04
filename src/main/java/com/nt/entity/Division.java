@@ -18,6 +18,9 @@ private String classroom;
 private Integer batchCount;  // e.g. 4 → batches S1,S2,S3,S4
 private String batchPrefix;  // e.g. "S" for SE, "T" for TE, "B" for BE
 private String labPreference; // MORNING | MIDDAY | AFTERNOON (default)
+private Integer studentCount;    // total students in the division
+private Integer rollNumberStart; // first roll number for the division
+private String classTeacher;     // name of the class teacher for this division
 
 public int getId() {
 return id;
@@ -98,5 +101,14 @@ public String getLabPreference() {
 public void setLabPreference(String labPreference) {
 	this.labPreference = labPreference;
 }
+
+public Integer getStudentCount() { return studentCount; }
+public void setStudentCount(Integer studentCount) { this.studentCount = studentCount; }
+
+public Integer getRollNumberStart() { return rollNumberStart; }
+public void setRollNumberStart(Integer rollNumberStart) { this.rollNumberStart = rollNumberStart; }
+
+public String getClassTeacher() { return classTeacher; }
+public void setClassTeacher(String classTeacher) { this.classTeacher = classTeacher; }
 
 }
