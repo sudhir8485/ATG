@@ -192,8 +192,8 @@ public class TimetableXlsxExportService {
     static final String DEF_TTC       = "PROF. R. A. NIKAM";
     static final String DEF_HOD       = "DR. A. A. KADAM";
     static final String DEF_PRINCIPAL = "DR. S. B. THAKARE";
-    static final String DEF_CLG_LOGO  = "/home/sudhir/Desktop/ATG/clglogo.png";
-    static final String DEF_OWN_LOGO  = "/home/sudhir/Desktop/ATG/ownerlogo.png";
+    static final String DEF_CLG_LOGO  = "";   // falls back to bundled classpath image
+    static final String DEF_OWN_LOGO  = "";   // falls back to bundled classpath image
 
     /* ═══════════════════════════ PUBLIC ENTRY ═══════════════════════════════ */
 
@@ -206,8 +206,8 @@ public class TimetableXlsxExportService {
         XSSFWorkbook wb = new XSSFWorkbook();
         Styles st = new Styles(wb);
 
-        byte[] clgBytes   = readLogo(nvl(cfg.getCollegeLogo(), DEF_CLG_LOGO));
-        byte[] ownerBytes = readLogo(nvl(cfg.getOwnerLogo(),   DEF_OWN_LOGO));
+        byte[] clgBytes   = readLogo(cfg.getCollegeLogo());
+        byte[] ownerBytes = readOwnerLogo(cfg.getOwnerLogo());
 
         /* Class sheets */
         for (String cls : CLASSES)
@@ -1211,8 +1211,31 @@ public class TimetableXlsxExportService {
         return all.stream().filter(t->cls.equals(t.getClassName())).collect(Collectors.toList());
     }
     private byte[] readLogo(String path) {
-        try { return Files.readAllBytes(Paths.get(path)); }
-        catch (Exception e) { return null; }
+        // Try user-supplied filesystem path first
+        if (path != null && !path.isBlank()) {
+            try {
+                java.nio.file.Path p = Paths.get(path);
+                if (java.nio.file.Files.exists(p)) return Files.readAllBytes(p);
+            } catch (Exception ignored) {}
+        }
+        // Fall back to bundled images in classpath (src/main/resources/static/images/)
+        boolean isOwner = path != null && path.toLowerCase().contains("owner");
+        String res = "/static/images/" + (isOwner ? "ownerlogo.png" : "clglogo.png");
+        try (var is = getClass().getResourceAsStream(res)) {
+            return is != null ? is.readAllBytes() : null;
+        } catch (Exception ignored) { return null; }
+    }
+
+    private byte[] readOwnerLogo(String path) {
+        if (path != null && !path.isBlank()) {
+            try {
+                java.nio.file.Path p = Paths.get(path);
+                if (java.nio.file.Files.exists(p)) return Files.readAllBytes(p);
+            } catch (Exception ignored) {}
+        }
+        try (var is = getClass().getResourceAsStream("/static/images/ownerlogo.png")) {
+            return is != null ? is.readAllBytes() : null;
+        } catch (Exception ignored) { return null; }
     }
     private boolean nb(String s) { return s!=null&&!s.isBlank(); }
     private String   s(String v)  { return v!=null?v:""; }

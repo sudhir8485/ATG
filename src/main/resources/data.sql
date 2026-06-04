@@ -31,6 +31,6 @@ SET
     tt_coordinator_name     = 'PROF. R. A. NIKAM',
     hod_signature_name      = 'DR. A. A. KADAM',
     principal_name          = 'DR. S. B. THAKARE',
-    college_logo            = '/home/sudhir/Desktop/ATG/clglogo.png',
-    owner_logo              = '/home/sudhir/Desktop/ATG/ownerlogo.png'
+    college_logo            = '',
+    owner_logo              = ''
 WHERE id = 1 AND institution_name IS NULL;

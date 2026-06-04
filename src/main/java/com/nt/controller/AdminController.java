@@ -1311,8 +1311,9 @@ public class AdminController {
 		if (s.getTtCoordinatorName()== null || s.getTtCoordinatorName().isBlank()) s.setTtCoordinatorName("PROF. R. A. NIKAM");
 		if (s.getHodSignatureName() == null || s.getHodSignatureName().isBlank()) s.setHodSignatureName("DR. A. A. KADAM");
 		if (s.getPrincipalName()    == null || s.getPrincipalName().isBlank())    s.setPrincipalName("DR. S. B. THAKARE");
-		if (s.getCollegeLogo()      == null || s.getCollegeLogo().isBlank())      s.setCollegeLogo("/home/sudhir/Desktop/ATG/clglogo.png");
-		if (s.getOwnerLogo()        == null || s.getOwnerLogo().isBlank())        s.setOwnerLogo("/home/sudhir/Desktop/ATG/ownerlogo.png");
+		// Leave logo paths blank — XLSX service falls back to bundled classpath images
+		if (s.getCollegeLogo() == null) s.setCollegeLogo("");
+		if (s.getOwnerLogo()   == null) s.setOwnerLogo("");
 
 		model.addAttribute("settings", s);
 		return "institution-settings";
@@ -1386,8 +1387,8 @@ public class AdminController {
 		String ext = origName.contains(".") ? origName.substring(origName.lastIndexOf('.')) : ".png";
 		String saveName = ("college".equals(logoType) ? "clglogo" : "ownerlogo") + ext;
 
-		// Save to the same directory as existing logos
-		Path uploadDir = Paths.get("/home/sudhir/Desktop/ATG");
+		// Save to ~/.atg/logos/ — works on any OS regardless of install path
+		Path uploadDir = Paths.get(System.getProperty("user.home"), ".atg", "logos");
 		Path dest = uploadDir.resolve(saveName);
 		try {
 			Files.createDirectories(uploadDir);
@@ -1410,21 +1411,32 @@ public class AdminController {
 		return "redirect:/institution-settings";
 	}
 
-	/** Serve a logo image directly from the filesystem path stored in settings. */
+	/** Serve a logo: filesystem path from settings first, then bundled classpath image. */
 	@GetMapping("/logo/{type}")
 	public ResponseEntity<byte[]> serveLogo(@PathVariable String type) {
 		AcademicSetting s = academicSettingRepo.findById(1).orElse(null);
 		String path = (s != null && "owner".equals(type)) ? s.getOwnerLogo()
 				    : (s != null ? s.getCollegeLogo() : null);
-		if (path == null || path.isBlank()) path = "/home/sudhir/Desktop/ATG/"
-				+ ("owner".equals(type) ? "ownerlogo.png" : "clglogo.png");
-		try {
-			byte[] bytes = Files.readAllBytes(Paths.get(path));
-			String ct = path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-			return ResponseEntity.ok().contentType(MediaType.parseMediaType(ct)).body(bytes);
-		} catch (IOException e) {
-			return ResponseEntity.notFound().build();
+		// Try user-uploaded filesystem path first
+		if (path != null && !path.isBlank()) {
+			try {
+				java.nio.file.Path p = Paths.get(path);
+				if (java.nio.file.Files.exists(p)) {
+					byte[] bytes = Files.readAllBytes(p);
+					String ct = path.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
+					return ResponseEntity.ok().contentType(MediaType.parseMediaType(ct)).body(bytes);
+				}
+			} catch (Exception ignored) {}
 		}
+		// Fall back to bundled classpath image
+		String resource = "/static/images/" + ("owner".equals(type) ? "ownerlogo.png" : "clglogo.png");
+		try (var is = getClass().getResourceAsStream(resource)) {
+			if (is != null) {
+				byte[] bytes = is.readAllBytes();
+				return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytes);
+			}
+		} catch (Exception ignored) {}
+		return ResponseEntity.notFound().build();
 	}
 
 	/*
