@@ -8,7 +8,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @Configuration
 @EnableWebSecurity
@@ -44,9 +44,8 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // passwords are stored as plain text today; keep behavior but make encoder explicit
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 }

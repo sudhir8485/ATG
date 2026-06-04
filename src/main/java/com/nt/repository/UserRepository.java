@@ -16,6 +16,7 @@ List<User> findByEmailAndPassword(String email,String password);
 User findByName(String name);
 
 User findByUsernameIgnoreCase(String username);
+User findByEmailIgnoreCase(String email);
 
 boolean existsByUsernameIgnoreCase(String username);
 
