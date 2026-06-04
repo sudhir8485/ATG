@@ -21,7 +21,7 @@ jobs:
 
       - name: Build fat JAR
         shell: bash
-        run: ./mvnw package -DskipTests
+        run: ./mvnw package -DskipTests -q
 
       - name: Create Windows installer
         shell: bash
@@ -29,18 +29,26 @@ jobs:
           mkdir -p dist
           jpackage \
             --input target \
-            --main-jar AutomatedTimetable-0.0.1-SNAPSHOT.jar \
+            --main-jar AutomatedTimetable-1.0.0.jar \
             --name "ATG" \
             --app-version "1.0.0" \
             --vendor "APCOER IT Dept" \
             --description "Automated Timetable Generator" \
+            --copyright "2025 APCOER" \
             --icon src/main/jpackage/atg-icon.ico \
             --type exe \
             --dest dist \
             --win-dir-chooser \
             --win-shortcut \
+            --win-shortcut-prompt \
             --win-menu \
-            --win-menu-group "ATG"
+            --win-menu-group "APCOER" \
+            --win-upgrade-uuid "c7a2f8e1-4b3d-4e9a-8f2c-1d5e6a7b8c9d" \
+            --java-options "-Dspring.profiles.active=prod" \
+            --java-options "-Xverify:none" \
+            --java-options "-XX:TieredStopAtLevel=1" \
+            --java-options "-Xshare:off" \
+            --java-options "-Xmx512m"
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
@@ -61,23 +69,31 @@ jobs:
           distribution: 'temurin'
 
       - name: Build fat JAR
-        run: ./mvnw package -DskipTests
+        run: ./mvnw package -DskipTests -q
 
       - name: Create Linux installer
         run: |
           mkdir -p dist
           jpackage \
             --input target \
-            --main-jar AutomatedTimetable-0.0.1-SNAPSHOT.jar \
-            --name "atg" \
+            --main-jar AutomatedTimetable-1.0.0.jar \
+            --name "ATG" \
             --app-version "1.0.0" \
             --vendor "APCOER IT Dept" \
-            --description "Automated Timetable Generator" \
+            --description "Automated Timetable Generator — APCOER IT Department" \
+            --copyright "2025 APCOER" \
             --icon src/main/jpackage/atg-icon.png \
             --type deb \
             --dest dist \
             --linux-shortcut \
-            --linux-app-category "Education"
+            --linux-app-category "Education" \
+            --linux-deb-maintainer "sudhirdhawade05@gmail.com" \
+            --java-options "-Dspring.profiles.active=prod" \
+            --java-options "-Xverify:none" \
+            --java-options "-XX:TieredStopAtLevel=1" \
+            --java-options "-Xshare:off" \
+            --java-options "-Xmx512m" \
+            --java-options "-Djava.awt.headless=false"
 
       - name: Upload Linux installer
         uses: actions/upload-artifact@v4
@@ -109,14 +125,23 @@ jobs:
           name: ATG ${{ github.ref_name }}
           body: |
             ## ATG — Automated Timetable Generator
+            **APCOER, Parvati, Pune — IT Department**
 
             ### Installation
-            - **Windows**: Download and run `ATG-1.0.0.exe`
-            - **Linux (Ubuntu/Debian)**: Download `atg_1.0.0_amd64.deb` and run `sudo dpkg -i atg_1.0.0_amd64.deb`
+            - **Windows**: Download `ATG-1.0.0.exe` and run the installer. No Java required — JRE is bundled.
+            - **Linux (Ubuntu/Debian)**: Download `atg_1.0.0_amd64.deb` and run:
+              ```
+              sudo dpkg -i atg_1.0.0_amd64.deb
+              ```
 
             ### First Run
-            The app opens automatically in your browser at `http://localhost:8080`
-            Login with your admin credentials.
+            The app starts a local server and opens automatically in your browser at **http://localhost:8765**
+
+            Login credentials:
+            - Username: `apcoer`  |  Password: `atg`  |  Role: `ADMIN`
+
+            ### Database
+            Data is stored at `~/.atg/atg.mv.db` (H2 embedded — no external database needed).
           files: |
             artifacts/windows/*.exe
             artifacts/linux/*.deb
