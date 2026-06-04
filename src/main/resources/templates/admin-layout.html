@@ -409,7 +409,16 @@ tr:hover td { background: #f9fafb; }
 			</a> <a href="/how-to-use"
 				th:classappend="${activePage}=='howto' ? 'active'"> <i
 				class="fas fa-book-open"></i> How to Use
-			</a> <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+			</a> <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout
+			</a>
+			<form action="/shutdown-server" method="post" style="margin:0"
+			      onsubmit="return confirm('Stop the ATG server? The browser tab will close.')">
+				<input type="hidden" th:name="${_csrf != null ? _csrf.parameterName : '_csrf'}" th:value="${_csrf != null ? _csrf.token : ''}"/>
+				<button type="submit" style="width:100%;background:none;border:none;cursor:pointer;padding:10px 14px;text-align:left;color:#f87171;font-size:inherit;display:flex;align-items:center;gap:8px;border-radius:8px;transition:background .2s"
+				        onmouseover="this.style.background='rgba(248,113,113,.15)'" onmouseout="this.style.background='none'">
+					<i class="fas fa-power-off"></i> Stop Server
+				</button>
+			</form>
 		</nav>
 	</aside>
 

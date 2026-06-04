@@ -2135,4 +2135,22 @@ public class AdminController {
 		}
 	}
 
+	@PostMapping("/shutdown-server")
+	public void shutdownServer(jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+		response.setContentType("text/html;charset=UTF-8");
+		response.getWriter().write(
+			"<html><head><title>ATG Stopped</title>" +
+			"<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f1f5f9;}" +
+			".box{text-align:center;padding:2rem;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);}" +
+			"h2{color:#4f46e5}p{color:#64748b}</style></head>" +
+			"<body><div class='box'><h2>ATG Server Stopped</h2>" +
+			"<p>You can close this tab. To restart, launch the ATG application again.</p></div></body></html>"
+		);
+		response.flushBuffer();
+		new Thread(() -> {
+			try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+			System.exit(0);
+		}).start();
+	}
+
 }

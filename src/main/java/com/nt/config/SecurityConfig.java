@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 
@@ -19,9 +20,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/login", "/logout",
-                                "/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**",
-                                "/h2-console/**").permitAll()
+                        // RegexRequestMatcher bypasses MVC-aware matching so the H2 console servlet is permitted
+                        .requestMatchers(new RegexRequestMatcher("/h2-console.*", null)).permitAll()
+                        .requestMatchers("/", "/login", "/logout", "/shutdown-server",
+                                "/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**").permitAll()
                         .requestMatchers("/admin/**", "/add-**", "/save-**", "/update-**", "/delete-**",
                                 "/edit-**", "/assign-subjects/**", "/assign-batch-faculty/**",
                                 "/assign-theory-faculty/**", "/auto-generate/**", "/clear-timetable").hasRole("ADMIN")

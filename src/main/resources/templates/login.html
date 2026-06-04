@@ -533,6 +533,18 @@
     </div>
   </div>
 
+  <!-- Stop Server button — fixed bottom-right corner -->
+  <form action="/shutdown-server" method="post"
+        onsubmit="return confirm('Stop the ATG server?\nYou will need to relaunch the application to use it again.')"
+        style="position:fixed;bottom:20px;right:20px;z-index:9999">
+    <button type="submit"
+            style="display:flex;align-items:center;gap:8px;padding:10px 18px;background:#fff;color:#ef4444;border:1.5px solid #fca5a5;border-radius:50px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12);transition:all .2s"
+            onmouseover="this.style.background='#fef2f2';this.style.borderColor='#ef4444'"
+            onmouseout="this.style.background='#fff';this.style.borderColor='#fca5a5'">
+      <i class="fas fa-power-off"></i> Stop Server
+    </button>
+  </form>
+
   <script>
     function selectRole(tab) {
       document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
