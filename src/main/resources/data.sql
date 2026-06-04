@@ -1,6 +1,10 @@
 -- Migrate old "Lecture" classroom type to "Classroom"
 UPDATE classroom SET type = 'Classroom' WHERE type = 'Lecture';
 
+-- If any password was accidentally BCrypt-hashed (e.g. from a dev experiment),
+-- reset it to plain text = the username so logins are never locked out.
+UPDATE users SET password = username WHERE password LIKE '$2a$%' OR password LIKE '$2b$%';
+
 -- Seed only the admin account on first run.
 -- All other data (departments, divisions, subjects, faculty, classrooms, timeslots)
 -- is entered through the admin UI.
