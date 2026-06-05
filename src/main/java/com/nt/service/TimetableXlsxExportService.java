@@ -81,7 +81,7 @@ public class TimetableXlsxExportService {
     static final double[] COL_WIDTHS = {
         0,     // A  hidden spacer
         0,     // B  hidden spacer
-        12.0,  // C  Day
+        18.0,  // C  Day
         10.0,  // D  Class
         18.0,  // E  09-10
         22.0,  // F  10-11
@@ -99,7 +99,7 @@ public class TimetableXlsxExportService {
     static final double[] CLASS_COL_WIDTHS = {
         0,     // A  hidden spacer
         0,     // B  hidden spacer
-        12.0,  // C  Day/Time
+        18.0,  // C  Day/Time
         8.0,   // D  Class (hidden on individual sheets)
         20.0,  // E  09-10
         24.0,  // F  10-11
@@ -117,7 +117,7 @@ public class TimetableXlsxExportService {
     static final double[] FAC_COL_WIDTHS = {
         0,     // A  hidden spacer
         0,     // B  hidden spacer
-        12.0,  // C  Day
+        18.0,  // C  Day
         18.0,  // D  09-10
         18.0,  // E  10-11
         8.0,   // F  SHORT BREAK
@@ -134,7 +134,7 @@ public class TimetableXlsxExportService {
     static final double[] LAB_COL_WIDTHS = {
         0,     // A  hidden spacer
         0,     // B  hidden spacer
-        12.0,  // C  Day
+        18.0,  // C  Day
         18.0,  // D  09-10
         18.0,  // E  10-11
         8.0,   // F  SHORT BREAK
@@ -341,13 +341,16 @@ public class TimetableXlsxExportService {
         // Row 0 — bordered institution name (logo overlaid as floating image)
         XSSFRow r0 = row(sh, 0, HDR_HT[0]);
         fillRow(r0, st.emptyCell, CC_NCOLS + 1);
+        clearLogoArea(r0, st);
         cell(r0, 3, st.hdrBorderC).setCellValue(inst);
+        merge(sh, 0, 2, 2,  2);      // C (left logo col, rows 0-2) — single bordered box
         merge(sh, 0, 0, 3, 11);      // D:L — institution name
         merge(sh, 0, 2, 12, 12);     // M (right logo col, spans rows 0-2)
 
         // Row 1 — Record No. | DoI (bordered)
         XSSFRow r1 = row(sh, 1, HDR_HT[1]);
         fillRow(r1, st.emptyCell, CC_NCOLS + 1);
+        clearLogoArea(r1, st);
         cell(r1, 3, st.hdrBorderL).setCellValue("Record No.: " + nvl(cfg.getRecordNoMaster(), DEF_REC_M));
         cell(r1, 8, st.hdrBorderL).setCellValue("DoI: " + nvl(cfg.getDoiDate(), DEF_DOI));
         merge(sh, 1, 1, 3, 7); merge(sh, 1, 1, 8, 11);
@@ -355,6 +358,7 @@ public class TimetableXlsxExportService {
         // Row 2 — Revision (bordered)
         XSSFRow r2 = row(sh, 2, HDR_HT[2]);
         fillRow(r2, st.emptyCell, CC_NCOLS + 1);
+        clearLogoArea(r2, st);
         cell(r2, 3, st.hdrBorderL).setCellValue("Revision: " + nvl(cfg.getRevisionNumber(), DEF_REV));
         merge(sh, 2, 2, 3, 11);
 
@@ -396,13 +400,16 @@ public class TimetableXlsxExportService {
         // Row 0 — bordered institution name (logo overlaid)
         XSSFRow r0 = row(sh, 0, CLASS_HDR_HT[0]);
         fillRow(r0, st.emptyCell, CC_NCOLS + 1);
+        clearLogoArea(r0, st);
         cell(r0, 3, st.hdrBorderC).setCellValue(inst);
+        merge(sh, 0, 2, 2,  2);     // C (left logo col, rows 0-2) — single bordered box
         merge(sh, 0, 0, 3, 11);     // D:L — institution name
         merge(sh, 0, 2, 12, 12);    // M (right logo col, rows 0-2)
 
         // Row 1 — Record No. | DoI (bordered)
         XSSFRow r1 = row(sh, 1, CLASS_HDR_HT[1]);
         fillRow(r1, st.emptyCell, CC_NCOLS + 1);
+        clearLogoArea(r1, st);
         cell(r1, 3, st.hdrBorderL).setCellValue("Record No.: " + nvl(cfg.getRecordNoClass(), DEF_REC_C));
         cell(r1, 8, st.hdrBorderL).setCellValue("DoI: " + nvl(cfg.getDoiDate(), DEF_DOI));
         merge(sh, 1, 1, 3, 7); merge(sh, 1, 1, 8, 11);
@@ -410,6 +417,7 @@ public class TimetableXlsxExportService {
         // Row 2 — Revision (bordered)
         XSSFRow r2 = row(sh, 2, CLASS_HDR_HT[2]);
         fillRow(r2, st.emptyCell, CC_NCOLS + 1);
+        clearLogoArea(r2, st);
         cell(r2, 3, st.hdrBorderL).setCellValue("Revision: " + nvl(cfg.getRevisionNumber(), DEF_REV));
         merge(sh, 2, 2, 3, 11);
 
@@ -426,10 +434,13 @@ public class TimetableXlsxExportService {
         cell(r4, 12, st.ay24b).setCellValue("Semester: " + sem);
         merge(sh, 4, 4, 2, 6); merge(sh, 4, 4, 7, 11);
 
-        // Row 5 — W.E.F.
+        // Row 5 — W.E.F. (left) + Division name (right)
+        String divName = cls.replace("(IT)", "-IT");
         XSSFRow r5 = row(sh, 5, CLASS_HDR_HT[5]);
         cell(r5, 2, st.wef26b).setCellValue("W. E. F.: " + wef);
-        merge(sh, 5, 5, 2, 12);
+        merge(sh, 5, 5, 2, 7);
+        cell(r5, 8, st.wef26b).setCellValue("Class: " + divName);
+        merge(sh, 5, 5, 8, 12);
 
         // Row 6 — column headers
         colHeaderRow(sh, 6, CLASS_HDR_HT[6], st, CC_SCOL, CC_BRK, CC_LNG, CC_NCOLS, true);
@@ -453,13 +464,16 @@ public class TimetableXlsxExportService {
         // Row 0 — bordered institution name (logos overlaid as floating images)
         XSSFRow r0 = row(sh, 0, FAC_HDR_HT[0]);
         fillRow(r0, st.emptyCell, FC_NCOLS);
+        clearLogoArea(r0, st);
         cell(r0, 3, st.hdrBorderC).setCellValue(inst);
+        merge(sh, 0, 2, 2,  2);     // C (left logo col, rows 0-2) — single bordered box
         merge(sh, 0, 0, 3, 10);     // D:K — institution name
         merge(sh, 0, 2, 11, 11);    // L (right logo col, rows 0-2)
 
         // Row 1 — Record No. | DoI (bordered)
         XSSFRow r1 = row(sh, 1, FAC_HDR_HT[1]);
         fillRow(r1, st.emptyCell, FC_NCOLS);
+        clearLogoArea(r1, st);
         cell(r1, 3, st.hdrBorderL).setCellValue(recNo);
         cell(r1, 7, st.hdrBorderL).setCellValue("DoI: " + nvl(cfg.getDoiDate(), DEF_DOI));
         merge(sh, 1, 1, 3, 6); merge(sh, 1, 1, 7, 10);
@@ -467,6 +481,7 @@ public class TimetableXlsxExportService {
         // Row 2 — Revision (bordered)
         XSSFRow r2 = row(sh, 2, FAC_HDR_HT[2]);
         fillRow(r2, st.emptyCell, FC_NCOLS);
+        clearLogoArea(r2, st);
         cell(r2, 3, st.hdrBorderL).setCellValue("Revision: " + nvl(cfg.getRevisionNumber(), DEF_REV));
         merge(sh, 2, 2, 3, 10);
 
@@ -863,8 +878,6 @@ public class TimetableXlsxExportService {
             ctLine.setCellStyle(st.footSm);
             ctLine.setCellValue(classTeacher);
             for (int c = 4; c <= 11; c++) ctd.createCell(c).setCellStyle(st.footSm);
-        } else {
-            for (int c = 3; c <= 11; c++) ctd.createCell(c).setCellStyle(st.signLine);
         }
         merge(sh, r, r, 3, 11);
         r++;
@@ -1253,6 +1266,16 @@ public class TimetableXlsxExportService {
         sh.addMergedRegion(new CellRangeAddress(r1, r2, c1, c2));
     }
 
+    /** Clear hidden spacer cols (0-1) so they don't add borders in the left margin. Col 2 keeps
+     *  its emptyCell style — caller must merge col 2 rows 0-2 to form a single bordered box. */
+    private void clearLogoArea(XSSFRow row, Styles st) {
+        for (int c = 0; c <= 1; c++) {
+            XSSFCell lc = row.getCell(c);
+            if (lc == null) lc = row.createCell(c);
+            lc.setCellStyle(st.noHdrCell);
+        }
+    }
+
     /** Fill every cell in [0..ncols) with the given style (ensures no unstyled/red cells). */
     private void fillRow(XSSFRow row, XSSFCellStyle style, int ncols) {
         for (int c = 0; c < ncols; c++) {
@@ -1305,6 +1328,8 @@ public class TimetableXlsxExportService {
         /* Footer */
         final XSSFCellStyle footSm, footHdr, footSmC, footSmB, signLine;
         final XSSFCellStyle titleBarCell, hdrBorderL, hdrBorderC;
+        /* Logo area — white fill, no borders (so row dividers don't bleed through logo image) */
+        final XSSFCellStyle noHdrCell;
         /* Sub-tables (faculty load / class subject-staff / lab occupancy) */
         final XSSFCellStyle tblHdrCell, tblDataCell, tblTotCell;
 
@@ -1365,6 +1390,7 @@ public class TimetableXlsxExportService {
             titleBarCell = bordered(wb,0xA0,0xA0,0xA0, f11b, CENTER, false, true, true, true, true);
             hdrBorderL   = bordered(wb,255,255,255,     f9,   LEFT,   false, true, true, true, true);
             hdrBorderC   = bordered(wb,255,255,255,     f11b, CENTER, true,  true, true, true, true);
+            noHdrCell    = bordered(wb,255,255,255,     f9,   CENTER, false, false,false,false,false);
 
             /* ── Sub-table cells (thin borders, white fill) ── */
             tblHdrCell  = bordered(wb,255,255,255, f11b, CENTER, true,  true,true,true,true);

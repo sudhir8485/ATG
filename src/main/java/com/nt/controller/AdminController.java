@@ -1336,8 +1336,6 @@ public class AdminController {
 			@RequestParam(required = false) String ttCoordinatorName,
 			@RequestParam(required = false) String hodSignatureName,
 			@RequestParam(required = false) String principalName,
-			@RequestParam(required = false) String collegeLogo,
-			@RequestParam(required = false) String ownerLogo,
 			RedirectAttributes redirect) {
 
 		AcademicSetting s = academicSettingRepo.findById(1).orElseGet(() -> {
@@ -1346,7 +1344,8 @@ public class AdminController {
 			return def;
 		});
 
-		// Preserve workingDays — managed separately by the timeslot page
+		// Logo paths are managed exclusively by /upload-logo — do NOT touch them here,
+		// otherwise every "Save" click wipes out the uploaded logo path.
 		s.setInstitutionName(institutionName);
 		s.setInstitutionNameShort(institutionNameShort);
 		s.setDepartmentName(departmentName);
@@ -1362,8 +1361,6 @@ public class AdminController {
 		s.setTtCoordinatorName(ttCoordinatorName);
 		s.setHodSignatureName(hodSignatureName);
 		s.setPrincipalName(principalName);
-		s.setCollegeLogo(collegeLogo);
-		s.setOwnerLogo(ownerLogo);
 		academicSettingRepo.save(s);
 
 		redirect.addFlashAttribute("saved", true);

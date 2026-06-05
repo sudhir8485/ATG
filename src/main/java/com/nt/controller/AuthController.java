@@ -17,7 +17,7 @@ public class AuthController {
 
     @Autowired UserRepository repo;
 
-    @GetMapping("/")
+    @GetMapping({"/", "/login"})
     public String loginPage() {
         return "login";
     }
@@ -61,6 +61,6 @@ public class AuthController {
             }
         }
 
-        return "login";
+        return "redirect:/login?error";
     }
 }

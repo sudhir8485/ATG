@@ -449,7 +449,7 @@
             <li><a href="#sec8"  class="nav-link"><span class="nav-num">8</span> Generate</a></li>
             <li><a href="#sec9"  class="nav-link"><span class="nav-num">9</span> Institution Settings</a></li>
             <li><a href="#sec10" class="nav-link"><span class="nav-num">10</span> View &amp; Export</a></li>
-            <li><a href="#sec12" class="nav-link"><span class="nav-num">11</span> Troubleshooting</a></li>
+            <li><a href="#sec11" class="nav-link"><span class="nav-num">11</span> Troubleshooting</a></li>
         </ul>
         <div class="ht-nav-progress">
             <span>Reading progress</span>
@@ -474,7 +474,8 @@
                 <div class="ht-flow-item"><a class="ht-flow-box" href="#sec7">7 · Assign</a><span class="ht-flow-arr">›</span></div>
                 <div class="ht-flow-item"><a class="ht-flow-box" href="#sec8">8 · Generate</a><span class="ht-flow-arr">›</span></div>
                 <div class="ht-flow-item"><a class="ht-flow-box" href="#sec9">9 · Settings</a><span class="ht-flow-arr">›</span></div>
-                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec10">10 · Export</a></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec10">10 · Export</a><span class="ht-flow-arr">›</span></div>
+                <div class="ht-flow-item"><a class="ht-flow-box" href="#sec11">11 · Troubleshoot</a></div>
             </div>
         </div>
 
@@ -506,7 +507,7 @@
                                 <tbody>
                                     <tr><td><strong>Department Name</strong></td><td>Information Technology</td><td>Full official name</td></tr>
                                     <tr><td><strong>Department Code</strong></td><td>IT</td><td>Short code used everywhere in the app</td></tr>
-                                    <tr><td><strong>HOD</strong></td><td>(set after adding HOD)</td><td>Can be updated after Step 10</td></tr>
+                                    <tr><td><strong>HOD</strong></td><td>(set after adding HOD)</td><td>Can be assigned after creating HOD account via <a href="/add-hod" style="color:#4f46e5;font-weight:700;">Add HOD</a> in the sidebar</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -608,7 +609,7 @@
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot">2</div></div>
                         <div class="ht-step-body">
-                            <h4>Recommended rooms for APCOER IT Dept</h4>
+                            <h4>Example room setup (IT Dept)</h4>
                             <table class="ft">
                                 <thead><tr><th>Room</th><th>Type</th><th>Used for</th></tr></thead>
                                 <tbody>
@@ -890,7 +891,7 @@
                                 <tbody>
                                     <tr><td>Could not place [subject] (lecture N/X)</td><td>No free slot — faculty conflict or room conflict</td><td>Check faculty load; add more lecture rooms</td></tr>
                                     <tr><td>Lab rotation slot N/N could not be placed</td><td>All day-window combinations occupied or conflict</td><td>Review batch-faculty assignments in Step 7</td></tr>
-                                    <tr><td>Could not place practical block</td><td>All windows on all days occupied</td><td>Pin session via Special Slots (Step 8)</td></tr>
+                                    <tr><td>Could not place practical block</td><td>All windows on all days occupied</td><td>Reduce practical hours for that subject, or check Lab Time Preference in Step 2</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -930,7 +931,7 @@
                         <div class="ht-step-left"><div class="ht-step-dot">1</div></div>
                         <div class="ht-step-body">
                             <h4>Go to <a href="/institution-settings" style="color:#ea580c;font-weight:700;">/institution-settings</a></h4>
-                            <p>All values are pre-filled with APCOER defaults. Change only what needs updating each semester.</p>
+                            <p>All values are pre-filled with defaults. Change only what needs updating each semester.</p>
                             <table class="ft">
                                 <thead><tr><th>Section</th><th>Fields</th><th>Where it appears</th></tr></thead>
                                 <tbody>
@@ -1023,8 +1024,8 @@
             </div>
         </div>
 
-        <!-- ─── SECTION 12 — TROUBLESHOOTING ──────────────────── -->
-        <div class="ht-sec theme-sky open" id="sec12">
+        <!-- ─── SECTION 11 — TROUBLESHOOTING ──────────────────── -->
+        <div class="ht-sec theme-sky open" id="sec11">
             <div class="ht-sec-hd" onclick="toggleSec(this)">
                 <div class="ht-sec-icon"><i class="fas fa-tools"></i></div>
                 <div class="ht-sec-hd-text">
@@ -1063,8 +1064,8 @@
                     <div class="ht-step">
                         <div class="ht-step-left"><div class="ht-step-dot" style="background:#dc2626;">!</div></div>
                         <div class="ht-step-body">
-                            <h4>XLSX type shows as "Lecture" in Classrooms list</h4>
-                            <p>Old data may have been saved as "Lecture" type before the standardisation. The app auto-migrates these to "Classroom" on each restart. If you see "—" instead of a type badge in the Classrooms list, go to <a href="/add-classroom" style="color:#0284c7;font-weight:700;">Classrooms</a>, edit the room, and re-save it as <strong>Classroom</strong>.</p>
+                            <h4>Login error — credentials not working</h4>
+                            <p>Make sure you select the correct role tab (Admin / HOD / Faculty) before entering credentials. Each role has separate login credentials. Faculty username and password are set when adding the faculty record.</p>
                         </div>
                     </div>
                     <div class="ht-step">
@@ -1095,7 +1096,7 @@
 
         <!-- Footer -->
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-            <span style="font-size:13px;color:#64748b;"><i class="fas fa-info-circle" style="color:#4f46e5;"></i> &nbsp;<strong>APCOER IT Dept</strong> — Automated Timetable Generator &nbsp;|&nbsp; AY 2025–26 Sem II</span>
+            <span style="font-size:13px;color:#64748b;"><i class="fas fa-info-circle" style="color:#4f46e5;"></i> &nbsp;<strong>Automated Timetable Generator</strong> &nbsp;|&nbsp; v1.0</span>
             <a href="/admin" style="font-size:12px;font-weight:700;color:#4f46e5;text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
         </div>
 
