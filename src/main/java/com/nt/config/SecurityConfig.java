@@ -1,6 +1,5 @@
 package com.nt.config;
 
-import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -21,9 +20,8 @@ public class SecurityConfig {
                 // Allow same-origin frames — required for H2 console which uses iframes
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
-                        // H2 console — PathRequest.toH2Console() is the Spring Boot recommended
-                        // way; it correctly matches all sub-paths the H2 servlet uses internally
-                        .requestMatchers(PathRequest.toH2Console()).permitAll()
+                        // H2 console — permit all paths under /h2-console
+                        .requestMatchers("/h2-console", "/h2-console/**").permitAll()
                         .requestMatchers("/", "/login", "/logout", "/shutdown-server",
                                 "/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**").permitAll()
                         .requestMatchers("/admin/**", "/add-**", "/save-**", "/update-**", "/delete-**",
