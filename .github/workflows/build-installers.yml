@@ -32,9 +32,9 @@ jobs:
           mkdir -p dist
           jpackage \
             --input target \
-            --main-jar AutomatedTimetable-1.0.0.jar \
+            --main-jar AutomatedTimetable-2.0.0.jar \
             --name "ATG" \
-            --app-version "1.0.0" \
+            --app-version "2.0.0" \
             --vendor "APCOER IT Dept" \
             --description "Automated Timetable Generator" \
             --copyright "2025 APCOER" \
@@ -79,9 +79,9 @@ jobs:
           mkdir -p dist
           jpackage \
             --input target \
-            --main-jar AutomatedTimetable-1.0.0.jar \
+            --main-jar AutomatedTimetable-2.0.0.jar \
             --name "ATG" \
-            --app-version "1.0.0" \
+            --app-version "2.0.0" \
             --vendor "APCOER IT Dept" \
             --description "Automated Timetable Generator — APCOER IT Department" \
             --copyright "2025 APCOER" \
@@ -131,10 +131,10 @@ jobs:
             **APCOER, Parvati, Pune — IT Department**
 
             ### Installation
-            - **Windows**: Download `ATG-1.0.0.exe` and run the installer. No Java required — JRE is bundled.
-            - **Linux (Ubuntu/Debian)**: Download `atg_1.0.0_amd64.deb` and run:
+            - **Windows**: Download `ATG-2.0.0.exe` and run the installer. No Java required — JRE is bundled.
+            - **Linux (Ubuntu/Debian)**: Download `atg_2.0.0_amd64.deb` and run:
               ```
-              sudo dpkg -i atg_1.0.0_amd64.deb
+              sudo dpkg -i atg_2.0.0_amd64.deb
               ```
 
             ### First Run
@@ -142,6 +142,12 @@ jobs:
 
             Login credentials:
             - Username: `apcoer`  |  Password: `atg`  |  Role: `ADMIN`
+
+            ### H2 Database Console
+            Access the database directly at **http://localhost:8765/h2-console**
+            - JDBC URL: `jdbc:h2:file:~/.atg/atg`
+            - Username: `atg-data`
+            - Password: `atgadmin`
 
             ### Database
             Data is stored at `~/.atg/atg.mv.db` (H2 embedded — no external database needed).
