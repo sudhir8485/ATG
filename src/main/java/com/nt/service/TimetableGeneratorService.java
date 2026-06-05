@@ -55,11 +55,10 @@ public class TimetableGeneratorService {
 
     public GenerationResult generate() {
         GenerationResult result = new GenerationResult();
-        result.existingCount = timetableRepo.findByDeletedFalse().size();
 
         // Sort by id for deterministic processing order — PostgreSQL heap order can change
         // after UPDATEs, causing subjects to interleave unpredictably across semesters
-        List<Subject> subjects = subjectRepo.findByDeletedFalse().stream()
+        List<Subject> allSubjects = subjectRepo.findByDeletedFalse().stream()
                 .sorted(Comparator.comparingInt(Subject::getId))
                 .collect(Collectors.toList());
         List<Timeslot> slots = getEffectiveSlots();
@@ -68,7 +67,7 @@ public class TimetableGeneratorService {
         List<Classroom> rooms = new ArrayList<>(roomRepo.findAll());
         // Sort divisions: MORNING first → claims Window A before AFTERNOON overflow can steal faculty.
         // Order: MORNING (BE) → MIDDAY (TE) → AFTERNOON (SE) → others.
-        List<Division> divisions = divisionRepo.findAll().stream()
+        List<Division> allDivisions = divisionRepo.findAll().stream()
                 .sorted(Comparator.comparingInt(d -> {
                     String pref = d.getLabPreference();
                     if (pref == null) return 99;
@@ -101,44 +100,100 @@ public class TimetableGeneratorService {
             result.addMessage("No classrooms available. Add at least one classroom to generate timetable.");
             return result;
         }
-        if (subjects.isEmpty()) {
+        if (allSubjects.isEmpty()) {
             result.addMessage("No subjects found to schedule.");
             return result;
         }
 
-        // Build clash sets from existing timetable
+        List<Timetable> existingRows = timetableRepo.findByDeletedFalse();
+        result.existingCount = existingRows.size();
+
+        Map<String, User> facultyByName = new HashMap<>();
+        for (User u : allFaculty) {
+            if (u.getName() != null && !u.getName().isBlank()) {
+                String key = safeLower(u.getName());
+                if (!facultyByName.containsKey(key)) facultyByName.put(key, u);
+            }
+        }
+
+        // Split divisions and subjects by semester parity so that odd-semester
+        // faculty conflicts are NOT checked against even-semester slots and vice versa.
+        // Even (0): sem 2,4,6,8 — Term II (Jan–May).  Odd (1): sem 1,3,5,7 — Term I (Jul–Nov).
+        List<Division> evenDivs = allDivisions.stream()
+                .filter(d -> semParity(d) == 0).collect(Collectors.toList());
+        List<Division> oddDivs  = allDivisions.stream()
+                .filter(d -> semParity(d) == 1).collect(Collectors.toList());
+        List<Subject> evenSubjs = allSubjects.stream()
+                .filter(s -> subjectParity(s) == 0).collect(Collectors.toList());
+        List<Subject> oddSubjs  = allSubjects.stream()
+                .filter(s -> subjectParity(s) == 1).collect(Collectors.toList());
+
+        // Filter existing rows by parity to avoid polluting cross-term teacherBusy/roomBusy
+        // Fallback className sets for rows that pre-date the semesterNumber column (null).
+        Set<String> evenClassNames = evenDivs.stream()
+                .map(d -> classNameForDiv(d).toLowerCase()).filter(s -> !s.isBlank())
+                .collect(Collectors.toCollection(java.util.HashSet::new));
+        Set<String> oddClassNames  = oddDivs.stream()
+                .map(d -> classNameForDiv(d).toLowerCase()).filter(s -> !s.isBlank())
+                .collect(Collectors.toCollection(java.util.HashSet::new));
+        // Prefer semesterNumber (unambiguous); fall back to className for legacy rows.
+        List<Timetable> evenExisting = existingRows.stream()
+                .filter(t -> t.getSemesterNumber() != null
+                        ? t.getSemesterNumber() % 2 == 0
+                        : evenClassNames.contains(safeLower(t.getClassName())))
+                .collect(Collectors.toList());
+        List<Timetable> oddExisting  = existingRows.stream()
+                .filter(t -> t.getSemesterNumber() != null
+                        ? t.getSemesterNumber() % 2 != 0
+                        : oddClassNames.contains(safeLower(t.getClassName())))
+                .collect(Collectors.toList());
+
+        List<Timetable> generated = new ArrayList<>();
+        if (!evenDivs.isEmpty() || !evenSubjs.isEmpty()) {
+            generated.addAll(runGenerationGroup(evenSubjs, evenDivs, slots, workingDays, rooms,
+                    allFaculty, facultyByName, evenExisting, result));
+        }
+        if (!oddDivs.isEmpty() || !oddSubjs.isEmpty()) {
+            generated.addAll(runGenerationGroup(oddSubjs, oddDivs, slots, workingDays, rooms,
+                    allFaculty, facultyByName, oddExisting, result));
+        }
+
+        if (!generated.isEmpty()) timetableRepo.saveAll(generated);
+        result.generated = generated;
+        return result;
+    }
+
+    // Each parity group (odd/even semesters) runs with its own isolated conflict-tracking sets
+    // so a faculty teaching in sem 3 (odd, Term I) is never falsely blocked for sem 4 (even, Term II).
+    private List<Timetable> runGenerationGroup(
+            List<Subject> subjects,
+            List<Division> divisions,
+            List<Timeslot> slots,
+            List<String> workingDays,
+            List<Classroom> rooms,
+            List<User> allFaculty,
+            Map<String, User> facultyByName,
+            List<Timetable> existingRows,
+            GenerationResult result) {
+
         Set<String> teacherBusy = new HashSet<>();
         Set<String> roomBusy = new HashSet<>();
         Set<String> classBusy = new HashSet<>();
         Set<String> subjectDayBusy = new HashSet<>();
-        
-        Map<String, Integer> facultyWeekCount = new HashMap<>(); // name -> total per week
-        Map<String, Integer> facultyDayCount = new HashMap<>();  // key(name,day) -> per day
-        Map<String, User> facultyByName = new HashMap<>();
+        Map<String, Integer> facultyWeekCount = new HashMap<>();
+        Map<String, Integer> facultyDayCount  = new HashMap<>();
 
-        for(User u : allFaculty){
-
-            if(u.getName() != null && !u.getName().isBlank()){
-
-                String key = safeLower(u.getName());
-
-                if(!facultyByName.containsKey(key)){
-                    facultyByName.put(key, u);
-                }
-            }
-        }
-
-        for (Timetable t : timetableRepo.findByDeletedFalse()) {
+        for (Timetable t : existingRows) {
             String slot = safeSlot(t.getTimeSlot());
-            String day = safeLower(t.getDay());
+            String day  = safeLower(t.getDay());
             teacherBusy.add(key(day, slot, safeLower(t.getFaculty())));
             roomBusy.add(key(day, slot, safeLower(t.getRoom())));
             classBusy.add(key(day, slot, safeLower(t.getClassName()), safeLower(t.getDivision())));
             subjectDayBusy.add(key(day, safeLower(t.getClassName()), safeLower(t.getDivision()), safeLower(t.getSubject())));
-            if(t.getFaculty()!=null){
+            if (t.getFaculty() != null) {
                 String facKey = safeLower(t.getFaculty());
-                facultyWeekCount.put(facKey, facultyWeekCount.getOrDefault(facKey,0)+1);
-                facultyDayCount.put(key(facKey, day), facultyDayCount.getOrDefault(key(facKey, day),0)+1);
+                facultyWeekCount.put(facKey, facultyWeekCount.getOrDefault(facKey, 0) + 1);
+                facultyDayCount.put(key(facKey, day), facultyDayCount.getOrDefault(key(facKey, day), 0) + 1);
             }
         }
 
@@ -230,10 +285,25 @@ public class TimetableGeneratorService {
             divLabs.forEach(s -> rotationPlaced.add(s.getId() + "_" + division.getId()));
         }
 
-        // Sort theory subjects by lecture hours DESC so high-frequency subjects (e.g. ISM=4, EL5=6)
-        // are placed first and can spread across multiple days before lower-frequency ones consume slots.
+        // Pre-compute which subject names have at least one faculty assigned.
+        // Uses already-loaded allFaculty list — no extra DB query needed.
+        Set<String> facultyHandledNames = allFaculty.stream()
+                .filter(u -> u.getSubjectsHandled() != null && !u.getSubjectsHandled().isBlank())
+                .flatMap(u -> Arrays.stream(u.getSubjectsHandled().split(",")))
+                .map(s -> safeLower(s.trim()))
+                .collect(Collectors.toSet());
+
+        // Sort: faculty-assigned subjects first (they are more constrained — fewer valid slots),
+        // then no-faculty subjects fill the remaining gaps.
+        // Within each group, higher lecture-hour subjects come first (existing behaviour).
         List<Subject> theoryOrderedSubjects = subjects.stream()
-                .sorted(Comparator.comparingInt((Subject s) -> resolveLectureHours(s)).reversed())
+                .sorted(Comparator
+                        .<Subject, Integer>comparing(s -> {
+                            boolean hasFac = (s.getFaculty() != null && !s.getFaculty().isBlank())
+                                    || facultyHandledNames.contains(safeLower(s.getName()));
+                            return hasFac ? 0 : 1;
+                        })
+                        .thenComparingInt((Subject s) -> -resolveLectureHours(s)))
                 .collect(Collectors.toList());
 
         for (Subject subject : theoryOrderedSubjects) {
@@ -320,11 +390,10 @@ public class TimetableGeneratorService {
                     }
                 }
 
-                // Use natural slot order (earliest-first); labs are already placed so
-                // classBusy prevents double-booking — no time-window bias needed.
                 List<Timeslot> lectureSlots = slots.stream()
                         .filter(ts -> !ts.isBreak())
                         .collect(Collectors.toList());
+                Collections.shuffle(lectureSlots); // randomise slot preference per subject for fair first-lecture distribution
                 String className = deriveClassName(subject, division);
                 String divisionName = division != null ? division.getName() : "";
                 for (int i = 0; i < lectureSessions; i++) {
@@ -356,16 +425,39 @@ public class TimetableGeneratorService {
                     }
                 }
             }
-        
+
         }
 
-        if (!generated.isEmpty()) {
-            timetableRepo.saveAll(generated);
-        }
-        result.generated = generated;
-        return result;
+        return generated;
     }
-    
+
+    private int semParity(Division d) {
+        Integer sem = d.getSemesterNumber();
+        return (sem != null && sem % 2 != 0) ? 1 : 0; // 1=odd term, 0=even term
+    }
+
+    private int subjectParity(Subject s) {
+        Integer sem = s.getSemester();
+        return (sem != null && sem % 2 != 0) ? 1 : 0;
+    }
+
+    // Resolves the semester number for a timetable row being created.
+    // Division is the authoritative source; subject is a fallback if division has no number.
+    private Integer resolveRowSem(Subject subject, Division division) {
+        if (division != null && division.getSemesterNumber() != null) return division.getSemesterNumber();
+        if (subject != null) return subject.getSemester();
+        return null;
+    }
+
+    private String classNameForDiv(Division d) {
+        String year = d.getYear() != null ? d.getYear().trim() : "";
+        String dept = d.getDepartment() != null ? d.getDepartment().trim() : "";
+        String deptCode = shortDeptCode(dept);
+        String shortYear = toShortYear(year, d.getSemesterNumber());
+        if (!shortYear.isEmpty() && !deptCode.isEmpty()) return shortYear + "(" + deptCode + ")";
+        if (!shortYear.isEmpty()) return shortYear;
+        return year;
+    }
 
     /**
      * Hard-pins a subject at an exact day + slot identified by start time (minutes since midnight).
@@ -426,6 +518,7 @@ public class TimetableGeneratorService {
         t.setRoom(room.getRoom());
         t.setLectureType(sessionType);
         t.setTimeSlot(slotLabel);
+        t.setSemesterNumber(resolveRowSem(subject, division));
         t.setStatus("Pending");
 
         if (!assignedFaculty.isBlank()) {
@@ -525,6 +618,7 @@ public class TimetableGeneratorService {
                             ? sessionType
                             : (subject.getType() != null ? subject.getType() : "Lecture"));
                     t.setTimeSlot(slotLabel);
+                    t.setSemesterNumber(resolveRowSem(subject, division));
                     t.setStatus("Pending");
 
                     // mark clashes
@@ -590,7 +684,7 @@ public class TimetableGeneratorService {
                         t.setSubject(subject.getName()); t.setFaculty("");
                         t.setRoom(room.getRoom());
                         t.setLectureType(sessionType != null && !sessionType.isBlank() ? sessionType : (subject.getType() != null ? subject.getType() : "Lecture"));
-                        t.setTimeSlot(slotLabel); t.setStatus("Pending");
+                        t.setTimeSlot(slotLabel); t.setSemesterNumber(resolveRowSem(subject, division)); t.setStatus("Pending");
                         roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
                         classBusy.add(key(dayKey, slotKey, safeLower(className), safeLower(divisionName)));
                         subjectDayBusy.add(key(dayKey, safeLower(className), safeLower(divisionName), subjectKey));
@@ -617,6 +711,7 @@ public class TimetableGeneratorService {
                                 ? sessionType
                                 : (subject.getType() != null ? subject.getType() : "Lecture"));
                         t.setTimeSlot(slotLabel);
+                        t.setSemesterNumber(resolveRowSem(subject, division));
                         t.setStatus("Pending");
 
                         teacherBusy.add(key(dayKey, slotKey, facKey));
@@ -729,6 +824,7 @@ public class TimetableGeneratorService {
                                 ? sessionType
                                 : (subject.getType() != null ? subject.getType() : "Lab"));
                         t.setTimeSlot(slotLabel);
+                        t.setSemesterNumber(resolveRowSem(subject, division));
                         t.setStatus("Pending");
 
                         block.add(t);
@@ -837,6 +933,7 @@ public class TimetableGeneratorService {
                                 ? sessionType
                                 : (subject.getType() != null ? subject.getType() : "Lab"));
                         t.setTimeSlot(slotLabel);
+                        t.setSemesterNumber(resolveRowSem(subject, division));
                         t.setStatus("Pending");
 
                         block.add(t);
@@ -955,9 +1052,10 @@ public class TimetableGeneratorService {
         List<Integer> labSubjectIds = labSubjects.stream().map(Subject::getId).collect(Collectors.toList());
         Map<String, String> batchPinned = new HashMap<>();
         for (SubjectFacultyAssignment a : sfaRepo.findBySubjectIdIn(labSubjectIds)) {
-            if (divName.equals(a.getDivisionName()) && a.getBatch() != null && a.getFacultyName() != null
+            String sfaDivName = a.getDivisionName() != null ? a.getDivisionName().trim() : "";
+            if (divName.trim().equals(sfaDivName) && a.getBatch() != null && a.getFacultyName() != null
                     && !a.getFacultyName().isBlank()) {
-                batchPinned.put(a.getSubjectId() + "_" + a.getBatch(), a.getFacultyName());
+                batchPinned.put(a.getSubjectId() + "_" + a.getBatch().trim(), a.getFacultyName());
             }
         }
 
@@ -1193,6 +1291,7 @@ public class TimetableGeneratorService {
                             t.setLectureType("Practical");
                             t.setTimeSlot(slotLabel);
                             t.setBatch(batchLabel);
+                            t.setSemesterNumber(resolveRowSem(lab, division));
                             t.setStatus("Pending");
                             allRows.add(t);
                             roomBusy.add(key(dayKey, slotKey, safeLower(room.getRoom())));
@@ -1337,6 +1436,7 @@ public class TimetableGeneratorService {
                                 : (subject.getType() != null ? subject.getType() : "Practical"));
                         t.setTimeSlot(slotLabel);
                         t.setBatch(batchLabel);
+                        t.setSemesterNumber(resolveRowSem(subject, division));
                         t.setStatus("Pending");
                         rows.add(t);
 

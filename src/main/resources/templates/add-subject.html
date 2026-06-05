@@ -93,15 +93,10 @@
                     <label>Type</label>
                     <select name="type">
                         <option value="" disabled th:selected="${subject == null or subject.type == null}">Select Type</option>
-                        <option value="Theory"    th:selected="${subject != null and 'Theory' == subject.type}">Theory (Lecture)</option>
-                        <option value="Lecture"   th:selected="${subject != null and 'Lecture' == subject.type}">Lecture</option>
-                        <option value="Lab"       th:selected="${subject != null and 'Lab' == subject.type}">Lab / Practical</option>
-                        <option value="Practical" th:selected="${subject != null and 'Practical' == subject.type}">Practical</option>
-                        <option value="Audit"     th:selected="${subject != null and 'Audit' == subject.type}">Audit / VL / T&amp;P</option>
-                        <option value="Seminar"   th:selected="${subject != null and 'Seminar' == subject.type}">Seminar</option>
-                        <option value="Honours"   th:selected="${subject != null and 'Honours' == subject.type}">Honours</option>
-                        <option value="Elective"  th:selected="${subject != null and 'Elective' == subject.type}">Elective</option>
-                        <option value="Project"   th:selected="${subject != null and 'Project' == subject.type}">Project</option>
+                        <option value="Theory"  th:selected="${subject != null and ('Theory' == subject.type or 'Lecture' == subject.type or 'Honours' == subject.type or 'Elective' == subject.type or 'Project' == subject.type)}">Theory — regular lecture</option>
+                        <option value="Lab"     th:selected="${subject != null and ('Lab' == subject.type or 'Practical' == subject.type)}">Lab / Practical — 2-hour batch session</option>
+                        <option value="Audit"   th:selected="${subject != null and 'Audit' == subject.type}">Audit / VL / T&amp;P — whole-class, no faculty</option>
+                        <option value="Seminar" th:selected="${subject != null and 'Seminar' == subject.type}">Seminar — whole-class, with faculty</option>
                     </select>
                 </div>
 

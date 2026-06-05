@@ -37,6 +37,8 @@ private String status;
 
 private boolean deleted = false;
 
+private Integer semesterNumber;
+
 /* ===== GETTERS SETTERS ===== */
 
 public int getId() {
@@ -151,7 +153,13 @@ public void setBatch(String batch) {
 	this.batch = batch;
 }
 
+public Integer getSemesterNumber() {
+    return semesterNumber;
+}
 
+public void setSemesterNumber(Integer semesterNumber) {
+    this.semesterNumber = semesterNumber;
+}
 
 }
 

@@ -42,7 +42,7 @@ public class TimetableXlsxExportService {
         "16:00 - 17:00"
     };
     static final String[] DAYS    = {"Monday","Tuesday","Wednesday","Thursday","Friday"};
-    static final String[] CLASSES = {"SE(IT)","TE(IT)","BE(IT)"};
+    // Derived dynamically at export time from actual timetable data — not hardcoded.
     static final int[][] WIN_PAIRS = {{0,1},{2,3},{4,5}};
 
     /* CLASS/MASTER columns (0-based):  C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11,M=12 */
@@ -209,9 +209,28 @@ public class TimetableXlsxExportService {
         byte[] clgBytes   = readLogo(cfg.getCollegeLogo());
         byte[] ownerBytes = readOwnerLogo(cfg.getOwnerLogo());
 
+        // Build class list dynamically from timetable data — sorted for deterministic sheet order.
+        List<String> classes = all.stream()
+                .map(Timetable::getClassName)
+                .filter(cn -> cn != null && !cn.isBlank())
+                .distinct()
+                .sorted()
+                .collect(java.util.stream.Collectors.toList());
+
+        // Map each className → the division name stored on the timetable rows.
+        // This is what the user sees as the "Class:" label in the PDF/XLSX header.
+        Map<String,String> clsDivName = new java.util.HashMap<>();
+        for (String cls : classes) {
+            all.stream()
+               .filter(t -> cls.equals(t.getClassName()) && nb(t.getDivision()))
+               .map(Timetable::getDivision)
+               .findFirst()
+               .ifPresent(dn -> clsDivName.put(cls, dn));
+        }
+
         /* Class sheets */
-        for (String cls : CLASSES)
-            writeClassSheet(wb, st, cls, filter(all,cls), nc, clgBytes, ownerBytes, divisions, cfg);
+        for (String cls : classes)
+            writeClassSheet(wb, st, cls, filter(all,cls), nc, clgBytes, ownerBytes, divisions, cfg, clsDivName.getOrDefault(cls, cls));
 
         /* Master sheet */
         writeMasterSheet(wb, st, all, nc, clgBytes, ownerBytes, divisions, cfg);
@@ -240,9 +259,10 @@ public class TimetableXlsxExportService {
     private void writeClassSheet(XSSFWorkbook wb, Styles st, String cls,
                                   List<Timetable> rows, Map<String,String> nc,
                                   byte[] clgLogo, byte[] ownerLogo,
-                                  List<Division> divisions, AcademicSetting cfg) {
+                                  List<Division> divisions, AcademicSetting cfg,
+                                  String divisionName) {
         XSSFSheet sh = wb.createSheet(cls.replace("(","_").replace(")",""));
-        int hi = classHeader(sh, wb, st, cls, clgLogo, ownerLogo, cfg);
+        int hi = classHeader(sh, wb, st, cls, clgLogo, ownerLogo, cfg, divisionName);
         float[] heights = classSheetRowHeights(cls);
         int dataEnd = hi + DAYS.length - 1;
         writeClassRows(sh, st, hi, cls, buildGrid(rows), nc, heights, CC_SCOL);
@@ -390,7 +410,8 @@ public class TimetableXlsxExportService {
 
     /** CLASS sheet header — consistent with sample_header.png. Data starts at row 7. */
     private int classHeader(XSSFSheet sh, XSSFWorkbook wb, Styles st, String cls,
-                             byte[] clgLogo, byte[] ownerLogo, AcademicSetting cfg) {
+                             byte[] clgLogo, byte[] ownerLogo, AcademicSetting cfg,
+                             String divisionName) {
         String inst = nvl(cfg.getInstitutionName(), DEF_INST_FULL);
         String dept = nvl(cfg.getDepartmentName(), DEF_DEPT);
         String ay   = nvl(cfg.getAcademicYear(), DEF_AY);
@@ -435,11 +456,10 @@ public class TimetableXlsxExportService {
         merge(sh, 4, 4, 2, 6); merge(sh, 4, 4, 7, 11);
 
         // Row 5 — W.E.F. (left) + Division name (right)
-        String divName = cls.replace("(IT)", "-IT");
         XSSFRow r5 = row(sh, 5, CLASS_HDR_HT[5]);
         cell(r5, 2, st.wef26b).setCellValue("W. E. F.: " + wef);
         merge(sh, 5, 5, 2, 7);
-        cell(r5, 8, st.wef26b).setCellValue("Class: " + divName);
+        cell(r5, 8, st.wef26b).setCellValue("Class: " + divisionName);
         merge(sh, 5, 5, 8, 12);
 
         // Row 6 — column headers
@@ -560,7 +580,7 @@ public class TimetableXlsxExportService {
                                   Map<String,List<Timetable>[]> grid,
                                   Map<String,String> nc, float[] heights,
                                   int[] scol) {
-        String clsLabel = "SE(IT)".equals(cls) ? "S.E(IT)" : cls;
+        String clsLabel = cls;
 
         for (int di = 0; di < DAYS.length; di++) {
             int ri = startRow + di;
@@ -812,26 +832,33 @@ public class TimetableXlsxExportService {
                 theorySubjFac.put(subj, nb(t.getFaculty()) ? t.getFaculty() : "—");
         }
 
-        // Lab subjects: group by subject → collect all batches (sorted), skip Library
-        Map<String, String[]> labMap = new LinkedHashMap<>();
-        Map<String, Set<String>> labBatches = new LinkedHashMap<>();
+        // Lab subjects: group by subject+faculty so each faculty gets their own row
+        // with only the batches they handle.  key = "subject|faculty"
+        Map<String, TreeSet<String>> batchesByKey = new LinkedHashMap<>();
+        Map<String, String[]>        metaByKey    = new LinkedHashMap<>(); // key → [subj,fac,room]
         Set<String> labSeen = new HashSet<>();
         for (Timetable t : rows) {
             if (!"Practical".equalsIgnoreCase(t.getLectureType()) &&
                 !"Lab".equalsIgnoreCase(t.getLectureType())) continue;
-            String subj = subjDisp(t, nc);
+            String subj  = subjDisp(t, nc);
             if ("LIBRARY".equals(subj) || NO_FAC.contains(subj)) continue;
             String batch = s(t.getBatch()).trim();
-            if (!labSeen.add(subj + "|" + batch)) continue;
-            labBatches.computeIfAbsent(subj, k -> new TreeSet<>()).add(batch);
-            labMap.putIfAbsent(subj, new String[]{
-                subj,
-                nb(t.getFaculty()) ? t.getFaculty() : "—",
-                nb(t.getRoom()) ? t.getRoom() : "—"});
+            String fac   = nb(t.getFaculty()) ? t.getFaculty() : "—";
+            String room  = nb(t.getRoom())    ? t.getRoom()    : "—";
+            if (!labSeen.add(subj + "|" + batch)) continue;   // skip duplicate batch rows
+            String key = subj + "|" + fac;
+            batchesByKey.computeIfAbsent(key, k -> new TreeSet<>()).add(batch);
+            metaByKey.putIfAbsent(key, new String[]{subj, fac, room});
+        }
+        // Build display list: [subject, batchString, faculty, room]
+        List<String[]> lList = new ArrayList<>();
+        for (Map.Entry<String, String[]> e : metaByKey.entrySet()) {
+            String[] m = e.getValue();
+            String batchStr = String.join(", ", batchesByKey.get(e.getKey()));
+            lList.add(new String[]{m[0], batchStr, m[1], m[2]});
         }
 
         List<Map.Entry<String,String>> tList = new ArrayList<>(theorySubjFac.entrySet());
-        List<String[]> lList = new ArrayList<>(labMap.values());
         int nRows = Math.max(tList.size(), lList.size());
         for (int i = 0; i < nRows; i++) {
             XSSFRow dr = row(sh, r, 20f);
@@ -844,14 +871,13 @@ public class TimetableXlsxExportService {
                 merge(sh, r, r, 4, 5);
             }
             if (i < lList.size()) {
-                String[] la = lList.get(i);
-                String batches = String.join(",", labBatches.getOrDefault(la[0], new LinkedHashSet<>()));
+                String[] la = lList.get(i);   // [subject, batches, faculty, room]
                 cell(dr, 7,  st.tblDataCell).setCellValue(la[0]);
                 cell(dr, 8,  st.tblDataCell);
-                cell(dr, 9,  st.tblDataCell).setCellValue(batches);
+                cell(dr, 9,  st.tblDataCell).setCellValue(la[1]);
                 cell(dr, 10, st.tblDataCell);
-                cell(dr, 11, st.tblDataCell).setCellValue(la[1]);
-                cell(dr, 12, st.tblDataCell).setCellValue(roomAbbrev(la[2]));
+                cell(dr, 11, st.tblDataCell).setCellValue(la[2]);
+                cell(dr, 12, st.tblDataCell).setCellValue(roomAbbrev(la[3]));
                 merge(sh, r, r, 7, 8);
                 merge(sh, r, r, 9, 10);
             }
@@ -1004,10 +1030,12 @@ public class TimetableXlsxExportService {
         // Compact footer — removed SE/TE/BE faculty lists so MASTER fits on one A4 page.
         int r = startRow;
 
-        // Batch roll numbers (all 3 classes, one line each)
+        // Batch roll numbers — one line per division (dynamic, not hardcoded to SE/TE/BE)
         row(sh, r++, 8f);
-        for (String cls : CLASSES) {
-            String leg = batchLegend(cls, divisions);
+        for (Division d : divisions) {
+            String prefix = d.getBatchPrefix() != null ? d.getBatchPrefix().trim() : "";
+            if (prefix.isBlank()) continue;
+            String leg = buildBatchLegend(d, prefix);
             if (!leg.isEmpty()) {
                 XSSFRow rb = row(sh, r, 14f);
                 cell(rb, 2, st.footSm).setCellValue(leg);

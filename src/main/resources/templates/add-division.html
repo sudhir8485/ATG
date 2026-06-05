@@ -125,9 +125,9 @@
                 <div class="form-group">
                     <label>Lab Time Preference</label>
                     <select name="labPreference">
-                        <option value="AFTERNOON" th:selected="${division == null or division.labPreference == 'AFTERNOON' or division.labPreference == null}">AFTERNOON — labs at 2:00–4:00 PM (SE)</option>
-                        <option value="MIDDAY"    th:selected="${division != null and division.labPreference == 'MIDDAY'}">MIDDAY — labs at 11:15 AM–1:15 PM (TE)</option>
-                        <option value="MORNING"   th:selected="${division != null and division.labPreference == 'MORNING'}">MORNING — labs at 9:00–11:00 AM (BE)</option>
+                        <option value="AFTERNOON" th:selected="${division == null or division.labPreference == 'AFTERNOON' or division.labPreference == null}">AFTERNOON — Window C (02:00–04:00 PM)</option>
+                        <option value="MIDDAY"    th:selected="${division != null and division.labPreference == 'MIDDAY'}">MIDDAY — Window B (11:15 AM–01:15 PM)</option>
+                        <option value="MORNING"   th:selected="${division != null and division.labPreference == 'MORNING'}">MORNING — Window A (09:00–11:00 AM)</option>
                     </select>
                 </div>
 

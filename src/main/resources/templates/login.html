@@ -3,32 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ATG · Sign In</title>
+  <title>ATG · Automated Timetable Generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
   <style>
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
-    /* ── Background ─────────────────────────────────── */
     body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       font-family: 'Inter', sans-serif;
       background: #060918;
-      padding: 24px;
-      position: relative;
+      height: 100vh;
       overflow: hidden;
     }
 
-    /* animated mesh gradient */
+    /* ── Shared background layers ─────────────────────── */
     .bg-mesh {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
+      position: fixed; inset: 0; z-index: 0;
       background:
         radial-gradient(ellipse 80% 60% at 20% 20%,  rgba(79,70,229,0.28) 0%, transparent 60%),
         radial-gradient(ellipse 60% 80% at 80% 80%,  rgba(124,58,237,0.22) 0%, transparent 60%),
@@ -37,522 +30,801 @@
       animation: meshMove 12s ease-in-out infinite alternate;
     }
     @keyframes meshMove {
-      0%   { filter: hue-rotate(0deg)   blur(0px); }
-      100% { filter: hue-rotate(30deg)  blur(1px); }
+      0%   { filter: hue-rotate(0deg)  blur(0px); }
+      100% { filter: hue-rotate(30deg) blur(1px); }
     }
-
-    /* floating orbs */
+    .bg-dots {
+      position: fixed; inset: 0; z-index: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
     .orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(80px);
-      pointer-events: none;
-      z-index: 0;
-      animation: float 8s ease-in-out infinite alternate;
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); pointer-events: none; z-index: 0;
+      animation: orbFloat 8s ease-in-out infinite alternate;
     }
-    .orb-1 { width:340px; height:340px; background:rgba(99,102,241,0.18); top:-80px; left:-80px; animation-delay:0s; }
-    .orb-2 { width:260px; height:260px; background:rgba(168,85,247,0.15); bottom:-60px; right:-60px; animation-delay:-3s; }
-    .orb-3 { width:200px; height:200px; background:rgba(20,184,166,0.10); bottom:20%; left:10%; animation-delay:-6s; }
-    @keyframes float {
+    .orb-1 { width:340px; height:340px; background:rgba(99,102,241,0.18);  top:-80px;  left:-80px;   animation-delay:0s; }
+    .orb-2 { width:260px; height:260px; background:rgba(168,85,247,0.15);  bottom:-60px; right:-60px; animation-delay:-3s; }
+    .orb-3 { width:200px; height:200px; background:rgba(20,184,166,0.10);  bottom:20%; left:10%;     animation-delay:-6s; }
+    @keyframes orbFloat {
       0%   { transform: translate(0,0) scale(1); }
       100% { transform: translate(20px,30px) scale(1.08); }
     }
 
-    /* dot grid */
-    .bg-dots {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
-      background-size: 28px 28px;
+    /* ════════════════════════════════════════════════════
+       SPLASH SCREEN
+    ════════════════════════════════════════════════════ */
+    #splash {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #060918;
+    }
+    #splash.hide {
+      animation: splashOut 0.9s cubic-bezier(.4,0,.2,1) forwards;
+    }
+    @keyframes splashOut {
+      0%   { opacity:1; transform:scale(1); }
+      60%  { opacity:1; transform:scale(1.04); }
+      100% { opacity:0; transform:scale(1.08); pointer-events:none; }
     }
 
-    /* ── Card ───────────────────────────────────────── */
-    .card {
-      position: relative;
-      z-index: 10;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      width: 880px;
-      max-width: 100%;
-      min-height: 560px;
-      border-radius: 28px;
-      overflow: hidden;
+    #particles-canvas {
+      position:absolute; inset:0; z-index:0; pointer-events:none;
+    }
+
+    /* Center content */
+    .splash-body {
+      position: relative; z-index: 10;
+      display: flex; flex-direction: column;
+      align-items: center; text-align: center;
+      gap: 0;
+    }
+
+    /* ── Logo box ── */
+    .spl-logo {
+      width: 96px; height: 96px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed, #c084fc);
+      border-radius: 26px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 900; color: #fff; letter-spacing: 3px;
+      position: relative; overflow: hidden;
+      opacity: 0;
+      animation: logoIn 0.7s cubic-bezier(.22,.68,0,1.4) 0.4s forwards;
       box-shadow:
-        0 40px 80px -20px rgba(0,0,0,0.7),
-        0 0 0 1px rgba(255,255,255,0.06);
-      animation: cardIn .6s cubic-bezier(.22,.68,0,1.2) both;
+        0 0 0 0 rgba(99,102,241,0),
+        0 20px 60px rgba(99,102,241,0.4);
     }
-    @keyframes cardIn {
-      from { opacity:0; transform:translateY(32px) scale(.97); }
-      to   { opacity:1; transform:translateY(0)    scale(1);   }
+    @keyframes logoIn {
+      from { opacity:0; transform:scale(0.3) rotate(-10deg); box-shadow:0 0 0 0 rgba(99,102,241,0); }
+      to   { opacity:1; transform:scale(1)   rotate(0deg);  box-shadow:0 0 60px 10px rgba(99,102,241,0.5), 0 20px 60px rgba(99,102,241,0.4); }
+    }
+    /* Beam sweep on logo */
+    .spl-logo::before {
+      content:''; position:absolute;
+      top:-50%; left:-120%; width:60%; height:200%;
+      background: linear-gradient(105deg, transparent, rgba(255,255,255,0.75), transparent);
+      animation: beamLogo 0.7s ease 1.3s forwards;
+      opacity: 0;
+    }
+    @keyframes beamLogo {
+      0%   { left:-120%; opacity:1; }
+      100% { left:180%;  opacity:1; }
+    }
+    /* Sheen highlight */
+    .spl-logo::after {
+      content:''; position:absolute;
+      top:0; left:0; right:0; height:48%;
+      background: rgba(255,255,255,0.1);
+      border-radius:26px 26px 0 0;
     }
 
-    /* ── Left side ──────────────────────────────────── */
+    /* ── Pulse ring ── */
+    .spl-ring {
+      position: absolute;
+      width: 96px; height: 96px;
+      border-radius: 26px;
+      border: 2px solid rgba(99,102,241,0.5);
+      opacity: 0;
+      animation: logoIn 0.7s cubic-bezier(.22,.68,0,1.4) 0.4s forwards,
+                 ringPulse 2s ease 2s infinite;
+    }
+    @keyframes ringPulse {
+      0%   { transform: scale(1);    opacity: 0.5; }
+      100% { transform: scale(1.6);  opacity: 0;   }
+    }
+
+    .spl-logo-wrap {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    /* ── Big ATG text ── */
+    .spl-big {
+      font-size: clamp(80px, 16vw, 160px);
+      font-weight: 900;
+      letter-spacing: -4px;
+      line-height: 1;
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 40%, #34d399 80%, #818cf8 100%);
+      background-size: 300%;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      opacity: 0;
+      animation: bigIn 0.8s cubic-bezier(.22,.68,0,1.2) 1s forwards,
+                 shimmerSlow 6s linear 2s infinite;
+      position: relative; overflow: hidden;
+    }
+    @keyframes bigIn {
+      from { opacity:0; transform: translateY(30px) scale(0.9); filter: blur(8px); }
+      to   { opacity:1; transform: translateY(0)    scale(1);   filter: blur(0px); }
+    }
+    @keyframes shimmerSlow {
+      0%   { background-position: 0%   center; }
+      100% { background-position: 300% center; }
+    }
+    /* Text beam sweep */
+    .spl-big-beam {
+      position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+      opacity: 0;
+      animation: beamTextFade 0.01s 1.6s forwards;
+    }
+    @keyframes beamTextFade { to { opacity:1; } }
+    .spl-big-beam::after {
+      content: '';
+      position: absolute; top:0; left:-80%; width:40%; height:100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: beamText 0.8s ease 1.6s forwards;
+    }
+    @keyframes beamText {
+      0%   { left: -80%; }
+      100% { left: 160%; }
+    }
+
+    /* ── Sub line ── */
+    .spl-sub {
+      font-size: clamp(13px, 2vw, 17px);
+      font-weight: 600;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-top: 12px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 1.8s forwards;
+    }
+
+    /* ── Team credits ── */
+    .spl-team {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      margin-top: 20px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 2.1s forwards;
+    }
+    .spl-team-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 2.5px;
+      text-transform: uppercase; color: rgba(255,255,255,0.18);
+    }
+    .spl-members {
+      display: flex; align-items: center; gap: 20px;
+    }
+    .spl-member {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: default;
+    }
+    .spl-member:hover .spl-av { transform: translateY(-4px) scale(1.08); }
+    .spl-member:hover .spl-mname { color: rgba(255,255,255,0.75); }
+    .spl-av {
+      width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: #fff;
+      position: relative; transition: transform 0.25s cubic-bezier(.22,.68,0,1.4);
+    }
+    .spl-av::after {
+      content: ''; position: absolute; inset: -2px; border-radius: 50%;
+      background: inherit; filter: blur(8px); opacity: 0.4; z-index: -1;
+    }
+    .spl-av-s {
+      background: linear-gradient(135deg, #4f46e5, #6366f1);
+      box-shadow: 0 6px 20px rgba(79,70,229,0.45);
+    }
+    .spl-av-a {
+      background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+      box-shadow: 0 6px 20px rgba(14,165,233,0.45);
+    }
+    .spl-av-v {
+      background: linear-gradient(135deg, #10b981, #34d399);
+      box-shadow: 0 6px 20px rgba(16,185,129,0.45);
+    }
+    .spl-sep {
+      width: 1px; height: 36px;
+      background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent);
+    }
+    .spl-mname {
+      font-size: 11px; font-weight: 600;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.3px;
+      transition: color 0.2s;
+    }
+
+    /* ── Divider ── */
+    .spl-divider {
+      width: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);
+      margin: 30px auto;
+      opacity: 0;
+      animation: dividerIn 0.8s ease 2.4s forwards;
+    }
+    @keyframes dividerIn {
+      from { width:0; opacity:0; }
+      to   { width:260px; opacity:1; }
+    }
+
+    /* ── CTA button ── */
+    .spl-cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 15px 44px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      font-size: 15px; font-weight: 700;
+      border: none; border-radius: 999px;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      box-shadow: 0 8px 32px rgba(79,70,229,0.5), 0 0 0 0 rgba(79,70,229,0.3);
+      opacity: 0;
+      animation: ctaIn 0.7s cubic-bezier(.22,.68,0,1.4) 2.7s forwards;
+      transition: all 0.25s ease;
+      position: relative; overflow: hidden;
+    }
+    @keyframes ctaIn {
+      from { opacity:0; transform: translateY(20px) scale(0.95); }
+      to   { opacity:1; transform: translateY(0)    scale(1); }
+    }
+    .spl-cta::before {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      border-radius: 999px;
+    }
+    .spl-cta:hover {
+      transform: translateY(-3px) scale(1.04);
+      box-shadow: 0 14px 44px rgba(79,70,229,0.65), 0 0 0 6px rgba(79,70,229,0.15);
+    }
+    .spl-cta:active { transform: translateY(-1px) scale(1.01); }
+    .cta-arrow {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px;
+      background: rgba(255,255,255,0.15); border-radius: 50%;
+      font-size: 13px;
+      transition: transform 0.25s ease;
+    }
+    .spl-cta:hover .cta-arrow { transform: translateX(3px); }
+
+    /* ── Skip hint ── */
+    .spl-skip {
+      position: absolute; bottom: 28px;
+      font-size: 11px; color: rgba(255,255,255,0.18);
+      font-weight: 500; letter-spacing: 0.5px;
+      cursor: pointer; user-select: none;
+      opacity: 0;
+      animation: fadeUp 0.5s ease 3.3s forwards;
+      transition: color 0.2s;
+    }
+    .spl-skip:hover { color: rgba(255,255,255,0.45); }
+
+    /* ── Progress bar ── */
+    .spl-progress {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px; background: rgba(255,255,255,0.04);
+    }
+    .spl-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4f46e5, #7c3aed, #34d399);
+      width: 0%;
+      animation: progressFill 3s ease 0.4s forwards;
+    }
+    @keyframes progressFill {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+
+    /* ── Shared fade-up ── */
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(14px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* ════════════════════════════════════════════════════
+       LOGIN SECTION
+    ════════════════════════════════════════════════════ */
+    #login-section {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      overflow: auto;
+    }
+    #login-section.visible {
+      opacity: 1; pointer-events: all;
+      animation: loginReveal 0.8s cubic-bezier(.22,.68,0,1.1) forwards;
+    }
+    @keyframes loginReveal {
+      from { opacity:0; transform: translateY(36px) scale(0.97); }
+      to   { opacity:1; transform: translateY(0)    scale(1); }
+    }
+
+    /* ── Card ── */
+    .card {
+      position: relative; z-index: 10;
+      display: grid; grid-template-columns: 1fr 1fr;
+      width: 880px; max-width: 100%; min-height: 560px;
+      border-radius: 28px; overflow: hidden;
+      box-shadow: 0 40px 80px -20px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+
+    /* ── Left panel ── */
     .cl {
       background: linear-gradient(160deg, #0f0c29, #1a1040, #24243e);
       padding: 48px 44px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      position: relative;
-      overflow: hidden;
+      display: flex; flex-direction: column; justify-content: space-between;
+      position: relative; overflow: hidden;
       border-right: 1px solid rgba(255,255,255,0.06);
     }
-
-    /* inner glow */
     .cl::before {
-      content:'';
-      position:absolute;
-      inset:0;
+      content:''; position:absolute; inset:0;
       background:
         radial-gradient(ellipse 120% 60% at 50% 0%, rgba(99,102,241,0.2) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 40% at 80% 100%, rgba(168,85,247,0.12) 0%, transparent 50%);
+        radial-gradient(ellipse 80%  40% at 80% 100%, rgba(168,85,247,0.12) 0%, transparent 50%);
       pointer-events:none;
     }
-
-    /* ATG monogram */
-    .atg-mark {
-      position: relative;
-      z-index: 1;
-    }
-    .atg-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 28px;
-    }
+    .atg-mark { position:relative; z-index:1; }
+    .atg-badge { display:inline-flex; align-items:center; gap:12px; margin-bottom:28px; }
     .atg-logo {
-      width: 52px; height: 52px;
+      width:52px; height:52px;
       background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px;
-      font-weight: 900;
-      color: #fff;
-      letter-spacing: 1px;
+      border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:900; color:#fff; letter-spacing:1px;
       box-shadow: 0 8px 24px rgba(79,70,229,0.5);
-      position: relative;
-      overflow: hidden;
+      position:relative; overflow:hidden;
     }
     .atg-logo::after {
-      content:'';
-      position:absolute;
-      top:0; left:0; right:0;
-      height:50%;
-      background:rgba(255,255,255,0.08);
-      border-radius:14px 14px 0 0;
+      content:''; position:absolute; top:0; left:0; right:0; height:50%;
+      background:rgba(255,255,255,0.08); border-radius:14px 14px 0 0;
     }
-    .atg-logo-text {
-      font-size: 17px;
-      font-weight: 900;
-      letter-spacing: 1.5px;
-      position: relative;
-      z-index: 1;
-    }
-    .atg-badge-label {
-      display: flex;
-      flex-direction: column;
-    }
-    .atg-badge-label strong {
-      font-size: 15px;
-      font-weight: 800;
-      color: #fff;
-      line-height: 1;
-    }
-    .atg-badge-label span {
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      font-weight: 500;
-      margin-top: 3px;
-    }
-
-    /* big headline */
-    .cl-headline {
-      position: relative;
-      z-index: 1;
-    }
+    .atg-logo-text { font-size:17px; font-weight:900; letter-spacing:1.5px; position:relative; z-index:1; }
+    .atg-badge-label { display:flex; flex-direction:column; }
+    .atg-badge-label strong { font-size:15px; font-weight:800; color:#fff; line-height:1; }
+    .atg-badge-label span  { font-size:11px; color:rgba(255,255,255,0.4); font-weight:500; margin-top:3px; }
+    .cl-headline { position:relative; z-index:1; }
     .cl-headline h2 {
-      font-size: 36px;
-      font-weight: 900;
-      color: #fff;
-      line-height: 1.1;
-      letter-spacing: -1px;
-      margin-bottom: 14px;
+      font-size:36px; font-weight:900; color:#fff; line-height:1.1;
+      letter-spacing:-1px; margin-bottom:14px;
     }
     .cl-headline h2 em {
-      font-style: normal;
+      font-style:normal;
       background: linear-gradient(90deg, #818cf8, #c084fc, #34d399);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      background-size: 200%;
-      animation: shimmer 4s linear infinite;
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      background-size:200%; animation: shimmer 4s linear infinite;
     }
-    @keyframes shimmer {
-      0%   { background-position: 0% center; }
-      100% { background-position: 200% center; }
-    }
-    .cl-headline p {
-      font-size: 13px;
-      color: rgba(255,255,255,0.45);
-      line-height: 1.7;
-      max-width: 260px;
-    }
-
-    /* ── Team signature (minimal) ───────────────────── */
+    @keyframes shimmer { 0%{ background-position:0% center; } 100%{ background-position:200% center; } }
+    .cl-headline p { font-size:13px; color:rgba(255,255,255,0.45); line-height:1.7; max-width:260px; }
     .team-sig {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
-      padding-top: 20px;
+      position:relative; z-index:1;
+      display:flex; align-items:center; gap:12px;
+      border-top:1px solid rgba(255,255,255,0.06); padding-top:20px;
     }
-    .tsav-stack {
-      display: flex;
-    }
+    .tsav-stack { display:flex; }
     .tsav {
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800;
-      color: rgba(255,255,255,0.8);
-      border: 2px solid #0f0c29;
-      flex-shrink: 0;
+      width:30px; height:30px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:800; color:rgba(255,255,255,0.8);
+      border:2px solid #0f0c29; flex-shrink:0;
     }
-    .tsav:not(:first-child) { margin-left: -8px; }
-    .av-s { background: rgba(79,70,229,0.55); }
-    .av-a { background: rgba(14,165,233,0.50); }
-    .av-v { background: rgba(16,185,129,0.45); }
-    .team-sig-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .ts-by {
-      font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      color: rgba(255,255,255,0.2);
-    }
-    .ts-names {
-      font-size: 12px;
-      font-weight: 500;
-      color: rgba(255,255,255,0.38);
-      letter-spacing: 0.1px;
-    }
+    .tsav:not(:first-child) { margin-left:-8px; }
+    .av-s { background:rgba(79,70,229,0.55); }
+    .av-a { background:rgba(14,165,233,0.50); }
+    .av-v { background:rgba(16,185,129,0.45); }
+    .team-sig-text { display:flex; flex-direction:column; gap:2px; }
+    .ts-by   { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:rgba(255,255,255,0.2); }
+    .ts-names{ font-size:12px; font-weight:500; color:rgba(255,255,255,0.38); letter-spacing:0.1px; }
 
-    /* ── Right side ─────────────────────────────────── */
+    /* ── Right panel ── */
     .cr {
       background: #fff;
       padding: 48px 44px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
+      display: flex; flex-direction: column; justify-content: center;
     }
-
-    .cr-top {
-      margin-bottom: 28px;
-    }
+    .cr-top { margin-bottom: 28px; }
     .cr-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #eef2ff;
-      color: #4f46e5;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .8px;
-      padding: 5px 12px;
-      border-radius: 999px;
-      margin-bottom: 12px;
-      border: 1px solid #c7d2fe;
+      display:inline-flex; align-items:center; gap:6px;
+      background:#eef2ff; color:#4f46e5;
+      font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px;
+      padding:5px 12px; border-radius:999px; margin-bottom:12px; border:1px solid #c7d2fe;
     }
-    .cr-top h1 {
-      font-size: 26px;
-      font-weight: 800;
-      color: #0f172a;
-      letter-spacing: -.4px;
-      line-height: 1.2;
-    }
-    .cr-top p {
-      font-size: 13px;
-      color: #94a3b8;
-      margin-top: 5px;
-    }
+    .cr-top h1 { font-size:26px; font-weight:800; color:#0f172a; letter-spacing:-.4px; line-height:1.2; }
+    .cr-top p  { font-size:13px; color:#94a3b8; margin-top:5px; }
 
     /* role tabs */
     .role-tabs {
-      display: flex;
-      gap: 6px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 4px;
-      margin-bottom: 24px;
+      display:flex; gap:6px;
+      background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;
+      padding:4px; margin-bottom:24px;
     }
     .role-tab {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 9px 6px;
-      border-radius: 9px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #94a3b8;
-      cursor: pointer;
-      border: none;
-      background: transparent;
-      transition: all .18s;
+      flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+      padding:9px 6px; border-radius:9px;
+      font-size:12px; font-weight:700; color:#94a3b8;
+      cursor:pointer; border:none; background:transparent;
+      transition:all .18s;
     }
-    .role-tab i { font-size: 11px; }
-    .role-tab:hover { color: #475569; background: rgba(255,255,255,.7); }
-    .role-tab.active {
-      background: #fff;
-      color: #4f46e5;
-      box-shadow: 0 2px 8px rgba(0,0,0,.1);
-    }
+    .role-tab i { font-size:11px; }
+    .role-tab:hover { color:#475569; background:rgba(255,255,255,.7); }
+    .role-tab.active { background:#fff; color:#4f46e5; box-shadow:0 2px 8px rgba(0,0,0,.1); }
 
     /* fields */
-    .field { margin-bottom: 14px; }
+    .field { margin-bottom:14px; }
     .field label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-      margin-bottom: 6px;
+      display:block; font-size:11px; font-weight:700; color:#64748b;
+      text-transform:uppercase; letter-spacing:.4px; margin-bottom:6px;
     }
-    .field-wrap { position: relative; }
+    .field-wrap { position:relative; }
     .field-wrap .fi {
-      position: absolute;
-      left: 14px; top: 50%;
-      transform: translateY(-50%);
-      color: #cbd5e1;
-      font-size: 13px;
-      pointer-events: none;
-      transition: color .15s;
+      position:absolute; left:14px; top:50%; transform:translateY(-50%);
+      color:#cbd5e1; font-size:13px; pointer-events:none; transition:color .15s;
     }
     .field-wrap input {
-      width: 100%;
-      padding: 12px 14px 12px 40px;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #0f172a;
-      background: #f8fafc;
-      outline: none;
-      transition: all .18s;
+      width:100%; padding:12px 14px 12px 40px;
+      border:1.5px solid #e2e8f0; border-radius:10px;
+      font-size:14px; font-weight:500; color:#0f172a;
+      background:#f8fafc; outline:none; transition:all .18s;
     }
-    .field-wrap input:focus {
-      border-color: #4f46e5;
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(79,70,229,.08);
-    }
-    .field-wrap input:focus ~ .fi { color: #4f46e5; }
+    .field-wrap input:focus { border-color:#4f46e5; background:#fff; box-shadow:0 0 0 3px rgba(79,70,229,.08); }
+    .field-wrap input:focus + .fi,
+    .field-wrap input:focus ~ .fi { color:#4f46e5; }
     .pw-eye {
-      position: absolute;
-      right: 12px; top: 50%;
-      transform: translateY(-50%);
-      border: none; background: none;
-      color: #cbd5e1; cursor: pointer;
-      font-size: 13px;
-      padding: 4px;
-      transition: color .15s;
+      position:absolute; right:12px; top:50%; transform:translateY(-50%);
+      border:none; background:none; color:#cbd5e1; cursor:pointer;
+      font-size:13px; padding:4px; transition:color .15s;
     }
-    .pw-eye:hover { color: #4f46e5; }
+    .pw-eye:hover { color:#4f46e5; }
 
     /* error */
     .err {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-left: 3px solid #ef4444;
-      border-radius: 9px;
-      padding: 10px 13px;
-      font-size: 12px;
-      color: #dc2626;
-      margin-bottom: 14px;
+      display:none; align-items:center; gap:8px;
+      background:#fef2f2; border:1px solid #fecaca;
+      border-left:3px solid #ef4444; border-radius:9px;
+      padding:10px 13px; font-size:12px; color:#dc2626; margin-bottom:14px;
     }
-    .err.show { display: flex; }
+    .err.show { display:flex; }
 
     /* submit */
     .submit-btn {
-      width: 100%;
-      padding: 13px;
+      width:100%; padding:13px;
       background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 6px;
-      box-shadow: 0 6px 20px rgba(79,70,229,.35);
-      transition: all .2s;
-      letter-spacing: .1px;
+      color:#fff; font-size:14px; font-weight:700;
+      border:none; border-radius:10px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      margin-top:6px;
+      box-shadow:0 6px 20px rgba(79,70,229,.35);
+      transition:all .2s; letter-spacing:.1px; position:relative; overflow:hidden;
     }
-    .submit-btn:hover {
-      background: linear-gradient(135deg, #4338ca, #6d28d9);
-      box-shadow: 0 10px 28px rgba(79,70,229,.45);
-      transform: translateY(-1px);
+    .submit-btn::before {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
     }
-    .submit-btn:active { transform: translateY(0); }
-    .submit-btn i { transition: transform .2s; }
-    .submit-btn:hover i { transform: translateX(4px); }
-
+    .submit-btn:hover { background: linear-gradient(135deg,#4338ca,#6d28d9); box-shadow:0 10px 28px rgba(79,70,229,.45); transform:translateY(-1px); }
+    .submit-btn:active { transform:translateY(0); }
+    .submit-btn i { transition:transform .2s; position:relative; }
+    .submit-btn:hover i { transform:translateX(4px); }
+    .submit-btn span { position:relative; }
 
     /* responsive */
     @media (max-width: 720px) {
-      .card { grid-template-columns: 1fr; }
-      .cl   { display: none; }
-      .cr   { padding: 36px 28px; }
+      .card { grid-template-columns:1fr; }
+      .cl   { display:none; }
+      .cr   { padding:36px 28px; }
+      .spl-big { letter-spacing:-2px; }
     }
+
+    /* Stop server button */
+    .stop-btn-wrap {
+      position:fixed; bottom:20px; right:20px; z-index:9999;
+    }
+    .stop-btn {
+      display:flex; align-items:center; gap:8px;
+      padding:10px 18px; background:#fff; color:#ef4444;
+      border:1.5px solid #fca5a5; border-radius:50px;
+      font-size:13px; font-weight:600; cursor:pointer;
+      box-shadow:0 2px 10px rgba(0,0,0,.12); transition:all .2s;
+    }
+    .stop-btn:hover { background:#fef2f2; border-color:#ef4444; }
   </style>
 </head>
 <body>
 
+  <!-- ══ SHARED BACKGROUND (always visible) ══ -->
   <div class="bg-mesh"></div>
   <div class="bg-dots"></div>
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
 
-  <div class="card">
+  <!-- ══════════════════════════════════════════════════
+       SPLASH SCREEN
+  ══════════════════════════════════════════════════ -->
+  <div id="splash">
+    <canvas id="particles-canvas"></canvas>
 
-    <!-- ══ LEFT ══════════════════════════════════════════ -->
-    <div class="cl">
+    <div class="splash-body">
 
-      <!-- ATG badge -->
-      <div class="atg-mark">
-        <div class="atg-badge">
-          <div class="atg-logo"><span class="atg-logo-text">ATG</span></div>
-          <div class="atg-badge-label">
-            <strong>ATG</strong>
-            <span>Automated Timetable Generator</span>
+      <!-- Logo + pulse ring -->
+      <div class="spl-logo-wrap">
+        <div class="spl-ring"></div>
+        <div class="spl-logo">
+          <span style="position:relative;z-index:1;">ATG</span>
+        </div>
+      </div>
+
+      <!-- Big title -->
+      <div class="spl-big" style="position:relative;">
+        ATG
+        <div class="spl-big-beam"></div>
+      </div>
+
+      <!-- Subtitle -->
+      <p class="spl-sub">Automated Timetable Generator</p>
+
+      <!-- Team credits -->
+      <div class="spl-team">
+        <span class="spl-team-label">Created by</span>
+        <div class="spl-members">
+          <div class="spl-member">
+            <div class="spl-av spl-av-s">S</div>
+            <span class="spl-mname">Sudhir</span>
+          </div>
+          <div class="spl-sep"></div>
+          <div class="spl-member">
+            <div class="spl-av spl-av-a">A</div>
+            <span class="spl-mname">Atharv</span>
+          </div>
+          <div class="spl-sep"></div>
+          <div class="spl-member">
+            <div class="spl-av spl-av-v">V</div>
+            <span class="spl-mname">Vardhan</span>
           </div>
         </div>
       </div>
 
-      <!-- headline -->
-      <div class="cl-headline">
-        <h2>Schedule<br>smarter, <em>faster.</em></h2>
-        <p>Conflict-free timetable generation — faculty, labs, and batches, all in one click.</p>
-      </div>
+      <!-- Divider -->
+      <div class="spl-divider"></div>
 
-      <!-- team signature -->
-      <div class="team-sig">
-        <div class="tsav-stack">
-          <div class="tsav av-s">S</div>
-          <div class="tsav av-a">A</div>
-          <div class="tsav av-v">V</div>
-        </div>
-        <div class="team-sig-text">
-          <span class="ts-by">crafted by</span>
-          <span class="ts-names">Sudhir, Atharv &amp; Vardhan</span>
-        </div>
-      </div>
+      <!-- CTA -->
+      <button class="spl-cta" onclick="startLogin()">
+        <span>Get Started</span>
+        <span class="cta-arrow"><i class="fas fa-arrow-right"></i></span>
+      </button>
 
     </div>
 
-    <!-- ══ RIGHT ═════════════════════════════════════════ -->
-    <div class="cr">
+    <!-- Skip hint -->
+    <span class="spl-skip" onclick="startLogin()">Press anywhere to continue</span>
 
-      <div class="cr-top">
-        <div class="cr-eyebrow"><i class="fas fa-lock"></i> Secure Access</div>
-        <h1>Sign in to ATG</h1>
-        <p>Select your role and enter your credentials.</p>
-      </div>
+    <!-- Progress bar -->
+    <div class="spl-progress">
+      <div class="spl-progress-fill"></div>
+    </div>
+  </div>
 
-      <!-- role tabs -->
-      <div class="role-tabs">
-        <button type="button" class="role-tab active" data-role="ADMIN" onclick="selectRole(this)">
-          <i class="fas fa-user-shield"></i> Admin
-        </button>
-        <button type="button" class="role-tab" data-role="HOD" onclick="selectRole(this)">
-          <i class="fas fa-user-tie"></i> HOD
-        </button>
-        <button type="button" class="role-tab" data-role="FACULTY" onclick="selectRole(this)">
-          <i class="fas fa-chalkboard-teacher"></i> Faculty
-        </button>
-      </div>
+  <!-- ══════════════════════════════════════════════════
+       LOGIN SECTION
+  ══════════════════════════════════════════════════ -->
+  <div id="login-section">
 
-      <form action="/login" method="post">
-        <input type="hidden" name="role" id="roleInput" value="ADMIN">
+    <div class="card">
 
-        <!-- error -->
-        <div class="err" id="errBanner">
-          <i class="fas fa-exclamation-circle"></i>
-          <span>Invalid username or password. Please try again.</span>
-        </div>
-
-        <!-- username -->
-        <div class="field">
-          <label>Username</label>
-          <div class="field-wrap">
-            <input type="text" name="username" id="usernameField"
-                   placeholder="Enter username" required autocomplete="username">
-            <i class="fas fa-user fi"></i>
+      <!-- ══ LEFT ══ -->
+      <div class="cl">
+        <div class="atg-mark">
+          <div class="atg-badge">
+            <div class="atg-logo"><span class="atg-logo-text">ATG</span></div>
+            <div class="atg-badge-label">
+              <strong>ATG</strong>
+              <span>Automated Timetable Generator</span>
+            </div>
           </div>
         </div>
-
-        <!-- password -->
-        <div class="field">
-          <label>Password</label>
-          <div class="field-wrap">
-            <input type="password" name="password" id="pwField"
-                   placeholder="Enter password" required autocomplete="current-password">
-            <i class="fas fa-lock fi"></i>
-            <button type="button" class="pw-eye" onclick="togglePw()" tabindex="-1">
-              <i class="fas fa-eye" id="pwIcon"></i>
-            </button>
+        <div class="cl-headline">
+          <h2>Schedule<br>smarter, <em>faster.</em></h2>
+          <p>Conflict-free timetable generation — faculty, labs &amp; batches, all in one click.</p>
+        </div>
+        <div class="team-sig">
+          <div class="tsav-stack">
+            <div class="tsav av-s">S</div>
+            <div class="tsav av-a">A</div>
+            <div class="tsav av-v">V</div>
+          </div>
+          <div class="team-sig-text">
+            <span class="ts-by">crafted by</span>
+            <span class="ts-names">Sudhir, Atharv &amp; Vardhan</span>
           </div>
         </div>
+      </div>
 
-        <button type="submit" class="submit-btn">
-          <span>Sign in</span>
-          <i class="fas fa-arrow-right"></i>
-        </button>
+      <!-- ══ RIGHT ══ -->
+      <div class="cr">
+        <div class="cr-top">
+          <div class="cr-eyebrow"><i class="fas fa-lock"></i> Secure Access</div>
+          <h1>Sign in to ATG</h1>
+          <p>Select your role and enter your credentials.</p>
+        </div>
 
-      </form>
+        <!-- role tabs -->
+        <div class="role-tabs">
+          <button type="button" class="role-tab active" data-role="ADMIN" onclick="selectRole(this)">
+            <i class="fas fa-user-shield"></i> Admin
+          </button>
+          <button type="button" class="role-tab" data-role="HOD" onclick="selectRole(this)">
+            <i class="fas fa-user-tie"></i> HOD
+          </button>
+          <button type="button" class="role-tab" data-role="FACULTY" onclick="selectRole(this)">
+            <i class="fas fa-chalkboard-teacher"></i> Faculty
+          </button>
+        </div>
+
+        <form action="/login" method="post">
+          <input type="hidden" name="role" id="roleInput" value="ADMIN">
+
+          <div class="err" id="errBanner">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>Invalid username or password. Please try again.</span>
+          </div>
+
+          <div class="field">
+            <label>Username</label>
+            <div class="field-wrap">
+              <input type="text" name="username" id="usernameField"
+                     placeholder="Enter username" required autocomplete="username">
+              <i class="fas fa-user fi"></i>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Password</label>
+            <div class="field-wrap">
+              <input type="password" name="password" id="pwField"
+                     placeholder="Enter password" required autocomplete="current-password">
+              <i class="fas fa-lock fi"></i>
+              <button type="button" class="pw-eye" onclick="togglePw()" tabindex="-1">
+                <i class="fas fa-eye" id="pwIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn">
+            <span>Sign in</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </form>
+      </div>
 
     </div>
   </div>
 
-  <!-- Stop Server button — fixed bottom-right corner -->
-  <form action="/shutdown-server" method="post"
-        onsubmit="return confirm('Stop the ATG server?\nYou will need to relaunch the application to use it again.')"
-        style="position:fixed;bottom:20px;right:20px;z-index:9999">
-    <button type="submit"
-            style="display:flex;align-items:center;gap:8px;padding:10px 18px;background:#fff;color:#ef4444;border:1.5px solid #fca5a5;border-radius:50px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.12);transition:all .2s"
-            onmouseover="this.style.background='#fef2f2';this.style.borderColor='#ef4444'"
-            onmouseout="this.style.background='#fff';this.style.borderColor='#fca5a5'">
-      <i class="fas fa-power-off"></i> Stop Server
-    </button>
-  </form>
+  <!-- Stop Server -->
+  <div class="stop-btn-wrap">
+    <form action="/shutdown-server" method="post"
+          onsubmit="return confirm('Stop the ATG server?\nYou will need to relaunch the application to use it again.')">
+      <button type="submit" class="stop-btn">
+        <i class="fas fa-power-off"></i> Stop Server
+      </button>
+    </form>
+  </div>
 
   <script>
+    /* ── Particle system ──────────────────────────────── */
+    (function () {
+      const canvas = document.getElementById('particles-canvas');
+      const ctx    = canvas.getContext('2d');
+      let W, H;
+
+      function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const COLORS = [
+        [99,  102, 241],  // indigo
+        [168, 85,  247],  // violet
+        [52,  211, 153],  // emerald
+        [255, 255, 255],  // white
+      ];
+
+      const particles = Array.from({ length: 90 }, () => makeParticle(true));
+
+      function makeParticle(randomY) {
+        const col = COLORS[Math.floor(Math.random() * COLORS.length)];
+        return {
+          x:    Math.random() * (W || window.innerWidth),
+          y:    randomY ? Math.random() * (H || window.innerHeight) : (H || window.innerHeight) + 10,
+          r:    Math.random() * 1.5 + 0.4,
+          vx:   (Math.random() - 0.5) * 0.25,
+          vy:   -(Math.random() * 0.4 + 0.15),
+          base: Math.random() * 0.45 + 0.08,
+          tw:   Math.random() * Math.PI * 2,
+          ts:   Math.random() * 0.025 + 0.012,
+          col,
+        };
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        for (const p of particles) {
+          p.x  += p.vx;
+          p.y  += p.vy;
+          p.tw += p.ts;
+          if (p.y < -8) Object.assign(p, makeParticle(false), { x: Math.random() * W });
+
+          const a = p.base * (0.65 + 0.35 * Math.sin(p.tw));
+          const [r, g, b] = p.col;
+
+          // Core dot
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+          ctx.fill();
+
+          // Soft glow
+          const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+          grd.addColorStop(0, `rgba(${r},${g},${b},${a * 0.35})`);
+          grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2);
+          ctx.fillStyle = grd;
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    /* ── Splash → Login transition ───────────────────── */
+    let _started = false;
+
+    function startLogin() {
+      if (_started) return;
+      _started = true;
+
+      const splash = document.getElementById('splash');
+      const login  = document.getElementById('login-section');
+
+      splash.classList.add('hide');
+      setTimeout(() => {
+        splash.style.display = 'none';
+        login.classList.add('visible');
+        document.body.style.overflow = 'hidden';
+        // auto-focus username field
+        setTimeout(() => document.getElementById('usernameField').focus(), 100);
+      }, 900);
+    }
+
+    // Click anywhere on splash (outside CTA) also triggers
+    document.getElementById('splash').addEventListener('click', function(e) {
+      if (!e.target.closest('.spl-cta') && !e.target.closest('.spl-skip')) {
+        // only after animations settle (3s)
+        if (Date.now() - _loadTime > 3000) startLogin();
+      }
+    });
+    const _loadTime = Date.now();
+
+    /* ── Login form helpers ──────────────────────────── */
     function selectRole(tab) {
       document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('roleInput').value = tab.dataset.role;
       document.getElementById('usernameField').placeholder =
-        tab.dataset.role === 'ADMIN' ? 'Enter username' :
-        tab.dataset.role === 'HOD'   ? 'Enter HOD username' : 'Enter faculty username';
+        tab.dataset.role === 'ADMIN'   ? 'Enter username' :
+        tab.dataset.role === 'HOD'     ? 'Enter HOD username' : 'Enter faculty username';
     }
 
     function togglePw() {
@@ -562,7 +834,15 @@
       icon.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
     }
 
+    // Show error banner if redirected with ?error
     if (window.location.search.includes('error')) {
+      // Skip splash if returning from a failed login
+      _started = true;
+      document.getElementById('splash').style.display = 'none';
+      const login = document.getElementById('login-section');
+      login.classList.add('visible');
+      login.style.animation = 'none';
+      login.style.opacity = '1';
       document.getElementById('errBanner').classList.add('show');
     }
   </script>
