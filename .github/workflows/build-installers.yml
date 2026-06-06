@@ -151,6 +151,13 @@ jobs:
 
             ### Database
             Data is stored at `~/.atg/atg.mv.db` (H2 embedded — no external database needed).
+
+            ### Print / PDF Feature Requirement
+            The **Print** button converts the timetable XLSX to PDF and requires:
+            - **Windows**: Microsoft Excel (already on most PCs) **or** LibreOffice (free)
+            - **Linux / Mac**: LibreOffice — `sudo apt install libreoffice`
+
+            If neither is installed, clicking Print shows a guide with download links.
           files: |
             artifacts/windows/*.exe
             artifacts/linux/*.deb
