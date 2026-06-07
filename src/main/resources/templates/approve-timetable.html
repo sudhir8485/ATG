@@ -679,11 +679,9 @@
                 <label><i class="fas fa-calendar"></i> Day:</label>
                 <select class="filter-select" id="dayFilter">
                     <option value="all">All Days</option>
-                    <option value="monday">Monday</option>
-                    <option value="tuesday">Tuesday</option>
-                    <option value="wednesday">Wednesday</option>
-                    <option value="thursday">Thursday</option>
-                    <option value="friday">Friday</option>
+                    <option th:each="d : ${workingDaysList}"
+                            th:value="${#strings.toLowerCase(d)}"
+                            th:text="${d}"></option>
                 </select>
             </div>
             <div class="search-box">

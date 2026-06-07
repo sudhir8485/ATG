@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.nt.entity.*;
 import com.nt.repository.*;
+import com.nt.repository.AcademicSettingRepository;
 
 @Service
 public class TimetableServiceEASY {
@@ -29,6 +30,8 @@ public class TimetableServiceEASY {
     @Autowired
     private DivisionRepository divisionRepo;
 
+    @Autowired
+    private AcademicSettingRepository academicSettingRepo;
 
     public void generateTimetable() {
 
@@ -256,14 +259,12 @@ public class TimetableServiceEASY {
     }
 
 
-    private List<String> getWorkingDays(){
-
-        return Arrays.asList(
-                "Monday",
-                "Tuesday",
-                "Wednesday",
-                "Thursday",
-                "Friday"
-        );
+    private List<String> getWorkingDays() {
+        var setting = academicSettingRepo.findById(1).orElse(null);
+        if (setting == null || setting.getWorkingDays() == null || setting.getWorkingDays().isBlank()) {
+            return Arrays.asList("Monday", "Tuesday", "Wednesday", "Thursday", "Friday");
+        }
+        return Arrays.stream(setting.getWorkingDays().split(","))
+                .map(String::trim).filter(s -> !s.isBlank()).toList();
     }
 }

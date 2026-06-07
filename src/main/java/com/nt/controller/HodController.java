@@ -383,6 +383,7 @@ List<Timetable> list = (dept != null && !dept.isBlank())
         : timetableRepo.findByDeletedFalse();
 
 model.addAttribute("timetableList", list);
+model.addAttribute("workingDaysList", getWorkingDays());
 
 return "hod-approve-timetable";
 }

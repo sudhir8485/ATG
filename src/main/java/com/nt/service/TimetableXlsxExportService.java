@@ -41,7 +41,9 @@ public class TimetableXlsxExportService {
         "14:00 - 15:00","15:00 - 16:00",
         "16:00 - 17:00"
     };
-    static final String[] DAYS    = {"Monday","Tuesday","Wednesday","Thursday","Friday"};
+    static final String[] DAYS_DEFAULT = {"Monday","Tuesday","Wednesday","Thursday","Friday"};
+    // Set at generate() time from AcademicSetting — safe because generate() is not concurrent
+    String[] DAYS = DAYS_DEFAULT;
     // Derived dynamically at export time from actual timetable data — not hardcoded.
     static final int[][] WIN_PAIRS = {{0,1},{2,3},{4,5}};
 
@@ -202,6 +204,12 @@ public class TimetableXlsxExportService {
         Map<String,String> nc = nameToCode(subjectRepo.findAll());
         List<Division> divisions = divisionRepo.findAll();
         AcademicSetting cfg = academicSettingRepo.findById(1).orElseGet(AcademicSetting::new);
+
+        // Resolve working days dynamically from AcademicSetting
+        DAYS = (cfg.getWorkingDays() != null && !cfg.getWorkingDays().isBlank())
+            ? Arrays.stream(cfg.getWorkingDays().split(",")).map(String::trim)
+                    .filter(s -> !s.isBlank()).toArray(String[]::new)
+            : DAYS_DEFAULT;
 
         XSSFWorkbook wb = new XSSFWorkbook();
         Styles st = new Styles(wb);

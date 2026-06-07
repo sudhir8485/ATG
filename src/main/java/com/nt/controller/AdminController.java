@@ -489,12 +489,12 @@ public class AdminController {
 		List<Timetable> active = timetableRepo.findByDeletedFalse();
 		model.addAttribute("lastCount", active.size());
 		model.addAttribute("timetableList", active);
+		model.addAttribute("workingDaysList", getWorkingDays());
 		return "admin-generate";
 	}
 
 	@PostMapping("/auto-generate/run")
 	public String runAutoGenerate(Model model) {
-		// Permanently wipe all timetable entries before regenerating
 		timetableRepo.deleteAllInBatch();
 		TimetableGeneratorService.GenerationResult result = generatorService.generate();
 		model.addAttribute("lastCount", result.getExistingCount());
@@ -502,6 +502,7 @@ public class AdminController {
 		model.addAttribute("requestedCount", result.getRequested());
 		model.addAttribute("placedCount", result.getPlaced());
 		model.addAttribute("timetableList", result.getGenerated());
+		model.addAttribute("workingDaysList", getWorkingDays());
 		return "admin-generate";
 	}
 

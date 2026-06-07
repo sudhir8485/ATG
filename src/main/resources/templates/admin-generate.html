@@ -202,11 +202,7 @@
                 </select>
                 <select id="dayFilter" onchange="filterTable()">
                     <option value="">All Days</option>
-                    <option>Monday</option>
-                    <option>Tuesday</option>
-                    <option>Wednesday</option>
-                    <option>Thursday</option>
-                    <option>Friday</option>
+                    <option th:each="d : ${workingDaysList}" th:value="${d}" th:text="${d}"></option>
                 </select>
             </div>
         </div>
