@@ -32,9 +32,9 @@ jobs:
           mkdir -p dist
           jpackage \
             --input target \
-            --main-jar AutomatedTimetable-2.0.0.jar \
+            --main-jar AutomatedTimetable-3.0.0.jar \
             --name "ATG" \
-            --app-version "2.0.0" \
+            --app-version "3.0.0" \
             --vendor "APCOER IT Dept" \
             --description "Automated Timetable Generator" \
             --copyright "2025 APCOER" \
@@ -79,9 +79,9 @@ jobs:
           mkdir -p dist
           jpackage \
             --input target \
-            --main-jar AutomatedTimetable-2.0.0.jar \
+            --main-jar AutomatedTimetable-3.0.0.jar \
             --name "ATG" \
-            --app-version "2.0.0" \
+            --app-version "3.0.0" \
             --vendor "APCOER IT Dept" \
             --description "Automated Timetable Generator — APCOER IT Department" \
             --copyright "2025 APCOER" \
@@ -131,10 +131,10 @@ jobs:
             **APCOER, Parvati, Pune — IT Department**
 
             ### Installation
-            - **Windows**: Download `ATG-2.0.0.exe` and run the installer. No Java required — JRE is bundled.
-            - **Linux (Ubuntu/Debian)**: Download `atg_2.0.0_amd64.deb` and run:
+            - **Windows**: Download `ATG-3.0.0.exe` and run the installer. No Java required — JRE is bundled.
+            - **Linux (Ubuntu/Debian)**: Download `atg_3.0.0_amd64.deb` and run:
               ```
-              sudo dpkg -i atg_2.0.0_amd64.deb
+              sudo dpkg -i atg_3.0.0_amd64.deb
               ```
 
             ### First Run

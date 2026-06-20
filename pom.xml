@@ -11,9 +11,9 @@
 	</parent>
 	<groupId>com.time</groupId>
 	<artifactId>AutomatedTimetable</artifactId>
-	<version>2.0.0</version>
-	<name>AutomatedTimetable</name>
-	<description>Demo project for Spring Boot</description>
+	<version>3.0.0</version>
+	<name>Automated Timetable Generator</name>
+	<description>Automated Timetable Generator for Engineering Colleges</description>
 	<url />
 	<licenses>
 		<license />
