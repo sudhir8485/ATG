@@ -243,6 +243,7 @@ public class TimetableGeneratorService {
         // No subject codes hardcoded here — fully data-driven.
         // To change next semester: edit the subject's pin fields via the Subject form in the UI.
         Set<String> rotationPlaced = new HashSet<>();
+        Map<String, Integer> pinPlacedCount = new HashMap<>();
         for (Subject subject : subjects) {
             String rawPinDays = subject.getPinDays();
             String rawPinSlot = subject.getPinSlot();
@@ -265,7 +266,10 @@ public class TimetableGeneratorService {
                         Timetable t = forcePlaceAt(subject, div, day, slotMin, slots, rooms, allFaculty,
                                 teacherBusy, roomBusy, classBusy, subjectDayBusy,
                                 facultyWeekCount, facultyDayCount, facultyByName, result);
-                        if (t != null) generated.add(t);
+                        if (t != null) {
+                            generated.add(t);
+                            pinPlacedCount.merge(subject.getId() + "_" + div.getId(), 1, Integer::sum);
+                        }
                     }
                 }
                 rotationPlaced.add(subject.getId() + "_" + div.getId());
@@ -396,7 +400,8 @@ public class TimetableGeneratorService {
                 Collections.shuffle(lectureSlots); // randomise slot preference per subject for fair first-lecture distribution
                 String className = deriveClassName(subject, division);
                 String divisionName = division != null ? division.getName() : "";
-                for (int i = 0; i < lectureSessions; i++) {
+                int effectiveLectureSessions = Math.max(0, lectureSessions - pinPlacedCount.getOrDefault(rotKey, 0));
+                for (int i = 0; i < effectiveLectureSessions; i++) {
                     result.requested++;
                     // Spread theory sessions: sort days so non-adjacent days come first,
                     // avoiding 3+ consecutive calendar days for the same subject.

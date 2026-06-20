@@ -337,14 +337,14 @@ BE-IT:
 
 ## 5. Current State
 
-**As of: 2026-05-31**
+**As of: 2026-06-08**
 
 | Metric | Value |
 |--------|-------|
-| Sessions placed | 201 / 207 |
+| Sessions placed | 205 / 207 (2 Social Computing fail — SSK overloaded) |
 | Faculty conflicts | 0 |
 | Wrong-room assignments | 0 — theory uses ONLY Room 305 + Room 306 |
-| Missing sessions | 6 — see breakdown below |
+| Missing sessions | 2 — Social Computing ×2 (SSK overloaded) |
 
 ### Room Constraint (2 lecture rooms, 3 divisions)
 Only Room No. 305 and Room No. 306 exist as lecture rooms. With 3 divisions sometimes needing a theory slot simultaneously, 6 sessions cannot be placed (no lecture room available). These are genuine room conflicts, not algorithm bugs.
@@ -422,6 +422,18 @@ For data changes (subject hours, faculty assignments), update **Section 3** of t
 | 2026-05-30 | Fix: theory subjects sorted by lecture hours DESC | TimetableGeneratorService.java | High-frequency subjects (EL5=6, ISM=4, EL6=5) placed before low-frequency ones. Fixes ISM Honours concentrating on Friday — now spreads Mon/Wed/Thu/Fri. Result: 207/207 placed, 0 faculty conflicts. |
 | 2026-05-30 | Fix: per-batch same-day lab guard in generateLabRotation | TimetableGeneratorService.java | Added `batchLabDayPlaced` set tracking "batchIdx|day|labName". Overflow rotation slots now skip days where any batch would repeat its lab subject. Fixes CNSL T2 getting two sessions on Monday (Window B + overflow Window C). Previous broad `subjectDayBusy` check was rejected (blocked 24 sessions). Per-batch check is precise. |
 | 2026-05-30 | **Final verified state** | — | 207/207 placed, 0 faculty conflicts, 0 batch-subject-day repeats in lab rotation. LP5 max 2 batches/window, CNSL T2 on Monday+Tuesday (different days), ISM Honours on 4 different days. |
+| 2026-06-08 | Fix: SecurityConfig — add /print-timetable to ADMIN routes | SecurityConfig.java | Route was missing, allowing any authenticated user to access PDF print endpoint |
+| 2026-06-08 | Fix: exportLoadDistribution institution name from DB | AdminController.java | Was hardcoded "ASM's Pawar..." — now reads from AcademicSetting.institutionName |
+| 2026-06-08 | Fix: exportLoadDistribution uses subject codes not full names | AdminController.java | Subject codes (e.g. "CG") fit better in PDF table than full names |
+| 2026-06-08 | Fix: extractSemester handles BE/TE/SE/FE prefix patterns | AdminController.java | Old code parsed digits from className only — failed for "SE(IT)", "TE(IT)" etc. |
+| 2026-06-08 | Fix: isPracticalSlot uses exact lectureType match | AdminController.java | Old code used contains("lab") which matched "lab" in subject names incorrectly |
+| 2026-06-08 | Fix: pinPlacedCount deducted from theory session loop | TimetableGeneratorService.java | Subjects with pinSlot AND lectureHoursPerWeek>0 were getting double-placed (pin phase + theory loop) |
+| 2026-06-08 | Refactor: XLSX slot layout fully dynamic from DB timeslots | TimetableXlsxExportService.java | SLOTS[] and WIN_PAIRS[][] now populated by buildLayout() from TimeslotRepository — no longer hardcoded to 7 fixed slots |
+| 2026-06-08 | Fix: MASTER sheet uses nDays (dynamic) not hardcoded 5 | TimetableXlsxExportService.java | If Saturday is ever added as a working day, MASTER row positions now calculate correctly |
+| 2026-06-08 | Fix: safeAddMergedRegion prevents duplicate merge exceptions | TimetableXlsxExportService.java | Apache POI throws on duplicate CellRangeAddress — guard checks intersection before adding |
+| 2026-06-08 | Fix: detectMerges uses dynamic WIN_PAIRS not hardcoded index 4 | TimetableXlsxExportService.java | 3-slot window detection now works for any slot configuration |
+| 2026-06-08 | Fix: header labels computed from DB slot times via fmtSlotLabel() | TimetableXlsxExportService.java | Was hardcoded "9.00 AM to 10.00 AM" etc. — now dynamically formatted from actual DB timeslot start/end times |
+| 2026-06-08 | Created project documentation | docs/ (8 .md files) | Comprehensive block-level documentation: all entities, repositories, controllers, services, config, and templates with Mermaid diagrams |
 
 ---
 
@@ -431,17 +443,19 @@ For data changes (subject hours, faculty assignments), update **Section 3** of t
 |------|---------|
 | `src/main/resources/data.sql` | Seeds all DB data on startup (subjects, faculty, rooms, divisions) |
 | `src/main/java/com/nt/service/TimetableGeneratorService.java` | Core algorithm — reads DB, places sessions |
-| `src/main/java/com/nt/controller/AdminController.java` | `/auto-generate` endpoint triggers generation |
+| `src/main/java/com/nt/service/TimetableXlsxExportService.java` | XLSX/PDF export — 26-sheet Apache POI workbook |
+| `src/main/java/com/nt/controller/AdminController.java` | `/auto-generate` endpoint triggers generation; handles all CRUD + exports |
 | `src/main/java/com/nt/entity/Timetable.java` | Timetable row entity |
 | `src/main/java/com/nt/entity/Division.java` | Division entity |
 | `src/main/resources/templates/` | Thymeleaf HTML templates for display |
 | `/home/sudhir/Desktop/ATG/IT.xlsx` | Reference Excel — 03A_MASTER is the target |
+| `docs/` | **Project documentation** — 8 Markdown files with Mermaid diagrams. See `docs/00-index.md` for table of contents. |
 
 ---
 
 ## 9. Generation — Current Status
 
-**As of 2026-05-31 — 205/207 stable**
+**As of 2026-06-08 — 205/207 stable**
 
 | Check | Status |
 |-------|--------|

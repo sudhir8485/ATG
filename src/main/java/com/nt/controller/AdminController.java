@@ -1480,14 +1480,27 @@ public class AdminController {
 			return ResponseEntity.noContent().build();
 		}
 
+		// Build subject name → code map for abbreviations in cells
+		Map<String, String> nameToCode = new java.util.HashMap<>();
+		subRepo.findAll().forEach(s -> {
+			if (s.getName() != null && s.getCode() != null)
+				nameToCode.put(s.getName().trim().toLowerCase(), s.getCode().trim());
+		});
+
 		Map<String, FacultyLoad> rows = new LinkedHashMap<>();
 		for (Timetable t : entries) {
 			String faculty = emptySafe(t.getFaculty()).isBlank() ? "Unassigned" : t.getFaculty().trim();
-			int semester = extractSemester(t.getClassName());
+			// Use semesterNumber field set by generator (SE→4, TE→6, BE→8) — avoids regex on class name
+			int semester = t.getSemesterNumber() != null && t.getSemesterNumber() > 0
+					? t.getSemesterNumber()
+					: extractSemester(t.getClassName());
 			int yearBucket = mapYearFromSemester(semester);
 			boolean isPractical = isPracticalSlot(t.getLectureType(), t.getSubject());
 			String type = isPractical ? "PR" : "TH";
-			String subject = emptySafe(t.getSubject()).isBlank() ? "Subject" : t.getSubject().trim();
+			String subjectName = emptySafe(t.getSubject()).isBlank() ? "Subject" : t.getSubject().trim();
+			// Use subject code (abbreviation) if available, otherwise full name
+			String code = nameToCode.get(subjectName.toLowerCase());
+			String subject = (code != null && !code.isBlank()) ? code : subjectName;
 			rows.computeIfAbsent(faculty, k -> new FacultyLoad()).add(yearBucket, type, subject);
 		}
 
@@ -1503,8 +1516,11 @@ public class AdminController {
 			Font bodyFont = FontFactory.getFont(FontFactory.HELVETICA, 9);
 			Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 8);
 
-			Paragraph college = new Paragraph("ASM's Pawar College of Engineering & Research, Parvat, Pune",
-					collegeFont);
+			AcademicSetting cfg = academicSettingRepo.findById(1).orElseGet(AcademicSetting::new);
+			String instName = (cfg.getInstitutionName() != null && !cfg.getInstitutionName().isBlank())
+					? cfg.getInstitutionName()
+					: "Anantrao Pawar College of Engineering & Research, Parvati, Pune";
+			Paragraph college = new Paragraph(instName, collegeFont);
 			college.setAlignment(Element.ALIGN_CENTER);
 			college.setSpacingAfter(4f);
 			doc.add(college);
@@ -2017,16 +2033,17 @@ public class AdminController {
 	}
 
 	private int extractSemester(String className) {
-		if (className == null)
-			return 0;
+		if (className == null) return 0;
+		// Match common year labels even without embedded semester digits
+		String upper = className.toUpperCase();
+		if (upper.startsWith("BE")) return 8;
+		if (upper.startsWith("TE")) return 6;
+		if (upper.startsWith("SE")) return 4;
+		if (upper.startsWith("FE")) return 2;
+		// Fallback: try parsing any digits in the class name
 		String digits = className.replaceAll("[^0-9]", "");
-		if (digits.isEmpty())
-			return 0;
-		try {
-			return Integer.parseInt(digits);
-		} catch (NumberFormatException ex) {
-			return 0;
-		}
+		if (digits.isEmpty()) return 0;
+		try { return Integer.parseInt(digits); } catch (NumberFormatException ex) { return 0; }
 	}
 
 	private int mapYearFromSemester(int sem) {
@@ -2042,9 +2059,10 @@ public class AdminController {
 	}
 
 	private boolean isPracticalSlot(String lectureType, String subject) {
-		String lt = lectureType != null ? lectureType.toLowerCase() : "";
-		String sub = subject != null ? subject.toLowerCase() : "";
-		return lt.contains("lab") || lt.contains("pr") || sub.contains("lab");
+		if (lectureType == null) return false;
+		String lt = lectureType.toLowerCase().trim();
+		return lt.equals("practical") || lt.equals("lab") || lt.equals("laboratory")
+				|| lt.equals("lab practice");
 	}
 
 	/**

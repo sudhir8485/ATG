@@ -29,29 +29,25 @@ import java.util.stream.Collectors;
 @Service
 public class TimetableXlsxExportService {
 
-    @Autowired private TimetableRepository    timetableRepo;
-    @Autowired private SubjectRepository      subjectRepo;
-    @Autowired private DivisionRepository     divisionRepo;
+    @Autowired private TimetableRepository       timetableRepo;
+    @Autowired private SubjectRepository         subjectRepo;
+    @Autowired private DivisionRepository        divisionRepo;
     @Autowired private AcademicSettingRepository academicSettingRepo;
+    @Autowired private com.nt.repository.TimeslotRepository timeslotRepo;
 
-    /* ── DB slot keys ── */
-    static final String[] SLOTS = {
-        "09:00 - 10:00","10:00 - 11:00",
-        "11:15 - 12:15","12:15 - 13:15",
-        "14:00 - 15:00","15:00 - 16:00",
-        "16:00 - 17:00"
-    };
+    /* ── Working days — dynamic from AcademicSetting ── */
     static final String[] DAYS_DEFAULT = {"Monday","Tuesday","Wednesday","Thursday","Friday"};
-    // Set at generate() time from AcademicSetting — safe because generate() is not concurrent
     String[] DAYS = DAYS_DEFAULT;
-    // Derived dynamically at export time from actual timetable data — not hardcoded.
-    static final int[][] WIN_PAIRS = {{0,1},{2,3},{4,5}};
 
-    /* CLASS/MASTER columns (0-based):  C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10,L=11,M=12 */
+    /* ── Slot keys + window pairs — dynamic from DB timeslots ── */
+    String[] SLOTS     = {};   // non-break slot keys: "HH:MM - HH:MM", max 7
+    int[][]  WIN_PAIRS = {};   // pairs (i, i+1) of adjacent data-slot indices (no break between)
+
+    /* ── CLASS/MASTER columns — FIXED, never change ── */
     static final int CC_DAY=2, CC_CLS=3, CC_BRK=6, CC_LNG=9, CC_NCOLS=13;
     static final int[] CC_SCOL = {4,5,7,8,10,11,12};
 
-    /* FACULTY/ROOM columns: C=2=Day, D=3..L=11 */
+    /* ── FACULTY/ROOM columns — FIXED, never change ── */
     static final int FC_DAY=2, FC_BRK=5, FC_LNG=8, FC_NCOLS=12;
     static final int[] FC_SCOL = {3,4,6,7,9,10,11};
 
@@ -197,6 +193,30 @@ public class TimetableXlsxExportService {
     static final String DEF_CLG_LOGO  = "";   // falls back to bundled classpath image
     static final String DEF_OWN_LOGO  = "";   // falls back to bundled classpath image
 
+    /* ═══════════════════════════ DYNAMIC LAYOUT BUILDER ════════════════════ */
+
+    private void buildLayout(List<com.nt.entity.Timeslot> ordered) {
+        List<String> slotKeys = new ArrayList<>();
+        List<int[]>  pairs    = new ArrayList<>();
+        boolean prevData = false;
+
+        for (com.nt.entity.Timeslot ts : ordered) {
+            if (ts.isBreak()) {
+                prevData = false;
+            } else {
+                int idx = slotKeys.size();
+                if (prevData) pairs.add(new int[]{idx - 1, idx});
+                if (idx < CC_SCOL.length) // cap at the fixed 7-slot max
+                    slotKeys.add(ts.getStartTime() + " - " + ts.getEndTime());
+                prevData = true;
+            }
+        }
+
+        SLOTS     = slotKeys.toArray(new String[0]);
+        WIN_PAIRS = pairs.toArray(new int[0][]);
+        // Column positions (CC_SCOL, CC_BRK, CC_LNG, CC_NCOLS, FC_*) stay static final — never touched here
+    }
+
     /* ═══════════════════════════ PUBLIC ENTRY ═══════════════════════════════ */
 
     public byte[] generate() throws IOException {
@@ -210,6 +230,11 @@ public class TimetableXlsxExportService {
             ? Arrays.stream(cfg.getWorkingDays().split(",")).map(String::trim)
                     .filter(s -> !s.isBlank()).toArray(String[]::new)
             : DAYS_DEFAULT;
+
+        // Resolve timeslot layout (slots, column positions, break cols) from DB
+        List<com.nt.entity.Timeslot> dbTimeslots = timeslotRepo.findAll();
+        dbTimeslots.sort(Comparator.comparing(com.nt.entity.Timeslot::getStartTime));
+        buildLayout(dbTimeslots);
 
         XSSFWorkbook wb = new XSSFWorkbook();
         Styles st = new Styles(wb);
@@ -276,11 +301,10 @@ public class TimetableXlsxExportService {
         writeClassRows(sh, st, hi, cls, buildGrid(rows), nc, heights, CC_SCOL);
         mergeBreaks(sh, hi, dataEnd, CC_BRK, CC_LNG);
         applyColWidths(sh, CLASS_COL_WIDTHS);
-        // Hide spacer/redundant columns so PDF shows only timetable content
-        sh.setColumnHidden(0, true);      // A
-        sh.setColumnHidden(1, true);      // B
-        sh.setColumnHidden(CC_CLS, true); // D — Class label (redundant on individual sheet)
-        sh.setColumnHidden(13, true);     // N — right margin
+        sh.setColumnHidden(0, true);
+        sh.setColumnHidden(1, true);
+        sh.setColumnHidden(CC_CLS, true);
+        sh.setColumnHidden(13, true);
         applyPageSetup(sh);
         classFooter(sh, st, cls, rows, nc, hi + DAYS.length, divisions, cfg);
         sh.createFreezePane(0, hi + 1);
@@ -291,32 +315,24 @@ public class TimetableXlsxExportService {
                                    List<Division> divisions, AcademicSetting cfg) {
         XSSFSheet sh = wb.createSheet("MASTER");
 
-        /* ── header rows 0-7 ── */
         int hi = masterHeader(sh, wb, st, clgLogo, ownerLogo, cfg);
-        // hi = 8 (data starts at row 8)
+        int nDays = DAYS.length; // dynamic — 5 for Mon-Fri, 6 if Saturday added, etc.
 
-        /* ── SE-IT rows 8-12 ── */
         writeClassRows(sh, st, hi, "SE(IT)", buildGrid(filter(all,"SE(IT)")), nc, SE_HT, CC_SCOL);
-        /* ── separator row 13 ── */
-        int sep1 = hi + 5;
+        int sep1 = hi + nDays;
         writeSeparatorRow(sh, st, sep1, SEP1_HT);
 
-        /* ── TE-IT rows 14-18 ── */
         int teStart = sep1 + 1;
         writeClassRows(sh, st, teStart, "TE(IT)", buildGrid(filter(all,"TE(IT)")), nc, TE_HT, CC_SCOL);
-        int teEnd = teStart + 4;
+        int teEnd = teStart + nDays - 1;
 
-        /* ── separator row 19 ── */
         int sep2 = teEnd + 1;
         writeSeparatorRow(sh, st, sep2, SEP2_HT);
 
-        /* ── BE-IT rows 20-24 ── */
         int beStart = sep2 + 1;
         writeClassRows(sh, st, beStart, "BE(IT)", buildGrid(filter(all,"BE(IT)")), nc, BE_HT, CC_SCOL);
-        int beEnd = beStart + 4;
+        int beEnd = beStart + nDays - 1;
 
-        /* ── break column vertical merges ── */
-        // G9:G25 and J9:J25 in Excel = rows 8-24 in POI
         mergeBreaks(sh, hi, beEnd, CC_BRK, CC_LNG);
 
         /* ── footer ── */
@@ -559,27 +575,39 @@ public class TimetableXlsxExportService {
     private void colHeaderRow(XSSFSheet sh, int ri, float height, Styles st,
                                int[] scol, int brkCol, int lngCol, int ncols, boolean hasCls) {
         XSSFRow row = row(sh, ri, height);
-        int ncol = ncols > 12 ? CC_NCOLS : FC_NCOLS;
-        for (int c = 0; c < ncol; c++) row.createCell(c).setCellStyle(st.hdrCell);
+        for (int c = 0; c < ncols; c++) row.createCell(c).setCellStyle(st.hdrCell);
 
-        String[] labels = {
-            "9.00 AM to 10.00 AM","10.00 AM to 11.00 AM",
-            "11.15 AM to 12.15 PM","12.15 PM to 1.15 PM",
-            "2.00 PM to 3.00 PM","3.00 PM to 4.00 PM","4.00 PM to 5.00 PM"
-        };
         if (hasCls) {
             row.getCell(CC_DAY).setCellValue("Day/ Time");
             row.getCell(CC_CLS).setCellValue("Class");
         } else {
             row.getCell(FC_DAY).setCellValue("Day/ Time");
         }
-        // SHORT BREAK header has no bottom border (matches IT.xlsx G8 border)
         row.getCell(brkCol).setCellStyle(st.brkHdrCell);
         row.getCell(brkCol).setCellValue("SHORT\nBREAK");
         row.getCell(lngCol).setCellStyle(st.lngHdrCell);
         row.getCell(lngCol).setCellValue("LONG\nBREAK");
-        for (int si = 0; si < SLOTS.length; si++)
-            row.getCell(scol[si]).setCellValue(labels[si]);
+        // Label only slots that exist in DB; extra positions stay blank (column width preserved)
+        for (int si = 0; si < scol.length; si++) {
+            if (si < SLOTS.length)
+                row.getCell(scol[si]).setCellValue(fmtSlotLabel(SLOTS[si]));
+        }
+    }
+
+    private String fmtSlotLabel(String slot) {
+        String[] parts = slot.split(" - ");
+        if (parts.length != 2) return slot;
+        return fmtTime(parts[0].trim()) + " to " + fmtTime(parts[1].trim());
+    }
+
+    private String fmtTime(String hhmm) {
+        String[] p = hhmm.split(":");
+        if (p.length < 2) return hhmm;
+        int h = Integer.parseInt(p[0]), m = Integer.parseInt(p[1]);
+        String ap = h < 12 ? "AM" : "PM";
+        if (h > 12) h -= 12;
+        if (h == 0) h = 12;
+        return h + "." + (m == 0 ? "00" : String.format("%02d", m)) + " " + ap;
     }
 
     /* ═══════════════════════════ DATA ROW WRITERS ═══════════════════════════ */
@@ -593,10 +621,11 @@ public class TimetableXlsxExportService {
         for (int di = 0; di < DAYS.length; di++) {
             int ri = startRow + di;
             List<Timetable>[] slots = grid.getOrDefault(DAYS[di], emptyArr());
-            boolean[] lbFirst=new boolean[7], lbSecond=new boolean[7], lb3=new boolean[7];
+            boolean[] lbFirst=new boolean[CC_SCOL.length], lbSecond=new boolean[CC_SCOL.length], lb3=new boolean[CC_SCOL.length];
             detectMerges(slots, lbFirst, lbSecond, lb3);
 
-            float ht = (heights != null && di < heights.length) ? heights[di] : 70f;
+            float ht = (heights != null && di < heights.length) ? heights[di]
+                     : (heights != null && heights.length > 0 ? heights[heights.length - 1] : 32f);
             XSSFRow row = row(sh, ri, ht);
 
             // All cells default empty bordered
@@ -648,10 +677,11 @@ public class TimetableXlsxExportService {
         for (int di = 0; di < DAYS.length; di++) {
             int ri = startRow + di;
             List<Timetable>[] slots = grid.getOrDefault(DAYS[di], emptyArr());
-            boolean[] lbFirst=new boolean[7], lbSecond=new boolean[7], lb3=new boolean[7];
+            boolean[] lbFirst=new boolean[CC_SCOL.length], lbSecond=new boolean[CC_SCOL.length], lb3=new boolean[CC_SCOL.length];
             detectMerges(slots, lbFirst, lbSecond, lb3);
 
-            XSSFRow row = row(sh, ri, avgHt[di]);
+            float ht = di < avgHt.length ? avgHt[di] : avgHt[avgHt.length - 1];
+            XSSFRow row = row(sh, ri, ht);
             for (int c = 0; c < FC_NCOLS; c++) row.createCell(c).setCellStyle(st.emptyCell);
             cell(row, FC_DAY, st.dayCell).setCellValue(DAYS[di]);
             row.getCell(FC_BRK).setCellStyle(st.brkData);
@@ -683,13 +713,20 @@ public class TimetableXlsxExportService {
     private void writeSeparatorRow(XSSFSheet sh, Styles st, int ri, float ht) {
         XSSFRow row = row(sh, ri, ht);
         for (int c = 0; c < CC_NCOLS; c++) row.createCell(c).setCellStyle(st.emptyCell);
-        // Break column cells get break style (they're part of the vertical merge)
         row.getCell(CC_BRK).setCellStyle(st.brkData);
         row.getCell(CC_LNG).setCellStyle(st.lngData);
-        // Decorative merges: E+F, H+I, K+L+M (matching IT.xlsx rows 14 and 20)
-        sh.addMergedRegion(new CellRangeAddress(ri, ri, 4, 5));   // E:F
-        sh.addMergedRegion(new CellRangeAddress(ri, ri, 7, 8));   // H:I
-        sh.addMergedRegion(new CellRangeAddress(ri, ri, 10, 12)); // K:M
+        // Fixed window merges — always E:F, H:I, K:M (columns never change)
+        safeAddMergedRegion(sh, ri, ri, 4, 5);   // E:F  (window A)
+        safeAddMergedRegion(sh, ri, ri, 7, 8);   // H:I  (window B)
+        safeAddMergedRegion(sh, ri, ri, 10, 12); // K:M  (window C)
+    }
+
+    private void safeAddMergedRegion(XSSFSheet sh, int r1, int r2, int c1, int c2) {
+        CellRangeAddress cra = new CellRangeAddress(r1, r2, c1, c2);
+        for (CellRangeAddress ex : sh.getMergedRegions()) {
+            if (ex.intersects(cra)) return;
+        }
+        sh.addMergedRegion(cra);
     }
 
     /** Adds break column vertical merges. */
@@ -1184,10 +1221,20 @@ public class TimetableXlsxExportService {
     private void detectMerges(List<Timetable>[] sl,
                                boolean[] first, boolean[] second, boolean[] three) {
         for (int[] p : WIN_PAIRS) {
-            if (sameWin(sl[p[0]], sl[p[1]])) { first[p[0]]=true; second[p[1]]=true; }
+            if (p[0] < sl.length && p[1] < sl.length && sameWin(sl[p[0]], sl[p[1]])) {
+                first[p[0]] = true; second[p[1]] = true;
+            }
         }
-        if (!first[4] && sameWin(sl[4],sl[5]) && sameWin(sl[5],sl[6]) && sameWin(sl[4],sl[6])) {
-            three[4]=true; second[5]=true; second[6]=true;
+        // 3-slot window: check any triple {i, i+1, i+2} formed by two consecutive WIN_PAIRS
+        for (int[] p : WIN_PAIRS) {
+            if (first[p[0]]) continue; // already merged as a pair — can't also be a triple start
+            for (int[] q : WIN_PAIRS) {
+                if (q[0] == p[1] && p[0] < sl.length && q[1] < sl.length) {
+                    if (sameWin(sl[p[0]], sl[p[1]]) && sameWin(sl[p[1]], sl[q[1]])) {
+                        three[p[0]] = true; second[p[1]] = true; second[q[1]] = true;
+                    }
+                }
+            }
         }
     }
 
@@ -1203,7 +1250,8 @@ public class TimetableXlsxExportService {
     @SuppressWarnings("unchecked")
     private Map<String,List<Timetable>[]> buildGrid(List<Timetable> rows) {
         Map<String,List<Timetable>[]> g = new LinkedHashMap<>();
-        for (String d:DAYS) { List<Timetable>[] a=new List[7]; for(int i=0;i<7;i++) a[i]=new ArrayList<>(); g.put(d,a); }
+        int ns = CC_SCOL.length; // always 7 — fixed structure
+        for (String d:DAYS) { List<Timetable>[] a=new List[ns]; for(int i=0;i<ns;i++) a[i]=new ArrayList<>(); g.put(d,a); }
         for (Timetable t : rows) {
             String day = normDay(t.getDay());
             if (day==null||t.getTimeSlot()==null) continue;
@@ -1215,7 +1263,7 @@ public class TimetableXlsxExportService {
 
     @SuppressWarnings("unchecked")
     private List<Timetable>[] emptyArr() {
-        List<Timetable>[] a=new List[7]; for(int i=0;i<7;i++) a[i]=new ArrayList<>(); return a;
+        List<Timetable>[] a=new List[CC_SCOL.length]; for(int i=0;i<CC_SCOL.length;i++) a[i]=new ArrayList<>(); return a;
     }
 
     private Map<String,String> nameToCode(List<Subject> subjects) {
